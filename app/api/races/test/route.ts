@@ -3,6 +3,19 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+function extractTitle(html: string) {
+  const match = html.match(
+    /<title[^>]*>([\s\S]*?)<\/title>/i
+  );
+
+  return match
+    ? match[1]
+        .replace(/<[^>]*>/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+    : null;
+}
+
 export async function GET() {
   const startedAt = Date.now();
 
@@ -21,55 +34,15 @@ export async function GET() {
     const buffer = await response.arrayBuffer();
     const bytes = new Uint8Array(buffer);
 
-    const contentType =
-      response.headers.get("content-type") || "";
-
-    // HTTPヘッダーから文字コードを取得
-    let charsetMatch = contentType.match(
-      /charset\s*=\s*["']?([^;"'\s]+)/i
-    );
-
-    // HTTPヘッダーにない場合はHTML内を確認
-    if (!charsetMatch) {
-      const headerText = new TextDecoder("latin1").decode(
-        bytes.slice(0, 4096)
-      );
-
-      charsetMatch = headerText.match(
-        /<meta[^>]+charset\s*=\s*["']?([^"'\s/>;]+)/i
-      );
-    }
-
-    const charset = charsetMatch
-      ? charsetMatch[1].trim().toLowerCase()
-      : "utf-8";
-
-    // 指定された文字コードでHTMLを変換
-    let html: string;
-
-    try {
-      html = new TextDecoder(charset).decode(bytes);
-    } catch {
-      html = new TextDecoder("utf-8").decode(bytes);
-    }
-
-    const titleMatch = html.match(
-      /<title[^>]*>([\s\S]*?)<\/title>/i
-    );
-
-    const title = titleMatch
-      ? titleMatch[1]
-          .replace(/<[^>]*>/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-      : null;
+    const utf8Html = new TextDecoder("utf-8").decode(bytes);
+    const shiftJisHtml = new TextDecoder("shift_jis").decode(bytes);
 
     return NextResponse.json({
       ok: response.ok,
       status: response.status,
-      contentType,
-      detectedCharset: charset,
-      title,
+      contentType: response.headers.get("content-type"),
+      titleUtf8: extractTitle(utf8Html),
+      titleShiftJis: extractTitle(shiftJisHtml),
       responseBytes: bytes.length,
       elapsedMs: Date.now() - startedAt,
     });
@@ -77,12 +50,9 @@ export async function GET() {
     return NextResponse.json(
       {
         ok: false,
-        error: "netkeibaへの接続に失敗しました。",
-        detail:
-          error instanceof Error
-            ? error.message
-            : "Unknown error",
-        elapsedMs: Date.now() - startedAt,
+        error: error instanceof Error
+          ? error.message
+          : "Unknown error",
       },
       { status: 502 }
     );
