@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+const CONCURRENCY = 4;
+
 function decodeEntities(value: string) {
   return value
     .replace(/&nbsp;/gi, " ")
@@ -49,10 +51,14 @@ function extractTables(html: string) {
         cells.push(cleanText(cellMatch[1]));
       }
 
-      if (cells.length > 0) rows.push(cells);
+      if (cells.length > 0) {
+        rows.push(cells);
+      }
     }
 
-    if (rows.length > 0) tables.push(rows);
+    if (rows.length > 0) {
+      tables.push(rows);
+    }
   }
 
   return tables;
@@ -89,11 +95,14 @@ export async function GET() {
     const race = await fetchHtml(raceUrl);
 
     if (!race.ok) {
-      return NextResponse.json({
-        ok: false,
-        step: "race_page",
-        status: race.status,
-      }, { status: 502 });
+      return NextResponse.json(
+        {
+          ok: false,
+          step: "race_page",
+          status: race.status,
+        },
+        { status: 502 }
+      );
     }
 
     const horses: {
@@ -107,8 +116,7 @@ export async function GET() {
     let anchorMatch: RegExpExecArray | null;
 
     while ((anchorMatch = anchorRegex.exec(race.html)) !== null) {
-      const attributes = anchorMatch[1];
-      const hrefMatch = attributes.match(
+      const hrefMatch = anchorMatch[1].match(
         /\bhref\s*=\s*(["'])(.*?)\1/i
       );
 
@@ -133,68 +141,98 @@ export async function GET() {
       });
     }
 
-    const results = [];
+    const results: Record<string, unknown>[] =
+      new Array(horses.length);
 
-    for (const horse of horses.slice(0, 3)) {
-      try {
-        const url =
-          `https://db.sp.netkeiba.com/horse/${horse.horseId}/`;
+    let nextIndex = 0;
 
-        const page = await fetchHtml(url);
+    async function worker() {
+      while (true) {
+        const index = nextIndex++;
 
-        if (!page.ok) {
-          results.push({
+        if (index >= horses.length) {
+          return;
+        }
+
+        const horse = horses[index];
+
+        try {
+          const url =
+            `https://db.sp.netkeiba.com/horse/${horse.horseId}/`;
+
+          const page = await fetchHtml(url);
+
+          if (!page.ok) {
+            results[index] = {
+              horseId: horse.horseId,
+              name: horse.name,
+              ok: false,
+              status: page.status,
+            };
+            continue;
+          }
+
+          const tables = extractTables(page.html);
+
+          const profile = tables.find((table) =>
+            table.some((row) =>
+              ["父", "母", "調教師"].some((label) =>
+                row[0]?.includes(label)
+              )
+            ) && table.length >= 5
+          ) || [];
+
+          const performance = tables.find((table) =>
+            table[0]?.includes("レース名") &&
+            table[0]?.includes("着順") &&
+            table[0]?.includes("騎手")
+          );
+
+          results[index] = {
+            horseId: horse.horseId,
+            name: horse.name,
+            ok: page.ok && Boolean(performance),
+            responseBytes: page.bytes,
+            profileFound: profile.length > 0,
+            profile,
+            performanceFound: Boolean(performance),
+            performanceCount: performance
+              ? performance.length - 1
+              : 0,
+            performanceHeaders: performance?.[0] || [],
+            recentPerformances: performance
+              ? performance.slice(1, 4)
+              : [],
+          };
+        } catch (error) {
+          results[index] = {
             horseId: horse.horseId,
             name: horse.name,
             ok: false,
-            status: page.status,
-          });
-          continue;
+            error:
+              error instanceof Error
+                ? error.message
+                : "Unknown error",
+          };
         }
-
-        const tables = extractTables(page.html);
-
-        const profile = tables.find((table) =>
-          table.some((row) =>
-            ["父", "母", "調教師"].some((label) =>
-              row[0]?.includes(label)
-            )
-          ) && table.length >= 5
-        ) || [];
-
-        const performance = tables.find((table) =>
-          table[0]?.includes("レース名") &&
-          table[0]?.includes("着順") &&
-          table[0]?.includes("騎手")
-        );
-
-        results.push({
-          horseId: horse.horseId,
-          name: horse.name,
-          ok: true,
-          responseBytes: page.bytes,
-          profile,
-          performanceFound: Boolean(performance),
-          performanceCount: performance
-            ? performance.length - 1
-            : 0,
-          performanceHeaders: performance?.[0] || [],
-          recentPerformances: performance
-            ? performance.slice(1, 4)
-            : [],
-        });
-      } catch (error) {
-        results.push({
-          horseId: horse.horseId,
-          name: horse.name,
-          ok: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Unknown error",
-        });
       }
     }
+
+    const workerCount = Math.min(
+      CONCURRENCY,
+      horses.length
+    );
+
+    await Promise.all(
+      Array.from(
+        { length: workerCount },
+        () => worker()
+      )
+    );
+
+    const successCount = results.filter(
+      (item) => item?.ok === true
+    ).length;
 
     return NextResponse.json(
       {
@@ -202,6 +240,9 @@ export async function GET() {
         raceStatus: race.status,
         raceHorseCount: horses.length,
         testHorseCount: results.length,
+        concurrency: CONCURRENCY,
+        successCount,
+        failureCount: results.length - successCount,
         results,
         elapsedMs: Date.now() - startedAt,
       },
