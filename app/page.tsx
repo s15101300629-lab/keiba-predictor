@@ -1,3 +1,4 @@
+import Link from "next/link";
 const races = [
   { time: "10:05", venue: "東京", number: "1R", title: "2歳未勝利", surface: "ダート 1400m", runners: 16, status: "出馬表" },
   { time: "10:35", venue: "東京", number: "2R", title: "2歳未勝利", surface: "芝 1600m", runners: 14, status: "出馬表" },
