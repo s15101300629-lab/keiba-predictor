@@ -3,26 +3,31 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-function cleanText(value: string) {
+function decodeEntities(value: string) {
   return value
-    .replace(/<[^>]*>/g, "")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/&#(\d+);/g, (_, code) =>
+      String.fromCodePoint(Number(code))
+    )
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
+      String.fromCodePoint(parseInt(code, 16))
+    );
 }
 
-function decodeHtml(value: string) {
-  return value
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">");
+function cleanText(value: string) {
+  return decodeEntities(
+    value
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]*>/g, "")
+  )
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export async function GET() {
@@ -52,73 +57,48 @@ export async function GET() {
       ? cleanText(titleMatch[1])
       : null;
 
-    const horseLinks: {
-      text: string;
-      href: string;
+    const rows: {
+      horseId: string;
+      cells: string[];
+      rowText: string;
     }[] = [];
 
-    const anchorRegex =
-      /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+    const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+    let rowMatch: RegExpExecArray | null;
 
-    let match: RegExpExecArray | null;
+    while ((rowMatch = rowRegex.exec(html)) !== null) {
+      const rowHtml = rowMatch[1];
 
-    while ((match = anchorRegex.exec(html)) !== null) {
-      const attributes = match[1];
-      const innerHtml = match[2];
-
-      const hrefMatch = attributes.match(
-        /\bhref\s*=\s*(["'])(.*?)\1/i
+      const horseIdMatch = rowHtml.match(
+        /horse_id=(\d+)/i
       );
 
-      if (!hrefMatch) continue;
+      if (!horseIdMatch) continue;
 
-      const href = decodeHtml(hrefMatch[2]);
-      const text = cleanText(innerHtml);
+      const cells: string[] = [];
+      const cellRegex =
+        /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
 
-      if (/horse_id=|\/horse\//i.test(href)) {
-        let absoluteHref = href;
+      let cellMatch: RegExpExecArray | null;
 
-        try {
-          absoluteHref = new URL(
-            href,
-            targetUrl
-          ).toString();
-        } catch {
-          // 元のURLを保持
-        }
-
-        horseLinks.push({
-          text,
-          href: absoluteHref,
-        });
+      while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+        cells.push(cleanText(cellMatch[1]));
       }
+
+      rows.push({
+        horseId: horseIdMatch[1],
+        cells,
+        rowText: cleanText(rowHtml),
+      });
     }
 
     const horseIds = Array.from(
-      new Set([
-        ...Array.from(
+      new Set(
+        Array.from(
           html.matchAll(/horse_id=(\d+)/gi),
-          (m) => m[1]
-        ),
-        ...Array.from(
-          html.matchAll(/\/horse\/(\d+)/gi),
-          (m) => m[1]
-        ),
-      ])
-    );
-
-    const labels = [
-      "馬名",
-      "騎手",
-      "斤量",
-      "調教師",
-      "馬体重",
-      "枠番",
-      "馬番",
-    ];
-
-    const foundLabels = labels.filter((label) =>
-      html.includes(label)
+          (match) => match[1]
+        )
+      )
     );
 
     return NextResponse.json(
@@ -128,13 +108,9 @@ export async function GET() {
         contentType: response.headers.get("content-type"),
         title,
         responseBytes: bytes.length,
-        totalAnchorCount: (
-          html.match(/<a\b/gi) || []
-        ).length,
-        horseLinkCount: horseLinks.length,
-        horseIds,
-        horseLinks: horseLinks.slice(0, 40),
-        foundLabels,
+        horseIdCount: horseIds.length,
+        tableRowCount: rows.length,
+        rows: rows.slice(0, 30),
         elapsedMs: Date.now() - startedAt,
       },
       {
