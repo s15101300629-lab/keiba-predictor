@@ -10,13 +10,7 @@ function decodeEntities(value: string) {
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&#(\d+);/g, (_, code) =>
-      String.fromCodePoint(Number(code))
-    )
-    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
-      String.fromCodePoint(parseInt(code, 16))
-    );
+    .replace(/&gt;/gi, ">");
 }
 
 function cleanText(value: string) {
@@ -33,8 +27,9 @@ function cleanText(value: string) {
 export async function GET() {
   const startedAt = Date.now();
 
+  const horseId = "2021104824";
   const targetUrl =
-    "https://race.sp.netkeiba.com/race/shutuba.html?race_id=202608050511";
+    `https://db.sp.netkeiba.com/horse/${horseId}/`;
 
   try {
     const response = await fetch(targetUrl, {
@@ -57,48 +52,70 @@ export async function GET() {
       ? cleanText(titleMatch[1])
       : null;
 
-    const rows: {
-      horseId: string;
-      cells: string[];
-      rowText: string;
+    const headings = Array.from(
+      html.matchAll(/<h[1-4]\b[^>]*>([\s\S]*?)<\/h[1-4]>/gi),
+      (match) => cleanText(match[1])
+    ).filter(Boolean);
+
+    const tables: {
+      rowCount: number;
+      rows: string[][];
     }[] = [];
 
-    const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-    let rowMatch: RegExpExecArray | null;
+    const tableRegex =
+      /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
 
-    while ((rowMatch = rowRegex.exec(html)) !== null) {
-      const rowHtml = rowMatch[1];
+    let tableMatch: RegExpExecArray | null;
 
-      const horseIdMatch = rowHtml.match(
-        /horse_id=(\d+)/i
-      );
+    while ((tableMatch = tableRegex.exec(html)) !== null) {
+      const tableHtml = tableMatch[1];
+      const rows: string[][] = [];
 
-      if (!horseIdMatch) continue;
+      const rowRegex =
+        /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
 
-      const cells: string[] = [];
-      const cellRegex =
-        /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
+      let rowMatch: RegExpExecArray | null;
 
-      let cellMatch: RegExpExecArray | null;
+      while ((rowMatch = rowRegex.exec(tableHtml)) !== null) {
+        const cells: string[] = [];
 
-      while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-        cells.push(cleanText(cellMatch[1]));
+        const cellRegex =
+          /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
+
+        let cellMatch: RegExpExecArray | null;
+
+        while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
+          cells.push(cleanText(cellMatch[1]));
+        }
+
+        if (cells.length > 0) {
+          rows.push(cells);
+        }
       }
 
-      rows.push({
-        horseId: horseIdMatch[1],
-        cells,
-        rowText: cleanText(rowHtml),
-      });
+      if (rows.length > 0) {
+        tables.push({
+          rowCount: rows.length,
+          rows: rows.slice(0, 12),
+        });
+      }
     }
 
-    const horseIds = Array.from(
-      new Set(
-        Array.from(
-          html.matchAll(/horse_id=(\d+)/gi),
-          (match) => match[1]
-        )
-      )
+    const keywords = [
+      "血統",
+      "父",
+      "母",
+      "母父",
+      "競走成績",
+      "レース名",
+      "着順",
+      "距離",
+      "タイム",
+      "騎手",
+    ];
+
+    const foundKeywords = keywords.filter((word) =>
+      html.includes(word)
     );
 
     return NextResponse.json(
@@ -108,9 +125,10 @@ export async function GET() {
         contentType: response.headers.get("content-type"),
         title,
         responseBytes: bytes.length,
-        horseIdCount: horseIds.length,
-        tableRowCount: rows.length,
-        rows: rows.slice(0, 30),
+        headings: headings.slice(0, 30),
+        tableCount: tables.length,
+        tables: tables.slice(0, 8),
+        foundKeywords,
         elapsedMs: Date.now() - startedAt,
       },
       {
