@@ -47,7 +47,7 @@ export default function Home() {
         <article className="tool-card"><span>03</span><b>結果検証</b><p>的中率・回収率を記録</p></article>
         <article className="tool-card"><span>04</span><b>データ管理</b><p>予想履歴と分析結果を保存</p></article>
       </div>
-<Link href="/import" className="notice">データ取り込み（出馬表・血統・過去戦績）を開く →</Link>
+<Link href="/import" className="notice" style={{ display: "block", marginTop: 16 }}>データ取り込み（出馬表・血統・過去戦績）を開く →</Link>
       <footer>KEIBA PREDICTOR <span>個人利用向け・開発中</span></footer>
     </main>
   );
