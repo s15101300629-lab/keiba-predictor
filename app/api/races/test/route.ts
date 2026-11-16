@@ -10,7 +10,13 @@ function decodeEntities(value: string) {
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">");
+    .replace(/&gt;/gi, ">")
+    .replace(/&#(\d+);/g, (_, code) =>
+      String.fromCodePoint(Number(code))
+    )
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) =>
+      String.fromCodePoint(parseInt(code, 16))
+    );
 }
 
 function cleanText(value: string) {
@@ -24,10 +30,51 @@ function cleanText(value: string) {
     .trim();
 }
 
+function extractTables(html: string) {
+  const tables: string[][][] = [];
+
+  const tableRegex =
+    /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
+
+  let tableMatch: RegExpExecArray | null;
+
+  while ((tableMatch = tableRegex.exec(html)) !== null) {
+    const rows: string[][] = [];
+
+    const rowRegex =
+      /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+
+    let rowMatch: RegExpExecArray | null;
+
+    while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
+      const cells: string[] = [];
+
+      const cellRegex =
+        /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
+
+      let cellMatch: RegExpExecArray | null;
+
+      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
+        cells.push(cleanText(cellMatch[1]));
+      }
+
+      if (cells.length > 0) {
+        rows.push(cells);
+      }
+    }
+
+    if (rows.length > 0) {
+      tables.push(rows);
+    }
+  }
+
+  return tables;
+}
+
 export async function GET() {
   const startedAt = Date.now();
-
   const horseId = "2021104824";
+
   const targetUrl =
     `https://db.sp.netkeiba.com/horse/${horseId}/`;
 
@@ -41,8 +88,9 @@ export async function GET() {
     });
 
     const buffer = await response.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-    const html = new TextDecoder("utf-8").decode(bytes);
+    const html = new TextDecoder("utf-8").decode(
+      new Uint8Array(buffer)
+    );
 
     const titleMatch = html.match(
       /<title[^>]*>([\s\S]*?)<\/title>/i
@@ -52,83 +100,37 @@ export async function GET() {
       ? cleanText(titleMatch[1])
       : null;
 
-    const headings = Array.from(
-      html.matchAll(/<h[1-4]\b[^>]*>([\s\S]*?)<\/h[1-4]>/gi),
-      (match) => cleanText(match[1])
-    ).filter(Boolean);
+    const tables = extractTables(html);
 
-    const tables: {
-      rowCount: number;
-      rows: string[][];
-    }[] = [];
+    const profileRows = tables.find((table) =>
+      table.some((row) =>
+        ["父", "母", "調教師"].some((label) =>
+          row[0]?.includes(label)
+        )
+      ) && table.length >= 5
+    ) || [];
 
-    const tableRegex =
-      /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
-
-    let tableMatch: RegExpExecArray | null;
-
-    while ((tableMatch = tableRegex.exec(html)) !== null) {
-      const tableHtml = tableMatch[1];
-      const rows: string[][] = [];
-
-      const rowRegex =
-        /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-
-      let rowMatch: RegExpExecArray | null;
-
-      while ((rowMatch = rowRegex.exec(tableHtml)) !== null) {
-        const cells: string[] = [];
-
-        const cellRegex =
-          /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
-
-        let cellMatch: RegExpExecArray | null;
-
-        while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
-          cells.push(cleanText(cellMatch[1]));
-        }
-
-        if (cells.length > 0) {
-          rows.push(cells);
-        }
-      }
-
-      if (rows.length > 0) {
-        tables.push({
-          rowCount: rows.length,
-          rows: rows.slice(0, 12),
-        });
-      }
-    }
-
-    const keywords = [
-      "血統",
-      "父",
-      "母",
-      "母父",
-      "競走成績",
-      "レース名",
-      "着順",
-      "距離",
-      "タイム",
-      "騎手",
-    ];
-
-    const foundKeywords = keywords.filter((word) =>
-      html.includes(word)
+    const performanceTable = tables.find((table) =>
+      table[0]?.includes("レース名") &&
+      table[0]?.includes("着順") &&
+      table[0]?.includes("騎手")
     );
 
     return NextResponse.json(
       {
         ok: response.ok,
         status: response.status,
-        contentType: response.headers.get("content-type"),
         title,
-        responseBytes: bytes.length,
-        headings: headings.slice(0, 30),
-        tableCount: tables.length,
-        tables: tables.slice(0, 8),
-        foundKeywords,
+        horseId,
+        profileRows,
+        performanceFound: Boolean(performanceTable),
+        performanceHeaders: performanceTable?.[0] || [],
+        performanceCount: performanceTable
+          ? performanceTable.length - 1
+          : 0,
+        performances: performanceTable
+          ? performanceTable.slice(1, 11)
+          : [],
         elapsedMs: Date.now() - startedAt,
       },
       {
