@@ -1,0 +1,19 @@
+.wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 80px; color: #e8edf7; }
+.back { color: #8fa3c7; font-size: 14px; text-decoration: none; }
+.h1 { font-size: 24px; margin: 16px 0 8px; }
+.h2 { font-size: 18px; margin: 32px 0 8px; }
+.lead { color: #9fb0cf; font-size: 14px; line-height: 1.6; }
+.label { display: block; margin: 16px 0 6px; font-size: 13px; color: #9fb0cf; }
+.input, .textarea { width: 100%; box-sizing: border-box; padding: 10px; border-radius: 10px; border: 1px solid #263553; background: #0f1830; color: #e8edf7; font-size: 16px; }
+.textarea { margin-top: 8px; }
+.btn { margin-top: 12px; width: 100%; padding: 12px; border: 0; border-radius: 10px; background: #3b82f6; color: #fff; font-size: 16px; font-weight: 700; }
+.message { margin-top: 12px; font-size: 14px; color: #bcd0f5; }
+.warn { margin-top: 12px; padding: 10px; border-radius: 10px; background: #3a2a10; color: #ffd9a0; font-size: 13px; }
+.warn p { margin: 6px 0 0; word-break: break-all; }
+.horse { margin-top: 16px; padding: 12px; border-radius: 12px; background: #0c1426; border: 1px solid #1d2a47; }
+.horseHead { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.badge { background: #1d2a47; border-radius: 8px; padding: 2px 8px; font-size: 13px; }
+.sub { color: #8fa3c7; font-size: 13px; }
+.pedigree { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+.saved { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #1d2a47; font-size: 15px; }
+.small { margin-left: 8px; padding: 6px 12px; border-radius: 8px; border: 1px solid #263553; background: #0f1830; color: #e8edf7; font-size: 14px; }
