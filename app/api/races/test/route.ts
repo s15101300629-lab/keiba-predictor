@@ -29,7 +29,7 @@ export async function GET() {
   const startedAt = Date.now();
 
   const targetUrl =
-    "https://race.sp.netkeiba.com/?pid=race_list&kaisai_id=2026080505&kaisai_date=20261121";
+    "https://race.sp.netkeiba.com/race/shutuba.html?race_id=202608050511";
 
   try {
     const response = await fetch(targetUrl, {
@@ -52,7 +52,7 @@ export async function GET() {
       ? cleanText(titleMatch[1])
       : null;
 
-    const links: {
+    const horseLinks: {
       text: string;
       href: string;
     }[] = [];
@@ -75,9 +75,7 @@ export async function GET() {
       const href = decodeHtml(hrefMatch[2]);
       const text = cleanText(innerHtml);
 
-      if (
-        /race_id=|race\/|race_result|shutuba/i.test(href)
-      ) {
+      if (/horse_id=|\/horse\//i.test(href)) {
         let absoluteHref = href;
 
         try {
@@ -86,15 +84,42 @@ export async function GET() {
             targetUrl
           ).toString();
         } catch {
-          // URL形式を解釈できない場合は元の値を保持
+          // 元のURLを保持
         }
 
-        links.push({
+        horseLinks.push({
           text,
           href: absoluteHref,
         });
       }
     }
+
+    const horseIds = Array.from(
+      new Set([
+        ...Array.from(
+          html.matchAll(/horse_id=(\d+)/gi),
+          (m) => m[1]
+        ),
+        ...Array.from(
+          html.matchAll(/\/horse\/(\d+)/gi),
+          (m) => m[1]
+        ),
+      ])
+    );
+
+    const labels = [
+      "馬名",
+      "騎手",
+      "斤量",
+      "調教師",
+      "馬体重",
+      "枠番",
+      "馬番",
+    ];
+
+    const foundLabels = labels.filter((label) =>
+      html.includes(label)
+    );
 
     return NextResponse.json(
       {
@@ -106,8 +131,10 @@ export async function GET() {
         totalAnchorCount: (
           html.match(/<a\b/gi) || []
         ).length,
-        raceLinkCount: links.length,
-        links: links.slice(0, 100),
+        horseLinkCount: horseLinks.length,
+        horseIds,
+        horseLinks: horseLinks.slice(0, 40),
+        foundLabels,
         elapsedMs: Date.now() - startedAt,
       },
       {
