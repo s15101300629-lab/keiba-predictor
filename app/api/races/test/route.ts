@@ -37,12 +37,28 @@ export async function GET() {
     const utf8Html = new TextDecoder("utf-8").decode(bytes);
     const shiftJisHtml = new TextDecoder("shift_jis").decode(bytes);
 
+    const titleMatch = utf8Html.match(
+      /<title[^>]*>([\s\S]*?)<\/title>/i
+    );
+
+    const titleRaw = titleMatch ? titleMatch[1] : null;
+
+    const titleBytes = titleRaw
+      ? Array.from(
+          new TextEncoder().encode(titleRaw)
+        )
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join(" ")
+      : null;
+
     return NextResponse.json({
       ok: response.ok,
       status: response.status,
       contentType: response.headers.get("content-type"),
       titleUtf8: extractTitle(utf8Html),
       titleShiftJis: extractTitle(shiftJisHtml),
+      titleRaw,
+      titleBytes,
       responseBytes: bytes.length,
       elapsedMs: Date.now() - startedAt,
     });
@@ -53,6 +69,7 @@ export async function GET() {
         error: error instanceof Error
           ? error.message
           : "Unknown error",
+        elapsedMs: Date.now() - startedAt,
       },
       { status: 502 }
     );
