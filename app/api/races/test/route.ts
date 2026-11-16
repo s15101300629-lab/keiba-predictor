@@ -28,17 +28,17 @@ function decodeHtml(value: string) {
 export async function GET() {
   const startedAt = Date.now();
 
+  const targetUrl =
+    "https://race.sp.netkeiba.com/?pid=race_list&kaisai_id=2026080505&kaisai_date=20261121";
+
   try {
-    const response = await fetch(
-      "https://race.sp.netkeiba.com/?pid=race_calendar",
-      {
-        cache: "no-store",
-        headers: {
-          Accept: "text/html",
-        },
-        signal: AbortSignal.timeout(10000),
-      }
-    );
+    const response = await fetch(targetUrl, {
+      cache: "no-store",
+      headers: {
+        Accept: "text/html",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
 
     const buffer = await response.arrayBuffer();
     const bytes = new Uint8Array(buffer);
@@ -75,17 +75,23 @@ export async function GET() {
       const href = decodeHtml(hrefMatch[2]);
       const text = cleanText(innerHtml);
 
-      if (!href || !text) continue;
-
       if (
-        /race_id=|kaisai_date=|race_list|calendar|date=/i.test(
-          href
-        ) ||
-        /開催|レース/.test(text)
+        /race_id=|race\/|race_result|shutuba/i.test(href)
       ) {
+        let absoluteHref = href;
+
+        try {
+          absoluteHref = new URL(
+            href,
+            targetUrl
+          ).toString();
+        } catch {
+          // URL形式を解釈できない場合は元の値を保持
+        }
+
         links.push({
           text,
-          href,
+          href: absoluteHref,
         });
       }
     }
@@ -100,13 +106,14 @@ export async function GET() {
         totalAnchorCount: (
           html.match(/<a\b/gi) || []
         ).length,
-        relevantLinkCount: links.length,
+        raceLinkCount: links.length,
         links: links.slice(0, 100),
         elapsedMs: Date.now() - startedAt,
       },
       {
         headers: {
           "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "no-store",
         },
       }
     );
