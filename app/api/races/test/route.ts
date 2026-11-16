@@ -3,13 +3,26 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-function cleanTitle(value: string | null) {
-  if (value === null) return null;
-
+function cleanText(value: string) {
   return value
     .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function decodeHtml(value: string) {
+  return value
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
 }
 
 export async function GET() {
@@ -29,42 +42,52 @@ export async function GET() {
 
     const buffer = await response.arrayBuffer();
     const bytes = new Uint8Array(buffer);
+    const html = new TextDecoder("utf-8").decode(bytes);
 
-    // 1バイト単位でHTMLのタグ位置を特定する
-    const byteView = new TextDecoder("latin1").decode(bytes);
-
-    const titleMatch = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(
-      byteView
+    const titleMatch = html.match(
+      /<title[^>]*>([\s\S]*?)<\/title>/i
     );
 
-    let titleUtf8: string | null = null;
-    let titleShiftJis: string | null = null;
-    let titleBytesHex: string | null = null;
+    const title = titleMatch
+      ? cleanText(titleMatch[1])
+      : null;
 
-    if (titleMatch && titleMatch.index !== undefined) {
-      const titleStart =
-        titleMatch.index + titleMatch[0].indexOf(">") + 1;
+    const links: {
+      text: string;
+      href: string;
+    }[] = [];
 
-      const titleEnd = titleStart + titleMatch[1].length;
+    const anchorRegex =
+      /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
 
-      // 元のHTMLからタイトル部分のバイト列を直接取得
-      const originalTitleBytes = bytes.slice(
-        titleStart,
-        titleEnd
+    let match: RegExpExecArray | null;
+
+    while ((match = anchorRegex.exec(html)) !== null) {
+      const attributes = match[1];
+      const innerHtml = match[2];
+
+      const hrefMatch = attributes.match(
+        /\bhref\s*=\s*(["'])(.*?)\1/i
       );
 
-      // 同じ生バイトを2種類の文字コードで解釈
-      titleUtf8 = cleanTitle(
-        new TextDecoder("utf-8").decode(originalTitleBytes)
-      );
+      if (!hrefMatch) continue;
 
-      titleShiftJis = cleanTitle(
-        new TextDecoder("shift_jis").decode(originalTitleBytes)
-      );
+      const href = decodeHtml(hrefMatch[2]);
+      const text = cleanText(innerHtml);
 
-      titleBytesHex = Array.from(originalTitleBytes)
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join(" ");
+      if (!href || !text) continue;
+
+      if (
+        /race_id=|kaisai_date=|race_list|calendar|date=/i.test(
+          href
+        ) ||
+        /開催|レース/.test(text)
+      ) {
+        links.push({
+          text,
+          href,
+        });
+      }
     }
 
     return NextResponse.json(
@@ -72,10 +95,13 @@ export async function GET() {
         ok: response.ok,
         status: response.status,
         contentType: response.headers.get("content-type"),
-        titleUtf8,
-        titleShiftJis,
-        titleBytesHex,
+        title,
         responseBytes: bytes.length,
+        totalAnchorCount: (
+          html.match(/<a\b/gi) || []
+        ).length,
+        relevantLinkCount: links.length,
+        links: links.slice(0, 100),
         elapsedMs: Date.now() - startedAt,
       },
       {
