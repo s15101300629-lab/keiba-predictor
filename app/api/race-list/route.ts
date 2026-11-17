@@ -66,16 +66,16 @@ function parseGrade(title: string): string | null {
 function parseRaces(html: string): RaceItem[] {
   const races: RaceItem[] = [];
   const seen = new Set<string>();
-  const itemRegex = /<li\\b[^>]*class=["'][^"']*RaceList_DataItem[^"']*["'][^>]*>([\\s\\S]*?)<\\/li>/gi;
+  const itemRegex = /<li\b[^>]*class=["'][^"']*RaceList_DataItem[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
   let itemMatch: RegExpExecArray | null;
 
   while ((itemMatch = itemRegex.exec(html)) !== null) {
     const item = itemMatch[1];
-    const linkMatch = item.match(/<a\\b([^>]*)>([\\s\\S]*?)<\\/a>/i);
+    const linkMatch = item.match(/<a\b([^>]*)>([\s\S]*?)<\/a>/i);
     if (!linkMatch) continue;
 
     const hrefMatch = linkMatch[1].match(/href=["']([^"']+)["']/i);
-    const raceIdMatch = hrefMatch?.[1].match(/race_id=(\\d{12})/);
+    const raceIdMatch = hrefMatch?.[1].match(/race_id=(\d{12})/);
     if (!raceIdMatch) continue;
 
     const raceId = raceIdMatch[1];
@@ -85,7 +85,7 @@ function parseRaces(html: string): RaceItem[] {
 
     const linkHtml = linkMatch[2];
     const raceNumberText = textOf(extractInner(linkHtml, "Race_Num")) || textOf(linkHtml);
-    const raceNumberMatch = raceNumberText.match(/(\\d{1,2})\\s*R/i);
+    const raceNumberMatch = raceNumberText.match(/(\d{1,2})\s*R/i);
     if (!raceNumberMatch) continue;
     const raceNumber = Number(raceNumberMatch[1]);
 
@@ -93,8 +93,8 @@ function parseRaces(html: string): RaceItem[] {
     const timeText = textOf(extractInner(linkHtml, "RaceList_Itemtime"));
     const courseText = textOf(extractInner(linkHtml, "RaceList_ItemLong"));
     const runnersText = textOf(extractInner(linkHtml, "RaceList_Itemnumber"));
-    const timeMatch = timeText.match(/\\d{1,2}:\\d{2}/);
-    const runnersMatch = runnersText.match(/(\\d+)\\s*頭/);
+    const timeMatch = timeText.match(/\d{1,2}:\d{2}/);
+    const runnersMatch = runnersText.match(/(\d+)\s*頭/);
     const grade = parseGrade(`${title} ${textOf(item)}`);
     const isMain = raceNumber === 11;
 
