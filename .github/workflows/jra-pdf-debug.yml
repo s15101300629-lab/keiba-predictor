@@ -36,7 +36,8 @@ jobs:
             "2025-1hanshin2 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1hanshin2.pdf" \
             "2017-1kyoto1 https://www.jra.go.jp/datafile/seiseki/report/2017/2017-1kyoto1.pdf" \
             "2026-1chukyo1 https://www.jra.go.jp/datafile/seiseki/report/2026/2026-1chukyo1.pdf" \
-            "2025-1hanshin6 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1hanshin6.pdf"
+            "2025-1hanshin6 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1hanshin6.pdf" \
+            "2025-1kokura5 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1kokura5.pdf"
           do
             set -- $item
             name=$1
