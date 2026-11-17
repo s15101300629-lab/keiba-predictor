@@ -153,7 +153,7 @@ function buildCategoryRanks(
   distanceMeters: number | null
 ): Map<string, CategoryRank[]> {
   const result = new Map<string, CategoryRank[]>();
-  const categories = ["騎手", "調教", "血統", "距離適性", "枠順", "種牡馬", "前走距離", "ポジション"];
+  const categories = ["騎手", "調教", "血統", "距離適性", "コース適性", "馬場適性", "枠順", "種牡馬", "前走距離", "ポジション", "レーティング"];
   for (const horse of horses) {
     result.set(horse.horseId, categories.map((label) => ({
       label, rank: null, total: 0, detail: "評価に必要なデータが未取得",
@@ -176,6 +176,30 @@ function buildCategoryRanks(
       row.detail = `近似距離 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`;
     }
   });
+  const assignFactorRank = (factorLabel: string, categoryLabel: string, detailBuilder: (value: FactorScore) => string) => {
+    const values = horses.map((horse) => {
+      const factor = (factorScores.get(horse.horseId) ?? []).find((item) => item.label === factorLabel);
+      return factor ? { horseId: horse.horseId, factor } : null;
+    }).filter((value): value is { horseId: string; factor: FactorScore } => value !== null)
+      .sort((a, b) => b.factor.score - a.factor.score);
+    let rank = 0;
+    let previousScore: number | null = null;
+    values.forEach((value, index) => {
+      if (previousScore === null || Math.abs(previousScore - value.factor.score) >= 0.05) rank = index + 1;
+      previousScore = value.factor.score;
+      const row = result.get(value.horseId)?.find((item) => item.label === categoryLabel);
+      if (row) {
+        row.rank = rank;
+        row.total = values.length;
+        row.detail = detailBuilder(value.factor);
+      }
+    });
+  };
+  assignFactorRank("競馬場適性", "コース適性", (value) =>
+    `同競馬場 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
+  assignFactorRank("馬場適性", "馬場適性", (value) =>
+    `同馬場状態 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
+
   if (distanceMeters !== null) {
     const lastDistances = horses.map((horse) => {
       const first = horse.performances?.[0]?.values ?? {};
