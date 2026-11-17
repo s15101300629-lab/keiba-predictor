@@ -269,6 +269,25 @@ if len({r["raceNumber"] for r in races})!=len(races): errors.append("duplicate r
 for race in races:
     for field in ("date","venue","distanceMeters","surface","going"):
         if race[field] is None: errors.append(f"R{race['raceNumber']}: missing race metadata {field}")
+    if race["surface"] != "障害":
+        if not race["lapTimes"]: errors.append(f"R{race['raceNumber']}: missing lap times")
+        if not race["passingTimes"]: errors.append(f"R{race['raceNumber']}: missing passing times")
+        if not race["cornerOrder"]: errors.append(f"R{race['raceNumber']}: missing corner order")
+        if race["last4F"] is None or race["last3F"] is None:
+            errors.append(f"R{race['raceNumber']}: missing final 4F/3F")
+        winner=next((h for h in race["horses"] if h["finishOrder"]==1),None)
+        if winner and winner["finishTime"] and race["lapTimes"]:
+            tm=re.fullmatch(r"(\d+):(\d+\.\d)",winner["finishTime"])
+            if tm:
+                winner_seconds=int(tm.group(1))*60+float(tm.group(2))
+                if abs(sum(race["lapTimes"])-winner_seconds)>0.11:
+                    errors.append(f"R{race['raceNumber']}: lap sum {sum(race['lapTimes']):.1f} != winner time {winner_seconds:.1f}")
+        if len(race["lapTimes"])>=4 and race["last4F"] is not None:
+            if abs(sum(race["lapTimes"][-4:])-race["last4F"])>0.11:
+                errors.append(f"R{race['raceNumber']}: final 4F does not match last four lap times")
+        if len(race["lapTimes"])>=3 and race["last3F"] is not None:
+            if abs(sum(race["lapTimes"][-3:])-race["last3F"])>0.11:
+                errors.append(f"R{race['raceNumber']}: final 3F does not match last three lap times")
 
 summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),
          "pageCharacters":[p["characters"] for p in pages],"layoutBlockCount":len(blocks),
