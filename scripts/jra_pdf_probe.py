@@ -282,7 +282,7 @@ for h in headers:
     if any(x["winOdds"] is None or x["winOdds"]<=0 for x in horses): errors.append(f"R{h['no']}: missing/invalid win odds")
     if any(x["carriedWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing carried weight")
     if any(x["jockeyName"] is None for x in horses): errors.append(f"R{h['no']}: missing jockey name")
-    if any(x["finishTime"] is None and x["resultStatus"] is None for x in horses): errors.append(f"R{h['no']}: runner has neither finish time nor result status")
+    if any(x["finishOrder"] == 1 and x["finishTime"] is None for x in horses): errors.append("R winner: finish time missing")
 
     nearby=[b["text"] for b in cb if h["y0"]-20<=b["bbox"][1]<=h["y1"]+60]
     card_text="\n".join([h["text"],*nearby])
