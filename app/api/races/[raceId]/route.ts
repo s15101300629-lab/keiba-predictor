@@ -126,20 +126,31 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
   const titleText = titleMatch ? cleanText(titleMatch[1]) : "";
   const headingMatch = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
   const headingText = headingMatch ? cleanText(headingMatch[1]) : "";
+
+  const raceDataMatch = html.match(
+    /<div\b(?=[^>]*\bclass=["'][^"']*\bRaceData01\b)[^>]*>([\s\S]*?)<\/div>/i
+  );
+  const raceDataText = raceDataMatch ? cleanText(raceDataMatch[1]) : "";
+  const conditionText = raceDataText || pageText;
+
   const raceNameMatch =
     headingText.match(/([ぁ-んァ-ヶ一-龠A-Za-z0-9ー・]+(?:ステークス|Ｓ|S|記念|賞))/) ||
     titleText.match(/^(.+?)(?:\(|（| 出馬表| レース情報)/);
   const dateMatch = pageText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
   const meetingMatch = pageText.match(/(\d+)回\s*([^\s　]+)\s*(\d+)日目/);
-  const startMatch = pageText.match(/(\d{1,2}:\d{2})発走\s*\/\s*(芝|ダ|障)(?:ート)?\s*(\d{3,4})m\s*(右|左|直線)?/);
-  const weatherMatch = pageText.match(/天候\s*[:：]\s*(晴|曇|雨|小雨|雪|小雪)/);
-  const goingMatch = pageText.match(/馬場\s*[:：]\s*(良|稍重|重|不良)/);
-  const courseLetterMatch = pageText.match(/([A-D])コース/);
-  const courseLayout = /外回り|芝・外/.test(pageText)
-    ? "外回り"
-    : /内回り|芝・内/.test(pageText)
-      ? "内回り"
-      : null;
+
+  const startMatch = conditionText.match(/(\d{1,2}:\d{2})\s*発走/);
+  const trackMatch = conditionText.match(/(芝|ダート?|障害?|障)\s*(\d{3,4})\s*m/i);
+  const trackDetail = trackMatch
+    ? conditionText.slice(trackMatch.index! + trackMatch[0].length)
+    : "";
+  const directionMatch = trackDetail.match(/(?:[（(]\s*)?(右|左|直線)/);
+  const layoutMatch = trackDetail.match(/(?:[（(]\s*)?(外|内)(?:\s|[A-D]|[）)]|$)/);
+  const courseLetterMatch = trackDetail.match(/(?:^|[\s（(])([A-D])(?:コース)?(?=$|[\s）)/])/);
+
+  const weatherMatch = conditionText.match(/天候\s*[:：]\s*(小雨|小雪|晴|曇|雨|雪)/);
+  const goingMatch = conditionText.match(/馬場\s*[:：]\s*(稍重|不良|良|重)/);
+
   const raceNumber = Number(raceId.slice(-2));
   const date = dateMatch
     ? dateMatch[1] + "-" + dateMatch[2].padStart(2, "0") + "-" + dateMatch[3].padStart(2, "0")
@@ -147,18 +158,25 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
   const meeting = meetingMatch ? Number(meetingMatch[1]) : null;
   const day = meetingMatch ? Number(meetingMatch[3]) : null;
   const venue = meetingMatch?.[2] ?? null;
-  const surface = startMatch
-    ? startMatch[2] === "ダ"
+
+  const surface = trackMatch
+    ? trackMatch[1] === "ダ" || trackMatch[1] === "ダート"
       ? "ダート"
-      : startMatch[2] === "障"
+      : trackMatch[1] === "障" || trackMatch[1] === "障害"
         ? "障害"
         : "芝"
     : null;
-  const distanceMeters = startMatch ? Number(startMatch[3]) : null;
-  const direction = startMatch?.[4] ?? null;
+  const distanceMeters = trackMatch ? Number(trackMatch[2]) : null;
+  const direction = directionMatch?.[1] ?? null;
+  const courseLayout = layoutMatch?.[1] === "外"
+    ? "外回り"
+    : layoutMatch?.[1] === "内"
+      ? "内回り"
+      : null;
   const startTime = startMatch?.[1] ?? null;
   const weather = weatherMatch?.[1] ?? null;
   const going = goingMatch?.[1] ?? null;
+
   return {
     raceName: raceNameMatch?.[1]?.trim() ?? null,
     date,
@@ -192,7 +210,6 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
     },
   };
 }
-
 function extractHorses(html: string): HorseEntry[] {
   const horses: HorseEntry[] = [];
   const seen = new Set<string>();
