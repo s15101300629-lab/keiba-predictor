@@ -239,17 +239,17 @@ for h in headers:
     going_match=re.search(r"\d+月\d+日(?:晴|曇|雨|小雨|雪)?\s*(良|稍重|重|不良)",card_text)
     lower_blocks=[b for b in cb if b["bbox"][1]>300]
     lap_block=next((b for b in lower_blocks if "ハロンタイム" in b["text"]),None)
-    passing_block=next((b for b in lower_blocks if "コーナー通過順位" in b["text"]),None)
+    passing_block=next((b for b in lower_blocks if "コーナー通過順位" in norm(b["text"])),None)
     corner_block=next((b for b in lower_blocks if "通過コーナー順" in b["text"]),None)
     lap_raw=lap_block["text"] if lap_block else ""
-    passing_raw=passing_block["text"] if passing_block else ""
+    passing_raw=norm(passing_block["text"]) if passing_block else ""
     corner_raw=corner_block["text"] if corner_block else ""
     lap_match=re.search(r"ハロンタイム\s*([0-9０-９．.―ー\-]+)",lap_raw)
     lap_times=[float(v.replace("．",".")) for v in re.findall(r"\d+[．.]\d",lap_match.group(1))] if lap_match else []
     passing_times=re.findall(r"(?:\d{1,2}[:：])?\d{1,2}[．.]\d",passing_raw)
     corner_order_match=re.search(r"通過コーナー順([0-9→]+)",norm(corner_raw))
     corner_order=[int(v) for v in re.findall(r"\d",corner_order_match.group(1))] if corner_order_match else []
-    last_match=re.search(r"上り4F\s*([0-9．.]+)[―ー\-]+3F\s*([0-9．.]+)",norm(corner_raw))
+    last_match=re.search(r"上り4F(\d{2}[．.]\d)[―ー\-]+3F(\d{2}[．.]\d)",norm(corner_raw))
     last4f=float(last_match.group(1).replace("．",".")) if last_match else None
     last3f=float(last_match.group(2).replace("．",".")) if last_match else None
     races.append({"raceNumber":h["no"],"date":date,
