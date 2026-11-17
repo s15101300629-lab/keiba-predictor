@@ -623,21 +623,17 @@ async function fetchG1PreRatings(
     if (!indexPage.ok) return new Map<string, JraRating>();
   }
 
-  let targetUrl = findG1RaceUrl(indexPage.html, raceName, targetDate, baseUrl);
+  const normalizedRaceName = normalizeRaceName(raceName ?? "");
+  const knownG1Slugs: [string, string][] = [
+    ["マイルチャンピオンシップ", "mile"],
+  ];
+  const matchedSlug = knownG1Slugs.find(([name]) =>
+    normalizedRaceName.includes(normalizeRaceName(name))
+  )?.[1];
 
-  if (!targetUrl && raceName) {
-    const normalizedRaceName = normalizeRaceName(raceName);
-    const knownG1Slugs: [string, string][] = [
-      ["マイルチャンピオンシップ", "mile"],
-    ];
-    const matchedSlug = knownG1Slugs.find(([name]) =>
-      normalizedRaceName.includes(normalizeRaceName(name))
-    )?.[1];
-
-    if (matchedSlug) {
-      targetUrl = "https://www.jra.go.jp/datafile/ranking/g1/" + year + "/" + matchedSlug + ".html";
-    }
-  }
+  let targetUrl = matchedSlug
+    ? "https://www.jra.go.jp/datafile/ranking/g1/" + year + "/" + matchedSlug + ".html"
+    : findG1RaceUrl(indexPage.html, raceName, targetDate, baseUrl);
 
   if (!targetUrl) return new Map<string, JraRating>();
 
