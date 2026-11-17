@@ -18,6 +18,7 @@ class Links(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.items = []
         self.current = None
+        self.all_text = []
 
     def handle_starttag(self, tag, attrs):
         if tag.lower() == "a":
@@ -26,6 +27,7 @@ class Links(HTMLParser):
                 self.current = {"href": href, "text": []}
 
     def handle_data(self, data):
+        self.all_text.append(data)
         if self.current is not None:
             self.current["text"].append(data)
 
@@ -50,7 +52,7 @@ index_url = urllib.parse.urljoin(BASE, "jockey.html")
 index_html = get(index_url)
 parser = Links()
 parser.feed(index_html)
-groups = [x for x in parser.items if re.fullmatch(r"[あ-わ]行", x["text"])]
+groups = [x for x in parser.items if "行" in x["text"] and len(x["text"]) <= 4]
 group_results = []
 active_names = set()
 for item in groups:
@@ -74,16 +76,19 @@ rp = Links()
 rp.feed(retired_html)
 retired_names = set()
 retired_samples = []
-for link in rp.items:
-    match = re.fullmatch(r"(.+?)\s*[（(](20\d{2})年\d+月\d+日引退[）)]", link["text"])
-    if match:
-        name = re.sub(r"\s+", "", match.group(1).replace("★", ""))
+retired_full_text = "".join(rp.all_text)
+for match in re.finditer(r"([^\n（）()]{2,20})[（(](20\d{2})年\d+月\d+日引退[）)]", retired_full_text):
+    name = re.sub(r"\s+", "", match.group(1).replace("★", ""))
+    name = re.sub(r"^(?:美浦|栗東|年度)$", "", name)
+    if name:
         retired_names.add(name)
         retired_samples.append({"name": name, "year": int(match.group(2))})
 
 result = {
     "indexUrl": index_url,
     "groupLinks": [{"text": x["text"], "href": x["href"]} for x in groups],
+    "allIndexLinks": parser.items,
+    "indexText": "".join(parser.all_text),
     "groupResults": group_results,
     "activeCandidateCount": len(active_names),
     "activeCandidates": sorted(active_names),
