@@ -173,7 +173,9 @@ for h in headers:
         margin_text=previous_margin if margin_raw=="〃" else (margin_raw or None)
         if margin_text is not None: previous_margin=margin_text
 
-        odds_parts=[x for x in cs if (380<=x["bbox"][0]<402.9 if left else 790<=x["bbox"][0]<813.3) and abs(center_y(x)-ny)<=3.0]\n        odds_parts.sort(key=lambda x:x["bbox"][0])\n        odds_raw=norm("".join(x["text"] for x in odds_parts))
+        odds_parts=[x for x in cs if (380<=x["bbox"][0]<402.9 if left else 790<=x["bbox"][0]<813.3) and abs(center_y(x)-ny)<=3.0]
+        odds_parts.sort(key=lambda x:x["bbox"][0])
+        odds_raw=norm("".join(x["text"] for x in odds_parts))
         odds_match=re.search(r"(\d+)[．.](\d)",odds_raw)
         win_odds=float(odds_match.group(1)+"."+odds_match.group(2)) if odds_match else None
 
@@ -232,7 +234,11 @@ for h in headers:
     year_match=re.search(r"(\d{4})年",card_text)
     day_match=re.search(r"(\d+)月(\d+)日",card_text)
     date=f"{int(year_match.group(1)):04d}-{int(day_match.group(1)):02d}-{int(day_match.group(2)):02d}" if year_match and day_match else None
-    distance_match=re.search(r"(\d)[，,](\d{3})",h["text"])\n    index_match=re.match(r"(\d{5})",norm(h["text"]))\n    start_match=re.search(r"発走(\d+)時(\d+)分",card_text)\n    direction_match=re.search(r"（(?:芝|ダート|障害)[^）]*(右|左)",card_text)\n    layout_match=re.search(r"（(?:芝|ダート|障害)[^）]*(内|外)",card_text)
+    distance_match=re.search(r"(\d)[，,](\d{3})",h["text"])
+    index_match=re.match(r"(\d{5})",norm(h["text"]))
+    start_match=re.search(r"発走(\d+)時(\d+)分",card_text)
+    direction_match=re.search(r"（(?:芝|ダート|障害)[^）]*(右|左)",card_text)
+    layout_match=re.search(r"（(?:芝|ダート|障害)[^）]*(内|外)",card_text)
     surface_match=re.search(r"（(芝|ダート|障害)[^）]*）",card_text)
     venue_match=re.search(r"\d{4}年\d+([^）]+)",card_text)
     weather_match=re.search(r"\d+月\d+日(晴|曇|雨|小雨|雪)",card_text)
@@ -255,7 +261,10 @@ for h in headers:
     races.append({"raceNumber":h["no"],"jraIndexNumber":index_match.group(1) if index_match else None,"date":date,
                   "venue":venue_match.group(1) if venue_match else None,
                   "distanceMeters":int(distance_match.group(1)+distance_match.group(2)) if distance_match else None,
-                  "surface":surface_match.group(1) if surface_match else None,\n                  "direction":direction_match.group(1) if direction_match else None,\n                  "courseLayout":layout_match.group(1) if layout_match else None,\n                  "startTime":f"{int(start_match.group(1)):02d}:{int(start_match.group(2)):02d}" if start_match else None,
+                  "surface":surface_match.group(1) if surface_match else None,
+                  "direction":direction_match.group(1) if direction_match else None,
+                  "courseLayout":layout_match.group(1) if layout_match else None,
+                  "startTime":f"{int(start_match.group(1)):02d}:{int(start_match.group(2)):02d}" if start_match else None,
                   "weather":weather_match.group(1) if weather_match else None,
                   "going":going_match.group(1) if going_match else None,
                   "lapTimes":lap_times,"passingTimes":passing_times,
