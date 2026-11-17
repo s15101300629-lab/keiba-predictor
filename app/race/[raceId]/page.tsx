@@ -26,6 +26,7 @@ type Horse = {
   profile: { label: string; value: string }[] | null;
   performances: { values: Record<string, string> }[]; historyReturned: number;
   performanceStats?: PerformanceStats;
+  rating?: { value: number; raceDate: string; raceName: string; source: string } | null;
 };
 type ResponseData = {
   ok: boolean; raceId: string; raceConditions: Conditions; horseCount: number;
@@ -221,6 +222,21 @@ function buildCategoryRanks(
       }
     });
   }
+  const ratingValues = horses.map((horse) => horse.rating ? { horseId: horse.horseId, rating: horse.rating } : null)
+    .filter((value): value is { horseId: string; rating: NonNullable<Horse["rating"]> } => value !== null)
+    .sort((a, b) => b.rating.value - a.rating.value);
+  let ratingRank = 0;
+  let previousRating: number | null = null;
+  ratingValues.forEach((value, index) => {
+    if (previousRating === null || previousRating !== value.rating.value) ratingRank = index + 1;
+    previousRating = value.rating.value;
+    const row = result.get(value.horseId)?.find((item) => item.label === "レーティング");
+    if (row) {
+      row.rank = ratingRank;
+      row.total = ratingValues.length;
+      row.detail = `JRA Rt ${value.rating.value}・${value.rating.raceDate}時点`;
+    }
+  });
   return result;
 }
 
@@ -285,6 +301,10 @@ function PredictionHorseCard({ horse, scores }: { horse: Horse; scores: FactorSc
         <strong>{factor.rank}位 / {factor.rankedCount}頭</strong>
       </div>)}
     </div> : <p className="prediction-no-data">評価に使える戦績データがありません</p>}
+    <div className="prediction-logic-row">
+      <div><b>JRAレーティング</b><span>{horse.rating ? `Rt ${horse.rating.value}・${horse.rating.raceDate}（${horse.rating.raceName}）` : "公式掲載値なし"}</span></div>
+      <strong>{horse.rating ? "取得済み" : "算出不可"}</strong>
+    </div>
   </article>;
 }
 
