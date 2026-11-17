@@ -21,6 +21,14 @@ def norm(s):
 def center_y(item):
     return (item["bbox"][1]+item["bbox"][3])/2
 
+
+def time_to_seconds(value):
+    normalized=value.replace("：",":").replace("．",".")
+    if ":" in normalized:
+        minutes,seconds=normalized.split(":",1)
+        return round(int(minutes)*60+float(seconds),1)
+    return round(float(normalized),1)
+
 doc = pymupdf.open(stream=raw, filetype="pdf")
 doc[0].get_pixmap(matrix=pymupdf.Matrix(1.5,1.5), alpha=False).save(str(OUT/"page-1-preview.png"))
 pages, blocks, lines, spans, chars = [], [], [], [], []
@@ -180,6 +188,9 @@ for h in headers:
         margin_raw=norm("".join(x["text"] for x in margin_parts))
         margin_text=previous_margin if margin_raw=="〃" else (margin_raw or None)
         if margin_text is not None: previous_margin=margin_text
+        status_terms=("競走中止","中止","失格","降着","落馬","出走取消","競走除外","取消","除外")
+        result_status=next((term for term in status_terms if term in time_raw or term in margin_raw),None)
+        finish_time_seconds=time_to_seconds(finish_time) if finish_time else None
 
         odds_parts=[x for x in cs if (380<=x["bbox"][0]<402.9 if left else 790<=x["bbox"][0]<813.3) and abs(center_y(x)-ny)<=3.0]
         odds_parts.sort(key=lambda x:x["bbox"][0])
@@ -201,21 +212,31 @@ for h in headers:
         jockey_name=(jockey_raw[len(jockey_mark):] if jockey_mark else jockey_raw) or None
         if jockey_name: jockey_name=jockey_name.replace("．",".")
 
+        horse_name=im.group(1)
+        horse_sex=im.group(2)
+        horse_age=int(im.group(3))
+        birth_year=URL_YEAR-horse_age+2 if URL_YEAR else None
+        horse_key=f"{norm(horse_name)}|{horse_sex or '不明'}|{birth_year or '不明'}"
         horses.append({"frameNumber":frame_no,"horseNumber":horse_no,
-                       "horseName":im.group(1),"sex":im.group(2),"age":int(im.group(3)),
+                       "horseName":horse_name,"sex":horse_sex,"age":horse_age,
+                       "birthYear":birth_year,"horseKey":horse_key,
                        "coatColor":im.group(4),"carriedWeightKg":carried_weight,
                        "bodyWeightKg":body_weight,"bodyWeightChangeKg":body_change,
-                       "finishTime":finish_time,"marginText":margin_text,
+                       "finishTime":finish_time,"finishTimeSeconds":finish_time_seconds,
+                       "marginText":margin_text,"resultStatus":result_status,
                        "winOdds":win_odds,"popularity":popularity,
                        "jockeyColumnRaw":jockey_raw,"jockeyAllowanceMark":jockey_mark,"jockeyName":jockey_name,"identitySource":source,
                        "sourcePage":h["page"],"sourceY":round(ny,2)})
 
     horses.sort(key=lambda x:x["sourceY"])
-    rank=1
+    rank=0
     tie_group_size=1
-    for index,horse in enumerate(horses):
-        if index==0:
-            horse["finishOrder"]=1
+    for horse in horses:
+        if horse["resultStatus"]:
+            horse["finishOrder"]=None
+        elif rank==0:
+            rank=1
+            horse["finishOrder"]=rank
         elif horse["marginText"]=="同着":
             horse["finishOrder"]=rank
             tie_group_size+=1
@@ -271,7 +292,8 @@ for h in headers:
     last_match=re.search(r"上り4F(\d{2}[．.]\d)[―ー\-]+3F(\d{2}[．.]\d)",norm(corner_raw))
     last4f=float(last_match.group(1).replace("．",".")) if last_match else None
     last3f=float(last_match.group(2).replace("．",".")) if last_match else None
-    races.append({"raceNumber":h["no"],"jraIndexNumber":index_match.group(1) if index_match else None,"date":date,
+    race_key=f"{date}|{venue_name}|{h['no']:02d}" if date and venue_name else None
+    races.append({"raceNumber":h["no"],"jraIndexNumber":index_match.group(1) if index_match else None,"raceKey":race_key,"date":date,
                   "venue":venue_name,
                   "distanceMeters":int(distance_match.group(1)+distance_match.group(2)) if distance_match else None,
                   "surface":surface_match.group(1) if surface_match else None,
@@ -280,7 +302,7 @@ for h in headers:
                   "startTime":f"{int(start_match.group(1)):02d}:{int(start_match.group(2)):02d}" if start_match else None,
                   "weather":weather_match.group(1) if weather_match else None,
                   "going":going_match.group(1) if going_match else None,
-                  "lapTimes":lap_times,"passingTimes":passing_times,
+                  "lapTimes":lap_times,"passingTimes":passing_times,"passingTimesRaw":passing_times_raw,
                   "cornerOrder":corner_order,"last4F":last4f,"last3F":last3f,
                   "cornerPassageRaw":corner_raw or None,
                   "declaredRunnerCount":declared,"parsedRunnerCount":len(horses),
@@ -294,17 +316,19 @@ for race in races:
     if race["surface"] != "障害":
         if not race["lapTimes"]: errors.append(f"R{race['raceNumber']}: missing lap times")
         if not race["passingTimes"]: errors.append(f"R{race['raceNumber']}: missing passing times")
+        if race["lapTimes"] and len(race["passingTimes"]) != len(race["lapTimes"])-1:
+            errors.append(f"R{race['raceNumber']}: passing-time count {len(race['passingTimes'])} != lap-time count minus one {len(race['lapTimes'])-1}")
+        if any(b<=a for a,b in zip(race["passingTimes"],race["passingTimes"][1:])):
+            errors.append(f"R{race['raceNumber']}: passing times are not strictly increasing")
         if not race["cornerOrder"]: errors.append(f"R{race['raceNumber']}: missing corner order")
         if race["last4F"] is None or race["last3F"] is None:
             errors.append(f"R{race['raceNumber']}: missing final 4F/3F")
         winner=next((h for h in race["horses"] if h["finishOrder"]==1),None)
-        if winner is None or winner["finishTime"] is None:
+        if winner is None or winner["finishTimeSeconds"] is None:
             errors.append(f"R{race['raceNumber']}: winner finish time missing")
-        if winner and winner["finishTime"] and race["lapTimes"]:
-            tm=re.fullmatch(r"(?:(\d+):)?(\d{1,2})\.(\d)",winner["finishTime"])
-            if tm:
-                winner_seconds=int(tm.group(1) or 0)*60+float(tm.group(2)+"."+tm.group(3))
-                if abs(sum(race["lapTimes"])-winner_seconds)>0.11:
+        if winner and winner["finishTimeSeconds"] is not None and race["lapTimes"]:
+            winner_seconds=winner["finishTimeSeconds"]
+            if abs(sum(race["lapTimes"])-winner_seconds)>0.11:
                     errors.append(f"R{race['raceNumber']}: lap sum {sum(race['lapTimes']):.1f} != winner time {winner_seconds:.1f}")
         if len(race["lapTimes"])>=4 and race["last4F"] is not None:
             if abs(sum(race["lapTimes"][-4:])-race["last4F"])>0.11:
