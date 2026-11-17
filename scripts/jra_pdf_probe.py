@@ -156,7 +156,7 @@ for h in headers:
         def nearest_span(xmin,xmax):
             found=[x for x in cs if xmin<=x["bbox"][0]<xmax and abs(center_y(x)-ny)<=3.0]
             return min(found,key=lambda x:abs(center_y(x)-ny)) if found else None
-        body_span=nearest_span(308,320.9) if left else nearest_span(719,731.3)
+        body_span=nearest_span(307.5,320.9) if left else nearest_span(718,731.3)
         change_span=nearest_span(320.9,334.4) if left else nearest_span(731.3,744.9)
         time_span=nearest_span(334.4,355.4) if left else nearest_span(744.9,765.8)
         margin_span=nearest_span(355.4,386) if left else nearest_span(765.8,797)
