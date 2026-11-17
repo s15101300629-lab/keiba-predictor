@@ -534,7 +534,7 @@ function normalizeHorseName(value: string) {
 }
 
 function normalizeRaceName(value: string) {
-  return normalizeHorseName(value)
+  return value
     .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (character) =>
       String.fromCharCode(character.charCodeAt(0) - 0xFEE0)
     )
@@ -542,24 +542,45 @@ function normalizeRaceName(value: string) {
     .replace(/[Ｃｃ]/g, "C")
     .replace(/ステークス/g, "S")
     .replace(/カップ/g, "C")
+    .replace(/[（）()]/g, "")
+    .replace(/[\\s　]+/g, "")
     .toUpperCase();
 }
 
+const RACE_NAME_ALIASES: Record<string, string> = {
+  "マイルCS": "マイルチャンピオンシップ",
+  "阪神JF": "阪神ジュベナイルF",
+  "阪神ジュベナイルF": "阪神ジュベナイルF",
+  "阪神ジュベナイルフィリーズ": "阪神ジュベナイルF",
+  "朝日杯FS": "朝日杯フューチュリティS",
+  "朝日杯フューチュリティS": "朝日杯フューチュリティS",
+  "エリ女": "エリザベス女王杯",
+  "エリザベス女王杯": "エリザベス女王杯",
+  "オークス": "優駿牝馬",
+  "優駿牝馬オークス": "優駿牝馬",
+  "優駿牝馬": "優駿牝馬",
+  "日本ダービー": "東京優駿",
+  "東京優駿日本ダービー": "東京優駿",
+  "東京優駿": "東京優駿",
+  "天皇賞春": "天皇賞春",
+  "天皇賞秋": "天皇賞秋",
+};
+
 function normalizeRaceNameForMatch(value: string) {
   const normalized = normalizeRaceName(value);
-  const aliases: Record<string, string> = {
-    "マイルCS": "マイルチャンピオンシップ",
-    "マイルチャンピオンシップ": "マイルチャンピオンシップ",
-    "スプリンターズS": "スプリンターズS",
-    "スプリンターズステークス": "スプリンターズS",
-    "ジャパンC": "ジャパンC",
-    "ジャパンカップ": "ジャパンC",
-    "NHKマイルC": "NHKマイルC",
-    "NHKマイルカップ": "NHKマイルC",
-    "チャンピオンズC": "チャンピオンズC",
-    "チャンピオンズカップ": "チャンピオンズC",
-  };
-  return aliases[normalized] ?? normalized;
+  return RACE_NAME_ALIASES[normalized] ?? normalized;
+}
+
+function containsRaceName(pageText: string, raceName: string) {
+  const normalizedPageText = normalizeRaceName(pageText);
+  const canonicalName = normalizeRaceNameForMatch(raceName);
+  const aliases = Object.entries(RACE_NAME_ALIASES)
+    .filter(([, canonical]) => canonical === canonicalName)
+    .map(([alias]) => alias);
+
+  return [canonicalName, ...aliases].some((candidate) =>
+    normalizedPageText.includes(candidate)
+  );
 }
 
 function parseRatingValue(value: string) {
@@ -759,14 +780,16 @@ async function fetchG1PreRatings(
   const pageText = cleanText(detail.html);
   const [, targetMonthText, targetDayText] = targetDate.split("-");
   const targetMonthDay = Number(targetMonthText) + "月" + Number(targetDayText) + "日";
-  const expectedRaceName = raceName ? normalizeRaceNameForMatch(raceName) : "";
-  const pageRaceName = normalizeRaceName(pageText);
-  const raceNameConfirmed = Boolean(expectedRaceName && pageRaceName.includes(expectedRaceName));
+  const raceNameConfirmed = Boolean(raceName && containsRaceName(pageText, raceName));
   const raceDateConfirmed = pageText.includes(targetMonthDay);
   const venueConfirmed = !venue || pageText.includes(venue + "競馬");
   if (!raceNameConfirmed || !raceDateConfirmed || !venueConfirmed) {
+    const failedChecks: string[] = [];
+    if (!raceNameConfirmed) failedChecks.push("レース名（対象：" + (raceName ?? "取得できず") + "）");
+    if (!raceDateConfirmed) failedChecks.push("開催日（対象：" + targetMonthDay + "）");
+    if (!venueConfirmed) failedChecks.push("競馬場（対象：" + (venue ?? "取得できず") + "）");
     result.diagnostics.error =
-      "取得したJRA詳細ページが対象レースと一致しませんでした（レース名・開催日・競馬場を照合）";
+      "JRA詳細ページの照合に失敗しました：" + failedChecks.join("、");
     return result;
   }
 
