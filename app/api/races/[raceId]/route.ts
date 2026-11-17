@@ -595,36 +595,30 @@ function extractMonthlyJraRatings(
 }
 
 function findG1RaceUrl(html: string, raceName: string | null, targetDate: string, baseUrl: string) {
-  const anchors = [...html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)];
   const wantedName = raceName ? normalizeRaceName(raceName) : "";
+  const rows = [...html.matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)];
 
-  const candidates = anchors.map((match) => {
-    const href = match[1].match(/\bhref\s*=\s*(["'])(.*?)\1/i)?.[2];
-    const label = cleanText(match[2]);
-    return href ? { href, normalized: normalizeRaceName(label) } : null;
-  }).filter((item): item is { href: string; normalized: string } => item !== null);
-
-  if (wantedName) {
-    const exact = candidates.find((item) => item.normalized === wantedName);
-    if (exact) return new URL(decodeEntities(exact.href), baseUrl).toString();
-
-    const partial = candidates.find((item) =>
-      item.normalized.length >= 4 &&
-      (item.normalized.includes(wantedName) || wantedName.includes(item.normalized))
-    );
-    if (partial) return new URL(decodeEntities(partial.href), baseUrl).toString();
-  }
-
-  const rows = [...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
+  // 年度別一覧の同じ行にある開催日・レース名・リンクをセットで照合する。
   for (const row of rows) {
-    const rowText = cleanText(row[1]);
-    const dateMatch = rowText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
+    const rowHtml = row[1];
+    const rowText = cleanText(rowHtml);
+    const dateMatch = rowText.match(/(20\\d{2})年\\s*(\\d{1,2})月\\s*(\\d{1,2})日/);
     if (!dateMatch) continue;
-    const rowDate = dateMatch[1] + "-" + dateMatch[2].padStart(2, "0") + "-" + dateMatch[3].padStart(2, "0");
+
+    const rowDate = dateMatch[1] + "-" +
+      dateMatch[2].padStart(2, "0") + "-" +
+      dateMatch[3].padStart(2, "0");
     if (rowDate !== targetDate) continue;
-    const anchor = row[1].match(/<a\b([^>]*)>/i);
-    const href = anchor?.[1].match(/\bhref\s*=\s*(["'])(.*?)\1/i)?.[2];
-    if (href) return new URL(decodeEntities(href), baseUrl).toString();
+
+    const anchors = [...rowHtml.matchAll(/<a\\b([^>]*)>([\\s\\S]*?)<\\/a>/gi)];
+    for (const anchor of anchors) {
+      const label = normalizeRaceName(cleanText(anchor[2]));
+      if (!wantedName || label === wantedName ||
+        label.includes(wantedName) || wantedName.includes(label)) {
+        const href = anchor[1].match(/\\bhref\\s*=\\s*(["'])(.*?)\\1/i)?.[2];
+        if (href) return new URL(decodeEntities(href), baseUrl).toString();
+      }
+    }
   }
 
   return null;
@@ -638,56 +632,26 @@ async function fetchG1PreRatings(
   forceRefresh: boolean
 ): Promise<JraRatingMap> {
   const result = createJraRatingMap();
-  const baseUrl = "https://www.jra.go.jp/datafile/ranking/g1/index.html";
-  let indexPage: Awaited<ReturnType<typeof fetchHtml>>;
+  const yearListUrl = "https://www.jra.go.jp/datafile/ranking/g1/" + year + ".html";
+  result.diagnostics.sourceUrl = yearListUrl;
+
+  let yearPage: Awaited<ReturnType<typeof fetchHtml>>;
   try {
-    indexPage = await fetchHtml(baseUrl, 21600, forceRefresh);
+    yearPage = await fetchHtml(yearListUrl, 21600, forceRefresh);
   } catch (error) {
-    result.diagnostics.error = error instanceof Error ? error.message : "G1 index fetch failed";
+    result.diagnostics.error = error instanceof Error ? error.message : "年度別G1一覧の取得に失敗しました";
     return result;
   }
-  if (!indexPage.ok) {
-    result.diagnostics.httpStatus = indexPage.status;
-    result.diagnostics.error = "G1 index HTTP error";
+  result.diagnostics.httpStatus = yearPage.status;
+  if (!yearPage.ok) {
+    result.diagnostics.error = "年度別G1一覧のHTTP取得に失敗しました";
     return result;
   }
 
-  if (year !== new Date().getFullYear()) {
-    const yearAnchor = [...indexPage.html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)]
-      .find((match) => cleanText(match[2]).replace(/\s/g, "") === String(year) + "年");
-    const href = yearAnchor?.[1].match(/\bhref\s*=\s*(["'])(.*?)\1/i)?.[2];
-    if (!href) {
-      result.diagnostics.error = "対象年度のG1一覧リンクが見つかりません";
-      return result;
-    }
-    const archiveUrl = new URL(decodeEntities(href), baseUrl).toString();
-    try {
-      indexPage = await fetchHtml(archiveUrl, 604800, forceRefresh);
-    } catch (error) {
-      result.diagnostics.error = error instanceof Error ? error.message : "G1 archive fetch failed";
-      return result;
-    }
-    if (!indexPage.ok) {
-      result.diagnostics.httpStatus = indexPage.status;
-      result.diagnostics.error = "G1 archive HTTP error";
-      return result;
-    }
-  }
-
-  const normalizedRaceName = normalizeRaceName(raceName ?? "");
-  const knownG1Slugs: [string, string][] = [
-    ["マイルチャンピオンシップ", "mile"],
-  ];
-  const matchedSlug = knownG1Slugs.find(([name]) =>
-    normalizedRaceName.includes(normalizeRaceName(name))
-  )?.[1];
-
-  const targetUrl = matchedSlug
-    ? "https://www.jra.go.jp/datafile/ranking/g1/" + year + "/" + matchedSlug + ".html"
-    : findG1RaceUrl(indexPage.html, raceName, targetDate, baseUrl);
-
+  const targetUrl = findG1RaceUrl(yearPage.html, raceName, targetDate, yearListUrl);
   if (!targetUrl) {
-    result.diagnostics.error = "対象G1のプレレーティングURLを特定できません";
+    result.diagnostics.error =
+      "年度別G1一覧に開催日・レース名が一致するリンクが見つかりませんでした";
     return result;
   }
   result.diagnostics.sourceUrl = targetUrl;
@@ -696,17 +660,17 @@ async function fetchG1PreRatings(
   try {
     detail = await fetchHtml(targetUrl, 21600, forceRefresh);
   } catch (error) {
-    result.diagnostics.error = error instanceof Error ? error.message : "G1 detail fetch failed";
+    result.diagnostics.error = error instanceof Error ? error.message : "G1プレレーティングページの取得に失敗しました";
     return result;
   }
   result.diagnostics.httpStatus = detail.status;
   if (!detail.ok) {
-    result.diagnostics.error = "G1 detail HTTP error";
+    result.diagnostics.error = "G1プレレーティングページのHTTP取得に失敗しました";
     return result;
   }
 
   const pageText = cleanText(detail.html);
-  const publishedMatch = pageText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
+  const publishedMatch = pageText.match(/(20\\d{2})年\\s*(\\d{1,2})月\\s*(\\d{1,2})日/);
   const publishedDate = publishedMatch
     ? publishedMatch[1] + "-" + publishedMatch[2].padStart(2, "0") + "-" + publishedMatch[3].padStart(2, "0")
     : null;
@@ -722,15 +686,17 @@ async function fetchG1PreRatings(
 
   const wantedNames = new Set(horses.map((horse) => normalizeHorseName(horse.name)));
   const matchedNames = new Set<string>();
-  const rows = [...detail.html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
+  const rows = [...detail.html.matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)];
   result.diagnostics.parsedRowCount = rows.length;
 
   for (const rowMatch of rows) {
-    const cells = [...rowMatch[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)]
+    const cells = [...rowMatch[1].matchAll(/<t[dh]\\b[^>]*>([\\s\\S]*?)<\\/t[dh]>/gi)]
       .map((cell) => cleanText(cell[1]));
     if (cells.length < 2) continue;
+
     const nameCell = cells.find((cell) => wantedNames.has(normalizeHorseName(cell)));
     if (!nameCell) continue;
+
     const horseName = normalizeHorseName(nameCell);
     matchedNames.add(horseName);
     const value = cells
@@ -738,17 +704,22 @@ async function fetchG1PreRatings(
       .map((cell) => parseRatingValue(cell))
       .find((candidate) => candidate !== null) ?? null;
     if (value === null) continue;
+
     result.set(horseName, {
-      value, raceDate: publishedDate, raceName: "GⅠプレレーティング", source: targetUrl,
+      value,
+      raceDate: publishedDate,
+      raceName: "GⅠプレレーティング",
+      source: targetUrl,
     });
   }
 
-  // HTMLの表構造が異なる場合の代替解析。各馬名から次の登録馬名までに限定する。
+  // 表のセル構造が異なる場合の代替解析。次の出走馬名までを対象にする。
   for (const horseName of wantedNames) {
     if (result.has(horseName)) continue;
     const index = pageText.indexOf(horseName);
     if (index < 0) continue;
     matchedNames.add(horseName);
+
     const afterName = pageText.slice(index + horseName.length);
     let segmentEnd = afterName.length;
     for (const otherName of wantedNames) {
@@ -756,12 +727,17 @@ async function fetchG1PreRatings(
       const nextIndex = afterName.indexOf(otherName);
       if (nextIndex >= 0 && nextIndex < segmentEnd) segmentEnd = nextIndex;
     }
-    const ratingMatch = afterName.slice(0, segmentEnd).match(/\b(\d{2,3})\s*[SMILE]\b/i);
+
+    const ratingMatch = afterName.slice(0, segmentEnd).match(/\\b(\\d{2,3})\\s*[SMILE]\\b/i);
     if (!ratingMatch) continue;
     const value = Number(ratingMatch[1]);
     if (value < 50 || value > 150) continue;
+
     result.set(horseName, {
-      value, raceDate: publishedDate, raceName: "GⅠプレレーティング", source: targetUrl,
+      value,
+      raceDate: publishedDate,
+      raceName: "GⅠプレレーティング",
+      source: targetUrl,
     });
   }
 
