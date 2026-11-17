@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 const CONCURRENCY = 4;
-const MAX_HISTORY = 10;
 
 type HorseEntry = {
   horseId: string;
@@ -408,7 +407,7 @@ function extractPerformances(tables: string[][][]) {
       return !EXCLUDED_HISTORY_COLUMNS.some((pattern) => pattern.test(normalized));
     });
   const headers = visibleColumns.map(({ header }) => header);
-  const rows = table.slice(1, MAX_HISTORY + 1);
+  const rows = table.slice(1);
 
   return {
     headers,
@@ -559,7 +558,6 @@ export async function GET(
         raceEntryCount: raceEntries.length,
         matchedEntryCount,
         concurrency: CONCURRENCY,
-        historyLimit: MAX_HISTORY,
         completeCount,
         partialCount,
         failedCount,
