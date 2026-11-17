@@ -182,7 +182,6 @@ export default function RaceDetailPage() {
   return (
     <main className="race-detail-shell">
       <Link href="/" className="back-link">← 開催レース一覧へ戻る</Link>
-      {loading && !cacheChecked && <div className="state-panel">初回データを確認しています…</div>}
       {loading && cacheChecked && !data && <div className="state-panel">初回データを取得しています…</div>}
       {!data && !loading && error && <div className="state-panel error-panel"><b>レース情報を取得できませんでした</b><p>{error}</p></div>}
       {data && conditions && (
