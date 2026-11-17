@@ -44,8 +44,24 @@ def get(url: str) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=45) as response:
         raw = response.read()
-        charset = response.headers.get_content_charset() or "utf-8"
-    return raw.decode(charset, errors="replace")
+        charset = response.headers.get_content_charset()
+    if not charset:
+        meta = re.search(rb"charset\s*=\s*['\"]?([A-Za-z0-9._-]+)", raw[:4096], re.I)
+        charset = meta.group(1).decode("ascii") if meta else "utf-8"
+    try:
+        decoded = raw.decode(charset)
+    except (LookupError, UnicodeDecodeError):
+        decoded = raw.decode("utf-8", errors="replace")
+    if "\ufffd" in decoded:
+        for fallback in ("cp932", "shift_jis", "euc_jp"):
+            try:
+                candidate = raw.decode(fallback)
+            except (LookupError, UnicodeDecodeError):
+                continue
+            if "\ufffd" not in candidate and "騎手" in candidate:
+                decoded = candidate
+                break
+    return decoded
 
 
 index_url = urllib.parse.urljoin(BASE, "jockey.html")
