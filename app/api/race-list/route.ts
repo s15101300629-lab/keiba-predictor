@@ -123,19 +123,56 @@ function parseRaces(html: string): RaceItem[] {
   return races.sort((a, b) => venueOrder.indexOf(a.venue) - venueOrder.indexOf(b.venue) || a.raceNumber - b.raceNumber);
 }
 
+function getJstDate(offsetDays: number): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+  const date = new Date(Date.UTC(year, month - 1, day + offsetDays));
+  return String(date.getUTCFullYear()) +
+    String(date.getUTCMonth() + 1).padStart(2, "0") +
+    String(date.getUTCDate()).padStart(2, "0");
+}
+
+function hasRaceEntries(html: string): boolean {
+  const itemRegex = /<li\b[^>]*class=["'][^"']*RaceList_DataItem[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
+  let itemMatch: RegExpExecArray | null;
+  while ((itemMatch = itemRegex.exec(html)) !== null) {
+    if (/race_id=\d{12}/i.test(itemMatch[1])) return true;
+  }
+  return false;
+}
+
+async function fetchRaceList(date: string): Promise<{ html: string; status: number }> {
+  const response = await fetch(
+    "https://race.netkeiba.com/top/race_list_sub.html?kaisai_date=" + date,
+    {
+      cache: "force-cache",
+      next: { revalidate: 3600 },
+      headers: { Accept: "text/html" },
+      signal: AbortSignal.timeout(10000),
+    }
+  );
+  if (!response.ok) {
+    throw new Error("開催一覧の取得に失敗しました（HTTP " + response.status + " / " + date + "）");
+  }
+  const buffer = await response.arrayBuffer();
+  return {
+    html: new TextDecoder("utf-8").decode(new Uint8Array(buffer)),
+    status: response.status,
+  };
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const requestedDate = url.searchParams.get("date");
-  const date =
-    requestedDate ??
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Tokyo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date()).replace(/-/g, "");
 
-  if (!/^\d{8}$/.test(date)) {
+  if (requestedDate && !/^\d{8}$/.test(requestedDate)) {
     return NextResponse.json(
       { ok: false, error: "date must be YYYYMMDD." },
       { status: 400 }
@@ -143,24 +180,40 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(
-      `https://race.netkeiba.com/top/race_list_sub.html?kaisai_date=${date}`,
-      {
-        cache: "no-store",
-        headers: { Accept: "text/html" },
-        signal: AbortSignal.timeout(10000),
-      }
-    );
+    let date: string | null = requestedDate;
+    let html = "";
+    let sourceStatus = 200;
 
-    if (!response.ok) {
-      return NextResponse.json(
-        { ok: false, date, sourceStatus: response.status, error: "開催レース一覧を取得できませんでした。" },
-        { status: 502 }
-      );
+    if (requestedDate) {
+      const result = await fetchRaceList(requestedDate);
+      html = result.html;
+      sourceStatus = result.status;
+    } else {
+      // 閲覧日ではなく、今日以降で最初にJRA開催が確認できた日を採用する。
+      // 各日付の取得結果は1時間キャッシュし、最大21日先まで検索する。
+      for (let offset = 0; offset <= 21; offset += 1) {
+        const candidateDate = getJstDate(offset);
+        const result = await fetchRaceList(candidateDate);
+        if (hasRaceEntries(result.html)) {
+          date = candidateDate;
+          html = result.html;
+          sourceStatus = result.status;
+          break;
+        }
+      }
     }
 
-    const buffer = await response.arrayBuffer();
-    const html = new TextDecoder("utf-8").decode(new Uint8Array(buffer));
+    if (!date) {
+      return NextResponse.json({
+        ok: true,
+        date: null,
+        raceCount: 0,
+        venues: [],
+        races: [],
+        error: "今後21日以内にJRAの開催日を確認できませんでした。",
+      });
+    }
+
     const races = parseRaces(html);
     const venues = Array.from(new Set(races.map((race) => race.venue)));
 
@@ -168,11 +221,11 @@ export async function GET(request: Request) {
       {
         ok: true,
         date,
-        sourceStatus: response.status,
+        sourceStatus,
         raceCount: races.length,
         venues,
         races,
-        filter: "各競馬場の11R（メイン）および重賞のみ。平場は除外。",
+        filter: "次回開催日の各競馬場の11R（メイン）および重賞のみ。平場は除外。",
       },
       {
         headers: {
@@ -185,7 +238,6 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        date,
         error: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 502 }
