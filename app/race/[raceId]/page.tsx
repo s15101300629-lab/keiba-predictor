@@ -15,10 +15,18 @@ type Entry = {
   carriedWeight: number | null; jockey: string | null; trainer: string | null;
   bodyWeight: number | null; popularity: number | null;
 };
+type PerformanceStats = {
+  parsedStarts: number; wins: number; top3: number; averageFinish: number | null;
+  gradedStarts: number; gradedWins: number;
+  sameVenueStarts: number; sameVenueTop3: number;
+  similarDistanceStarts: number; similarDistanceTop3: number;
+  sameGoingStarts: number; sameGoingTop3: number;
+};
 type Horse = {
   horseId: string; name: string; status: string; raceEntry: Entry | null;
   profile: { label: string; value: string }[] | null;
   performances: { values: Record<string, string> }[]; historyReturned: number;
+  performanceStats?: PerformanceStats;
 };
 type ResponseData = {
   ok: boolean; raceId: string; raceConditions: Conditions; horseCount: number;
@@ -130,6 +138,18 @@ function HorseCard({ horse, mark, onMarkChange }: { horse: Horse; mark: string; 
               {facts.map(([label, value]) => (
                 <div className="horse-fact" key={label}><span>{label}：</span>{value}</div>
               ))}
+            </div>
+          )}
+          {horse.performanceStats && (
+            <div className="horse-facts">
+              <div className="horse-fact"><b>掲載戦績の集計</b>（着順を読み取れた{horse.performanceStats.parsedStarts}走）</div>
+              <div className="horse-fact">勝利：{horse.performanceStats.wins}回 ／ 3着以内：{horse.performanceStats.top3}回</div>
+              <div className="horse-fact">平均着順：{horse.performanceStats.averageFinish == null ? "算出不可" : horse.performanceStats.averageFinish + "着"}</div>
+              <div className="horse-fact">重賞判定できた戦績：{horse.performanceStats.gradedStarts}走 ／ 勝利：{horse.performanceStats.gradedWins}回</div>
+              <div className="horse-fact">同競馬場：{horse.performanceStats.sameVenueStarts}走・3着以内{horse.performanceStats.sameVenueTop3}回</div>
+              <div className="horse-fact">同距離±200m：{horse.performanceStats.similarDistanceStarts}走・3着以内{horse.performanceStats.similarDistanceTop3}回</div>
+              <div className="horse-fact">同馬場状態：{horse.performanceStats.sameGoingStarts}走・3着以内{horse.performanceStats.sameGoingTop3}回</div>
+              <small>※取得元ページに掲載された戦績のうち、項目を読み取れた範囲での集計です。未掲載の過去走は含みません。</small>
             </div>
           )}
           {histories.length > 0 && (
