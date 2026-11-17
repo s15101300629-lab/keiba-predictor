@@ -50,24 +50,18 @@ for h in headers:
     if declared is None:
         errors.append(f"R{h['no']}: headcount missing"); continue
 
-    # In JRA's PDF layout, the finish/frame/horse-number field is at x≈21
-    # (left card) or x≈431 (right card); horse identity starts at x≈49/460.
+    # Official JRA sample: the first field is frame number, the second is
+    # horse number. Finish order is the vertical order of result rows.
     number_x=(18,42) if left else (429,452)
     identity_x=(45,155) if left else (455,560)
-    num_lines=[x for x in cl if number_x[0]<=x["bbox"][0]<=number_x[1]
-               and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
+    number_lines=[x for x in cl if number_x[0]<=x["bbox"][0]<=number_x[1]
+                  and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
     horses=[]
-    for nl in num_lines:
+    for nl in number_lines:
         number_text=norm(nl["text"])
-        # Finish order, frame number and horse number are printed in that order.
-        # Text extraction can omit spacing, so read the final two digits as frame/horse.
-        nm=re.search(r"(\d{1,2})\s*([1-8])\s*(\d{1,2})$",number_text)
-        if not nm:
-            nm=re.search(r"^([1-8])\s*(\d{1,2})$",number_text)
-            if not nm: continue
-            finish=None; frame=int(nm.group(1)); horse_no=int(nm.group(2))
-        else:
-            finish=int(nm.group(1)); frame=int(nm.group(2)); horse_no=int(nm.group(3))
+        nm=re.match(r"^([1-8])\s*(\d{1,2})",number_text)
+        if not nm: continue
+        frame_no,horse_no=int(nm.group(1)),int(nm.group(2))
         ny=(nl["bbox"][1]+nl["bbox"][3])/2
         id_candidates=[x for x in cl if identity_x[0]<=x["bbox"][0]<identity_x[1]
                        and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
@@ -84,24 +78,30 @@ for h in headers:
         if not im:
             errors.append(f"R{h['no']} horse {horse_no}: identity parse failed {identity!r}")
             continue
-        horses.append({"finishOrder":finish,"frameNumber":frame,"horseNumber":horse_no,
-                       "horseName":im.group(1),"sex":im.group(2),"age":int(im.group(3)),
-                       "coatColor":im.group(4),"sourcePage":h["page"],"sourceY":round(ny,2)})
+        horses.append({"frameNumber":frame_no,"horseNumber":horse_no,
+                       "horseName":im.group(1),"sex":im.group(2),
+                       "age":int(im.group(3)),"coatColor":im.group(4),
+                       "sourcePage":h["page"],"sourceY":round(ny,2)})
 
+    horses.sort(key=lambda x:x["sourceY"])
+    for order,horse in enumerate(horses,1):
+        horse["finishOrder"]=order
     nums=[x["horseNumber"] for x in horses]
     if len(nums)!=declared: errors.append(f"R{h['no']}: rows {len(nums)} != declared {declared}")
     if len(set(nums))!=len(nums): errors.append(f"R{h['no']}: duplicate horse numbers {nums}")
     if sorted(nums)!=list(range(1,declared+1)): errors.append(f"R{h['no']}: horse numbers {sorted(nums)}")
-    if any(x["finishOrder"] is None for x in horses): errors.append(f"R{h['no']}: missing finish order")
     ht=norm(h["text"])
     dm=re.search(r"(\d{4})年(\d+)月(\d+)日",ht)
     dist=re.search(r"(\d)[，,](\d{3})",ht)
     surf=re.search(r"（(芝|ダート|障害)[^）]*）",ht)
     vm=re.search(r"\d{4}年\d+([^）]+)",ht)
-    races.append({"raceNumber":h["no"],"date":f"{int(dm.group(1)):04d}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else None,
-                  "venue":vm.group(1) if vm else None,"distanceMeters":int(dist.group(1)+dist.group(2)) if dist else None,
-                  "surface":surf.group(1) if surf else None,"declaredRunnerCount":declared,
-                  "parsedRunnerCount":len(horses),"horses":sorted(horses,key=lambda x:x["horseNumber"])})
+    races.append({"raceNumber":h["no"],
+                  "date":f"{int(dm.group(1)):04d}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else None,
+                  "venue":vm.group(1) if vm else None,
+                  "distanceMeters":int(dist.group(1)+dist.group(2)) if dist else None,
+                  "surface":surf.group(1) if surf else None,
+                  "declaredRunnerCount":declared,"parsedRunnerCount":len(horses),
+                  "horses":horses})
 summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),
          "pageCharacters":[p["characters"] for p in pages],"layoutBlockCount":len(blocks),
          "layoutLineCount":len(lines),"raceCount":len(headers),"parsedRaceCount":len(races),
@@ -110,3 +110,5 @@ summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCo
 (OUT/"parsed-races.json").write_text(json.dumps(races,ensure_ascii=False,indent=2),encoding="utf-8")
 (OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
 print(json.dumps(summary,ensure_ascii=False))
+if len(doc)==0 or len(combined)<1000 or len(headers)!=12 or errors:
+    raise RuntimeError(f"Structured validation failed: {len(errors)} errors")
