@@ -72,6 +72,8 @@ for link in index_links:
         year_pages[year] = page_url
 
 if not year_pages:
+    candidates=[{"text":link["text"],"href":link["href"],"resolved":urllib.parse.urljoin(INDEX_URL,link["href"])} for link in index_links if "20" in link["text"]]
+    print(json.dumps({"linkCount":len(index_links),"yearCandidates":candidates},ensure_ascii=False))
     raise RuntimeError("No annual JRA PDF index pages found on the official index")
 
 years = sorted(year_pages)
