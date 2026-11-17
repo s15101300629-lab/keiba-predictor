@@ -28,10 +28,12 @@ except ImportError as exc:
 document = fitz.open(stream=pdf_bytes, filetype="pdf")
 pages = []
 layout_blocks = []
+layout_lines = []
 for page_number, page in enumerate(document, start=1):
     text = page.get_text("text", sort=True)
     pages.append({"page": page_number, "characters": len(text), "text": text})
-    for block in page.get_text("dict")["blocks"]:
+    page_dict = page.get_text("dict")
+    for block in page_dict["blocks"]:
         if block.get("type") != 0:
             continue
         block_text = "\n".join(
@@ -45,11 +47,23 @@ for page_number, page in enumerate(document, start=1):
                 "bbox": [round(value, 2) for value in block["bbox"]],
                 "text": block_text,
             })
+        for line in block.get("lines", []):
+            line_text = "".join(span["text"] for span in line.get("spans", [])).strip()
+            if line_text:
+                layout_lines.append({
+                    "page": page_number,
+                    "bbox": [round(value, 2) for value in line["bbox"]],
+                    "text": line_text,
+                })
 
 combined = "\n\n".join(f"===== PAGE {item['page']} =====\n{item['text']}" for item in pages)
 (OUT / "sample-extracted.txt").write_text(combined, encoding="utf-8")
 (OUT / "layout-blocks.json").write_text(
     json.dumps(layout_blocks, ensure_ascii=False, indent=2),
+    encoding="utf-8",
+)
+(OUT / "layout-lines.json").write_text(
+    json.dumps(layout_lines, ensure_ascii=False, indent=2),
     encoding="utf-8",
 )
 
@@ -66,6 +80,7 @@ summary = {
     "pageCharacters": [item["characters"] for item in pages],
     "totalExtractedCharacters": len(combined),
     "layoutBlockCount": len(layout_blocks),
+    "layoutLineCount": len(layout_lines),
     "raceHeaderMatches": len(race_headers),
     "horseLikeLineCandidates": len(horse_like_lines),
     "sampleHorseLikeLines": horse_like_lines[:20],
