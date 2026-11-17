@@ -631,7 +631,7 @@ async function fetchG1PreRatings(
     normalizedRaceName.includes(normalizeRaceName(name))
   )?.[1];
 
-  let targetUrl = matchedSlug
+  const targetUrl = matchedSlug
     ? "https://www.jra.go.jp/datafile/ranking/g1/" + year + "/" + matchedSlug + ".html"
     : findG1RaceUrl(indexPage.html, raceName, targetDate, baseUrl);
 
