@@ -81,7 +81,12 @@ function extractTables(html: string) {
   return tables;
 }
 
-async function fetchHtml(url: string, revalidateSeconds: number, forceRefresh: boolean) {
+async function fetchHtml(
+  url: string,
+  revalidateSeconds: number,
+  forceRefresh: boolean,
+  encoding: "utf-8" | "euc-jp" = "utf-8"
+) {
   const response = await fetch(url, {
     ...(forceRefresh
       ? { cache: "no-store" as const }
@@ -89,13 +94,11 @@ async function fetchHtml(url: string, revalidateSeconds: number, forceRefresh: b
     headers: { Accept: "text/html" },
     signal: AbortSignal.timeout(10000),
   });
-
   const buffer = await response.arrayBuffer();
-
   return {
     status: response.status,
     ok: response.ok,
-    html: new TextDecoder("utf-8").decode(new Uint8Array(buffer)),
+    html: new TextDecoder(encoding).decode(new Uint8Array(buffer)),
     bytes: buffer.byteLength,
   };
 }
@@ -428,27 +431,163 @@ type PerformanceStats = {
   sameVenueSurfaceStarts: number; sameVenueSurfaceTop3: number;
   similarDistanceStarts: number; similarDistanceTop3: number;
   sameGoingStarts: number; sameGoingTop3: number;
-  sameJockeyStarts: number; sameJockeyTop3: number;
-  sameFrameStarts: number; sameFrameTop3: number;
   positionStarts: number; positionGainTotal: number;
   positionForwardStarts: number; positionForwardTop3: number;
+};
+
+type RaceHistoryMetric = { starts: number; wins: number; top3: number; winRate: number; placeRate: number };
+type RaceHistoryStats = {
+  status: "available" | "partial" | "unavailable";
+  requestedYears: number[]; fetchedYears: number[]; failedYears: number[];
+  totalEntries: number;
+  frameStats: Record<string, RaceHistoryMetric>;
+  jockeyStats: Record<string, RaceHistoryMetric>;
+};
+type RaceHistoryForHorse = {
+  frame: RaceHistoryMetric | null; jockey: RaceHistoryMetric | null; sourceYears: number[];
+} | null;
+type JraHistoricalEntry = {
+  frameNumber: number | null; horseNumber: number; horseName: string;
+  jockey: string | null; finish: number | null;
 };
 
 function normalizeJockeyName(value: string | null | undefined) {
   return (value ?? "").normalize("NFKC").replace(/[\s　.・]/g, "").toLowerCase();
 }
 
+
+function createEmptyRaceHistoryStats(requestedYears: number[], status: RaceHistoryStats["status"]): RaceHistoryStats {
+  return { status, requestedYears, fetchedYears: [], failedYears: [...requestedYears], totalEntries: 0, frameStats: {}, jockeyStats: {} };
+}
+
+function extractJraHistoricalEntries(html: string): JraHistoricalEntry[] {
+  const tableRegex = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
+  const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+  const cellRegex = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
+  let tableMatch: RegExpExecArray | null;
+  while ((tableMatch = tableRegex.exec(html)) !== null) {
+    const rows: string[][] = [];
+    let rowMatch: RegExpExecArray | null;
+    rowRegex.lastIndex = 0;
+    while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
+      const cells: string[] = [];
+      let cellMatch: RegExpExecArray | null;
+      cellRegex.lastIndex = 0;
+      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) cells.push(cellMatch[1]);
+      if (cells.length) rows.push(cells);
+    }
+    const headerIndex = rows.findIndex((cells) => {
+      const h = cells.map(cleanText).join(" ");
+      return h.includes("着順") && h.includes("馬名") && h.includes("馬番") && h.includes("騎手");
+    });
+    if (headerIndex < 0) continue;
+    const headers = rows[headerIndex].map(cleanText);
+    const idx = (name: string) => headers.findIndex((h) => h.includes(name));
+    const columns = { finish: idx("着順"), frame: idx("枠"), number: idx("馬番"), name: idx("馬名"), jockey: idx("騎手") };
+    if (columns.finish < 0 || columns.number < 0 || columns.name < 0 || columns.jockey < 0) continue;
+    const entries: JraHistoricalEntry[] = [];
+    for (const cells of rows.slice(headerIndex + 1)) {
+      const horseNumber = parseNumber(cleanText(cells[columns.number] ?? ""));
+      const horseName = cleanText(cells[columns.name] ?? "");
+      if (horseNumber === null || !horseName) continue;
+      const frameCell = cells[columns.frame] ?? "";
+      const frameMatch = frameCell.match(/枠\s*(\d+)/i) ?? cleanText(frameCell).match(/^\s*(\d+)\s*$/);
+      const finishMatch = cleanText(cells[columns.finish] ?? "").match(/^\s*(\d+)/);
+      const jockey = cleanText(cells[columns.jockey] ?? "");
+      entries.push({
+        frameNumber: frameMatch ? Number(frameMatch[1]) : null,
+        horseNumber, horseName,
+        jockey: jockey && !/^(?:-|--|取消|除外)$/u.test(jockey) ? jockey : null,
+        finish: finishMatch ? Number(finishMatch[1]) : null,
+      });
+    }
+    if (entries.length) return entries;
+  }
+  return [];
+}
+
+function toRaceHistoryMetric(value: { starts: number; wins: number; top3: number }): RaceHistoryMetric {
+  return { ...value, winRate: value.starts ? value.wins / value.starts : 0, placeRate: value.starts ? value.top3 / value.starts : 0 };
+}
+
+async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: boolean): Promise<RaceHistoryStats | null> {
+  const raceName = (conditions.raceName ?? "").replace(/[\s　]/g, "");
+  if (!raceName.includes("エリザベス女王杯")) return null;
+  const targetYear = conditions.date ? Number(conditions.date.slice(0, 4)) : NaN;
+  if (!Number.isInteger(targetYear)) return null;
+  const requestedYears = Array.from({ length: 10 }, (_, i) => targetYear - i - 1);
+  const archiveUrl = "https://www.jra.go.jp/datafile/seiseki/g1/eliza/";
+  const archive = await fetchHtml(archiveUrl, 86400, forceRefresh);
+  if (!archive.ok) return createEmptyRaceHistoryStats(requestedYears, "unavailable");
+
+  const yearUrls = new Map<number, string>();
+  const links = /href\s*=\s*(["'])([^"']*eliza(20\d{2})\.html[^"']*)\1/gi;
+  let match: RegExpExecArray | null;
+  while ((match = links.exec(archive.html)) !== null) {
+    const year = Number(match[3]);
+    if (requestedYears.includes(year)) {
+      try { yearUrls.set(year, new URL(decodeEntities(match[2]), archiveUrl).toString()); } catch { /* ignore invalid href */ }
+    }
+  }
+  const failedYears = requestedYears.filter((year) => !yearUrls.has(year));
+  const pending = requestedYears.filter((year) => yearUrls.has(year));
+  const fetched: { year: number; entries: JraHistoricalEntry[] }[] = [];
+  let next = 0;
+  async function worker() {
+    while (true) {
+      const i = next++;
+      if (i >= pending.length) return;
+      const year = pending[i];
+      const page = await fetchHtml(yearUrls.get(year)!, 2592000, forceRefresh);
+      if (!page.ok) { failedYears.push(year); continue; }
+      const entries = extractJraHistoricalEntries(page.html);
+      if (!entries.length) { failedYears.push(year); continue; }
+      fetched.push({ year, entries });
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, () => worker()));
+
+  const frameCounts: Record<string, { starts: number; wins: number; top3: number }> = {};
+  const jockeyCounts: Record<string, { starts: number; wins: number; top3: number }> = {};
+  let totalEntries = 0;
+  for (const race of fetched) for (const entry of race.entries) {
+    totalEntries++;
+    const add = (bucket: Record<string, { starts: number; wins: number; top3: number }>, key: string) => {
+      const item = bucket[key] ?? (bucket[key] = { starts: 0, wins: 0, top3: 0 });
+      item.starts++;
+      if (entry.finish === 1) item.wins++;
+      if (entry.finish !== null && entry.finish <= 3) item.top3++;
+    };
+    if (entry.frameNumber !== null) add(frameCounts, String(entry.frameNumber));
+    if (entry.jockey) add(jockeyCounts, normalizeJockeyName(entry.jockey));
+  }
+  const fetchedYears = fetched.map((race) => race.year).sort((a, b) => a - b);
+  return {
+    status: fetchedYears.length === 0 ? "unavailable" : failedYears.length ? "partial" : "available",
+    requestedYears, fetchedYears, failedYears: failedYears.sort((a, b) => a - b), totalEntries,
+    frameStats: Object.fromEntries(Object.entries(frameCounts).map(([k, v]) => [k, toRaceHistoryMetric(v)])),
+    jockeyStats: Object.fromEntries(Object.entries(jockeyCounts).map(([k, v]) => [k, toRaceHistoryMetric(v)])),
+  };
+}
+
+function getRaceHistoryForHorse(entry: RaceEntry | null, history: RaceHistoryStats | null): RaceHistoryForHorse {
+  if (!entry || !history) return null;
+  return {
+    frame: entry.frameNumber === null ? null : history.frameStats[String(entry.frameNumber)] ?? null,
+    jockey: entry.jockey ? history.jockeyStats[normalizeJockeyName(entry.jockey)] ?? null : null,
+    sourceYears: history.fetchedYears,
+  };
+}
+
 function summarizePerformances(
   rows: { values: Record<string, string> }[],
-  conditions: RaceConditions,
-  raceEntry: RaceEntry | null
+  conditions: RaceConditions
 ): PerformanceStats {
   const stats: PerformanceStats = {
     parsedStarts: 0, wins: 0, top3: 0, averageFinish: null,
     gradedStarts: 0, gradedWins: 0, sameVenueStarts: 0, sameVenueTop3: 0,
     sameVenueSurfaceStarts: 0, sameVenueSurfaceTop3: 0,
     similarDistanceStarts: 0, similarDistanceTop3: 0, sameGoingStarts: 0, sameGoingTop3: 0,
-    sameJockeyStarts: 0, sameJockeyTop3: 0, sameFrameStarts: 0, sameFrameTop3: 0,
     positionStarts: 0, positionGainTotal: 0, positionForwardStarts: 0, positionForwardTop3: 0,
   };
   const venueNames = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
@@ -480,22 +619,6 @@ function summarizePerformances(
     if (conditions.venue && pastVenue === conditions.venue && finish !== null) {
       stats.sameVenueStarts++;
       if (finish <= 3) stats.sameVenueTop3++;
-    }
-
-    const pastJockey = findValue([/^騎手$/]);
-    if (raceEntry?.jockey && finish !== null &&
-      normalizeJockeyName(pastJockey) === normalizeJockeyName(raceEntry.jockey)) {
-      stats.sameJockeyStarts++;
-      if (finish <= 3) stats.sameJockeyTop3++;
-    }
-
-    const pastFrameText = findValue([/^枠番$/, /^枠$/]);
-    const pastFrameMatch = pastFrameText.match(/^\s*(\d+)/);
-    const pastFrame = pastFrameMatch ? Number(pastFrameMatch[1]) : null;
-    if (raceEntry?.frameNumber !== null && raceEntry?.frameNumber !== undefined &&
-      pastFrame === raceEntry.frameNumber && finish !== null) {
-      stats.sameFrameStarts++;
-      if (finish <= 3) stats.sameFrameTop3++;
     }
 
     const passageText = findValue([/^通過$/, /通過順位/]);
@@ -535,7 +658,15 @@ function summarizePerformances(
       }
     }
     const goingText = findValue([/^馬場$/, /^馬場状態$/, /^状態$/]);
-    if (conditions.going && goingText && goingText.includes(conditions.going) && finish !== null) {
+    const normalizeGoing = (value: string) => {
+      const normalized = value.replace(/\s+/g, "");
+      if (normalized.includes("不良")) return "不良";
+      if (normalized.includes("稍")) return "稍重";
+      if (normalized.includes("重")) return "重";
+      if (normalized.includes("良")) return "良";
+      return "";
+    };
+    if (conditions.going && normalizeGoing(goingText) === normalizeGoing(conditions.going) && finish !== null) {
       stats.sameGoingStarts++;
       if (finish <= 3) stats.sameGoingTop3++;
     }
@@ -584,6 +715,7 @@ export async function GET(
     const raceConditions = extractRaceConditions(race.html, raceId);
     const horses = extractHorses(race.html);
     const raceEntries = extractRaceEntries(race.html);
+    const raceHistoryStats = await fetchRaceHistoryStats(raceConditions, forceRefresh);
 
     if (horses.length === 0) {
       return NextResponse.json(
@@ -613,49 +745,42 @@ export async function GET(
         const horse = horses[index];
 
         try {
-          const url = `https://db.sp.netkeiba.com/horse/${horse.horseId}/`;
-          const page = await fetchHtml(url, 604800, forceRefresh);
-
-          if (!page.ok) {
+          const raceEntry = entryByHorseId.get(horse.horseId) ?? null;
+          const profileUrl = `https://db.sp.netkeiba.com/horse/${horse.horseId}/`;
+          const historyUrl = `https://db.netkeiba.com/horse/result/${horse.horseId}/`;
+          const [profilePage, historyPage] = await Promise.all([
+            fetchHtml(profileUrl, 604800, forceRefresh),
+            fetchHtml(historyUrl, 604800, forceRefresh, "euc-jp"),
+          ]);
+          if (!profilePage.ok && !historyPage.ok) {
             results[index] = {
-              horseId: horse.horseId,
-              name: horse.name,
-              raceEntry: entryByHorseId.get(horse.horseId) ?? null,
+              horseId: horse.horseId, name: horse.name, raceEntry,
+              raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
               status: "fetch_failed",
-              httpStatus: page.status,
+              profileHttpStatus: profilePage.status, historyHttpStatus: historyPage.status,
             };
             continue;
           }
-
-          const tables = extractTables(page.html);
-          const profile = extractProfile(tables);
-          const performance = extractPerformances(tables);
+          const profile = profilePage.ok ? extractProfile(extractTables(profilePage.html)) : null;
+          const performance = historyPage.ok ? extractPerformances(extractTables(historyPage.html)) : null;
           const performanceRows = performance?.rows ?? [];
-          const performanceStats = summarizePerformances(
-            performanceRows,
-            raceConditions,
-            entryByHorseId.get(horse.horseId) ?? null
-          );
-
+          const performanceStats = summarizePerformances(performanceRows, raceConditions);
           results[index] = {
-            horseId: horse.horseId,
-            name: horse.name,
-            raceEntry: entryByHorseId.get(horse.horseId) ?? null,
+            horseId: horse.horseId, name: horse.name, raceEntry,
+            raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
             status: profile && performance ? "complete" : "partial",
-            sourceStatus: page.status,
-            responseBytes: page.bytes,
-            profile,
+            sourceStatus: profilePage.status, historyStatus: historyPage.status,
+            responseBytes: profilePage.bytes + historyPage.bytes, profile,
             performanceCountOnPage: performance?.countOnPage ?? null,
             performanceHeaders: performance?.headers ?? [],
             performances: performance?.rows ?? [],
-            historyReturned: performanceRows.length,
-            performanceStats,
+            historyReturned: performanceRows.length, performanceStats,
           };
         } catch (error) {
+          const raceEntry = entryByHorseId.get(horse.horseId) ?? null;
           results[index] = {
-            horseId: horse.horseId,
-            name: horse.name,
-            raceEntry: entryByHorseId.get(horse.horseId) ?? null,
+            horseId: horse.horseId, name: horse.name, raceEntry,
+            raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
             status: "fetch_failed",
             error: error instanceof Error ? error.message : "Unknown error",
           };
@@ -689,6 +814,7 @@ export async function GET(
         raceConditions,
         racePageStatus: race.status,
         racePageBytes: race.bytes,
+        raceHistoryStats,
         horseCount: horses.length,
         raceEntryCount: raceEntries.length,
         matchedEntryCount,
