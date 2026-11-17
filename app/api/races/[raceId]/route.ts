@@ -101,6 +101,98 @@ async function fetchHtml(url: string) {
   };
 }
 
+
+type RaceConditions = {
+  raceName: string | null;
+  date: string | null;
+  venue: string | null;
+  meeting: number | null;
+  day: number | null;
+  raceNumber: number | null;
+  startTime: string | null;
+  surface: string | null;
+  distanceMeters: number | null;
+  direction: string | null;
+  courseLayout: string | null;
+  courseLetter: string | null;
+  weather: string | null;
+  going: string | null;
+  fieldStatus: Record<string, string>;
+};
+
+function extractRaceConditions(html: string, raceId: string): RaceConditions {
+  const pageText = cleanText(html);
+  const titleMatch = html.match(/<title\\b[^>]*>([\\s\\S]*?)<\\/title>/i);
+  const titleText = titleMatch ? cleanText(titleMatch[1]) : "";
+  const headingMatch = html.match(/<h1\\b[^>]*>([\\s\\S]*?)<\\/h1>/i);
+  const headingText = headingMatch ? cleanText(headingMatch[1]) : "";
+  const raceNameMatch =
+    headingText.match(/([ぁ-んァ-ヶ一-龠A-Za-z0-9ー・]+(?:ステークス|Ｓ|S|記念|賞))/) ||
+    titleText.match(/^(.+?)(?:\\(|（| 出馬表| レース情報)/);
+  const dateMatch = pageText.match(/(20\\d{2})年\\s*(\\d{1,2})月\\s*(\\d{1,2})日/);
+  const meetingMatch = pageText.match(/(\\d+)回\\s*([^\\s　]+)\\s*(\\d+)日目/);
+  const startMatch = pageText.match(/(\\d{1,2}:\\d{2})発走\\s*\\/\\s*(芝|ダ|障)(?:ート)?\\s*(\\d{3,4})m\\s*(右|左|直線)?/);
+  const weatherMatch = pageText.match(/天候\\s*[:：]\\s*(晴|曇|雨|小雨|雪|小雪)/);
+  const goingMatch = pageText.match(/馬場\\s*[:：]\\s*(良|稍重|重|不良)/);
+  const courseLetterMatch = pageText.match(/([A-D])コース/);
+  const courseLayout = /外回り|芝・外/.test(pageText)
+    ? "外回り"
+    : /内回り|芝・内/.test(pageText)
+      ? "内回り"
+      : null;
+  const raceNumber = Number(raceId.slice(-2));
+
+  const date = dateMatch
+    ? `${dateMatch[1]}-${dateMatch[2].padStart(2, "0")}-${dateMatch[3].padStart(2, "0")}`
+    : null;
+  const meeting = meetingMatch ? Number(meetingMatch[1]) : null;
+  const day = meetingMatch ? Number(meetingMatch[3]) : null;
+  const venue = meetingMatch?.[2] ?? null;
+  const surface = startMatch
+    ? startMatch[2] === "ダ" || startMatch[2] === "障"
+      ? startMatch[2] === "ダ" ? "ダート" : "障害"
+      : "芝"
+    : null;
+  const distanceMeters = startMatch ? Number(startMatch[3]) : null;
+  const direction = startMatch?.[4] ?? null;
+  const startTime = startMatch?.[1] ?? null;
+  const weather = weatherMatch?.[1] ?? null;
+  const going = goingMatch?.[1] ?? null;
+
+  return {
+    raceName: raceNameMatch?.[1]?.trim() ?? null,
+    date,
+    venue,
+    meeting,
+    day,
+    raceNumber: Number.isFinite(raceNumber) ? raceNumber : null,
+    startTime,
+    surface,
+    distanceMeters,
+    direction,
+    courseLayout,
+    courseLetter: courseLetterMatch?.[1] ?? null,
+    weather,
+    going,
+    fieldStatus: {
+      raceName: raceNameMatch ? "available" : "unavailable",
+      date: date ? "available" : "unavailable",
+      venue: venue ? "available" : "unavailable",
+      meeting: meeting !== null ? "available" : "unavailable",
+      day: day !== null ? "available" : "unavailable",
+      raceNumber: Number.isFinite(raceNumber) ? "available" : "unavailable",
+      startTime: startTime ? "available" : "unavailable",
+      surface: surface ? "available" : "unavailable",
+      distanceMeters: distanceMeters !== null ? "available" : "unavailable",
+      direction: direction ? "available" : "unavailable",
+      courseLayout: courseLayout ? "available" : "not_applicable_or_unpublished",
+      courseLetter: courseLetterMatch ? "available" : "not_found",
+      weather: weather ? "available" : "not_published_or_not_found",
+      going: going ? "available" : "not_published_or_not_found",
+    },
+  };
+}
+
 function extractHorses(html: string): HorseEntry[] {
   const horses: HorseEntry[] = [];
   const seen = new Set<string>();
@@ -329,6 +421,7 @@ export async function GET(
       );
     }
 
+    const raceConditions = extractRaceConditions(race.html, raceId);
     const horses = extractHorses(race.html);
     const raceEntries = extractRaceEntries(race.html);
 
@@ -425,6 +518,7 @@ export async function GET(
       {
         ok: failedCount === 0 && partialCount === 0 && matchedEntryCount === horses.length,
         raceId,
+        raceConditions,
         racePageStatus: race.status,
         racePageBytes: race.bytes,
         horseCount: horses.length,
