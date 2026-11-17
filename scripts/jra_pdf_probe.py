@@ -27,12 +27,31 @@ except ImportError as exc:
 
 document = fitz.open(stream=pdf_bytes, filetype="pdf")
 pages = []
+layout_blocks = []
 for page_number, page in enumerate(document, start=1):
     text = page.get_text("text", sort=True)
     pages.append({"page": page_number, "characters": len(text), "text": text})
+    for block in page.get_text("dict")["blocks"]:
+        if block.get("type") != 0:
+            continue
+        block_text = "\n".join(
+            span["text"]
+            for line in block.get("lines", [])
+            for span in line.get("spans", [])
+        ).strip()
+        if block_text:
+            layout_blocks.append({
+                "page": page_number,
+                "bbox": [round(value, 2) for value in block["bbox"]],
+                "text": block_text,
+            })
 
 combined = "\n\n".join(f"===== PAGE {item['page']} =====\n{item['text']}" for item in pages)
 (OUT / "sample-extracted.txt").write_text(combined, encoding="utf-8")
+(OUT / "layout-blocks.json").write_text(
+    json.dumps(layout_blocks, ensure_ascii=False, indent=2),
+    encoding="utf-8",
+)
 
 race_headers = re.findall(r"第\s*\d+\s*競走", combined)
 horse_like_lines = [
@@ -46,6 +65,7 @@ summary = {
     "pageCount": len(document),
     "pageCharacters": [item["characters"] for item in pages],
     "totalExtractedCharacters": len(combined),
+    "layoutBlockCount": len(layout_blocks),
     "raceHeaderMatches": len(race_headers),
     "horseLikeLineCandidates": len(horse_like_lines),
     "sampleHorseLikeLines": horse_like_lines[:20],
