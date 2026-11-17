@@ -257,6 +257,8 @@ for h in headers:
     if any(x["winOdds"] is None or x["winOdds"]<=0 for x in horses): errors.append(f"R{h['no']}: missing/invalid win odds")
     if any(x["carriedWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing carried weight")
     if any(x["bodyWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing body weight")
+    if any(x["jockeyName"] is None for x in horses): errors.append(f"R{h['no']}: missing jockey name")
+    if any(x["finishTime"] is None and x["resultStatus"] is None for x in horses): errors.append(f"R{h['no']}: runner has neither finish time nor result status")
 
     nearby=[b["text"] for b in cb if h["y0"]-20<=b["bbox"][1]<=h["y1"]+60]
     card_text="\n".join([h["text"],*nearby])
@@ -286,7 +288,8 @@ for h in headers:
     corner_raw=corner_block["text"] if corner_block else ""
     lap_match=re.search(r"ハロンタイム\s*([0-9０-９．.―ー\-]+)",lap_raw)
     lap_times=[float(v.replace("．",".")) for v in re.findall(r"\d+[．.]\d",lap_match.group(1))] if lap_match else []
-    passing_times=re.findall(r"(?:\d{1,2}[:：])?\d{1,2}[．.]\d",passing_raw)
+    passing_times_raw=re.findall(r"(?:\d{1,2}[:：])?\d{1,2}[．.]\d",passing_raw)
+    passing_times=[time_to_seconds(value) for value in passing_times_raw]
     corner_order_match=re.search(r"通過コーナー順([0-9→]+)",norm(corner_raw))
     corner_order=[int(v) for v in re.findall(r"\d",corner_order_match.group(1))] if corner_order_match else []
     last_match=re.search(r"上り4F(\d{2}[．.]\d)[―ー\-]+3F(\d{2}[．.]\d)",norm(corner_raw))
