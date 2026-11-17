@@ -35,7 +35,7 @@ for name,data in [("layout-blocks.json",blocks),("layout-lines.json",lines)]:
 headers=[]
 for b in blocks:
     m=re.search(r"第\s*(\d+)\s*競走",b["text"])
-    if m: headers.append({"page":b["page"],"x":b["bbox"][0],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
+    if m: headers.append({"page":b["page"],"x":b["bbox"][0],"y0":b["bbox"][1],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
 races, errors=[],[]
 coat=r"黒鹿|青鹿|青毛|鹿毛|栃栗|鹿|栗|芦|白毛|白|青"
 identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン)?(\d)({coat})")
@@ -49,8 +49,6 @@ for h in headers:
         m=re.search(r"（\s*(\d+)\s*頭\s*）",b["text"])
         if m:
             declared=int(m.group(1))
-            # A PDF text block can contain the final horse row and the
-            # (N頭) label. Use the label's own line y, not the block top.
             count_line=next((x for x in cl if re.search(r"（\s*\d+\s*頭\s*）",x["text"])),None)
             decl_y=count_line["bbox"][1] if count_line else b["bbox"][3]
             break
@@ -94,18 +92,38 @@ for h in headers:
     if len(nums)!=declared: errors.append(f"R{h['no']}: rows {len(nums)} != declared {declared}")
     if len(set(nums))!=len(nums): errors.append(f"R{h['no']}: duplicate horse numbers {nums}")
     if any(n<1 or n>18 for n in nums): errors.append(f"R{h['no']}: horse number outside JRA range {nums}")
-    ht=norm(h["text"])
-    dm=re.search(r"(\d{4})年(\d+)月(\d+)日",ht)
-    dist=re.search(r"(\d)[，,](\d{3})",ht)
-    surf=re.search(r"（(芝|ダート|障害)[^）]*）",ht)
-    vm=re.search(r"\d{4}年\d+([^）]+)",ht)
-    races.append({"raceNumber":h["no"],
-                  "date":f"{int(dm.group(1)):04d}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else None,
-                  "venue":vm.group(1) if vm else None,
-                  "distanceMeters":int(dist.group(1)+dist.group(2)) if dist else None,
-                  "surface":surf.group(1) if surf else None,
+
+    # The race title, date and surface can be in a separate text block from
+    # the race-number header. Combine only the nearby blocks in this race card.
+    nearby=[b["text"] for b in cb
+            if h["y0"]-20 <= b["bbox"][1] <= h["y1"]+60]
+    card_text="\n".join([h["text"],*nearby])
+    date_match=re.search(r"(\d{4})年.*?(\d+)月(\d+)日",card_text,re.S)
+    year_match=re.search(r"(\d{4})年",card_text)
+    day_match=re.search(r"(\d+)月(\d+)日",card_text)
+    date=None
+    if year_match and day_match:
+        date=f"{int(year_match.group(1)):04d}-{int(day_match.group(1)):02d}-{int(day_match.group(2)):02d}"
+    distance_match=re.search(r"(\d)[，,](\d{3})",h["text"])
+    surface_match=re.search(r"（(芝|ダート|障害)[^）]*）",card_text)
+    venue_match=re.search(r"\d{4}年\d+([^）]+)",card_text)
+    weather_match=re.search(r"\d+月\d+日(晴|曇|雨|小雨|雪)",card_text)
+    going_match=re.search(r"\d+月\d+日(?:晴|曇|雨|小雨|雪)?\s*(良|稍重|重|不良)",card_text)
+    races.append({"raceNumber":h["no"],"date":date,
+                  "venue":venue_match.group(1) if venue_match else None,
+                  "distanceMeters":int(distance_match.group(1)+distance_match.group(2)) if distance_match else None,
+                  "surface":surface_match.group(1) if surface_match else None,
+                  "weather":weather_match.group(1) if weather_match else None,
+                  "going":going_match.group(1) if going_match else None,
                   "declaredRunnerCount":declared,"parsedRunnerCount":len(horses),
                   "horses":horses})
+
+if len(headers)!=12: errors.append(f"race headers: {len(headers)} != 12")
+if len({r["raceNumber"] for r in races})!=len(races): errors.append("duplicate race numbers")
+for race in races:
+    for field in ("date","venue","distanceMeters","surface","going"):
+        if race[field] is None: errors.append(f"R{race['raceNumber']}: missing race metadata {field}")
+
 summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),
          "pageCharacters":[p["characters"] for p in pages],"layoutBlockCount":len(blocks),
          "layoutLineCount":len(lines),"raceCount":len(headers),"parsedRaceCount":len(races),
@@ -114,5 +132,5 @@ summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCo
 (OUT/"parsed-races.json").write_text(json.dumps(races,ensure_ascii=False,indent=2),encoding="utf-8")
 (OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
 print(json.dumps(summary,ensure_ascii=False))
-if len(doc)==0 or len(combined)<1000 or len(headers)!=12 or errors:
+if len(doc)==0 or len(combined)<1000 or errors:
     raise RuntimeError(f"Structured validation failed: {len(errors)} errors")
