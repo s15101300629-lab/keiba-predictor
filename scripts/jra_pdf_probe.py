@@ -130,6 +130,8 @@ for h in headers:
                         and abs(center_y(x)-ny)<=2.0]
         identity_parts.sort(key=lambda x:x["bbox"][0])
         identity_raw="".join(x["text"] for x in identity_parts)
+        sex_marker_codes=[ord(ch) for ch in identity_raw if 1<=ord(ch)<=31]
+        sex_marker_code=sex_marker_codes[0] if sex_marker_codes else None
         identity=norm(identity_raw)
         im=identity_re.search(identity)
         source="identity_column"
@@ -228,17 +230,6 @@ for h in headers:
 
         horse_name=im.group(1)
         horse_sex=im.group(2)
-        # JRA prints gelding (せん) with a custom-font glyph in the sex
-        # column. When the horse identity had to fall back to the number line,
-        # inspect that dedicated column instead of losing the glyph.
-        sex_x=(108,115) if left else (518,525)
-        sex_markers=[x for x in chars if x["page"]==h["page"]
-                     and sex_x[0]<=x["bbox"][0]<sex_x[1]
-                     and abs(center_y(x)-ny)<=2.5
-                     and len(x["text"])==1 and ord(x["text"])<32
-                     and x["font"].startswith("EdiF-")]
-        if horse_sex is None and (re.search(r"[\x01-\x1f]",identity_raw) or sex_markers):
-            horse_sex="せん"
         horse_age=int(im.group(3))
         birth_year=URL_YEAR-horse_age if URL_YEAR else None
         horse_key=f"{norm(horse_name)}|{horse_sex or '不明'}|{birth_year or '不明'}"
@@ -282,6 +273,7 @@ for h in headers:
     if any(x["winOdds"] is None or x["winOdds"]<=0 for x in horses): errors.append(f"R{h['no']}: missing/invalid win odds")
     if any(x["carriedWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing carried weight")
     if any(x["jockeyName"] is None for x in horses): errors.append(f"R{h['no']}: missing jockey name")
+    if any(x["sex"] is None and x["sexMarkerCode"] is None for x in horses): errors.append(f"R{h['no']}: missing sex and source marker")
     if any(x["finishOrder"] == 1 and x["finishTime"] is None for x in horses): errors.append("R winner: finish time missing")
 
     nearby=[b["text"] for b in cb if h["y0"]-20<=b["bbox"][1]<=h["y1"]+60]
