@@ -1,0 +1,30 @@
+name: JRA PDF extraction pilot
+
+on:
+  push:
+    branches:
+      - feature/jra-pdf-ingestion-pilot
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PDF parser
+        run: python -m pip install --disable-pip-version-check pymupdf
+      - name: Download and inspect official JRA PDF
+        run: python scripts/jra_pdf_probe.py
+      - name: Upload extracted text for parser design
+        uses: actions/upload-artifact@v4
+        with:
+          name: jra-pdf-probe
+          path: jra-pdf-probe/
+          if-no-files-found: error
