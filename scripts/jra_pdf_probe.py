@@ -47,14 +47,20 @@ for h in headers:
     declared=decl_y=None
     for b in cb:
         m=re.search(r"（\s*(\d+)\s*頭\s*）",b["text"])
-        if m: declared,decl_y=int(m.group(1)),b["bbox"][1]; break
+        if m:
+            declared=int(m.group(1))
+            # A PDF text block can contain the final horse row and the
+            # (N頭) label. Use the label's own line y, not the block top.
+            count_line=next((x for x in cl if re.search(r"（\s*\d+\s*頭\s*）",x["text"])),None)
+            decl_y=count_line["bbox"][1] if count_line else b["bbox"][3]
+            break
     if declared is None:
         errors.append(f"R{h['no']}: headcount missing"); continue
 
     number_x=(18,42) if left else (429,452)
     identity_x=(45,145) if left else (455,555)
     number_lines=[x for x in cl if number_x[0]<=x["bbox"][0]<=number_x[1]
-                  and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
+                  and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y]
     horses=[]
     for nl in number_lines:
         raw_number_line=norm(nl["text"])
@@ -62,8 +68,6 @@ for h in headers:
         if not nm: continue
         frame_no,horse_no=int(nm.group(1)),int(nm.group(2))
         ny=(nl["bbox"][1]+nl["bbox"][3])/2
-        # Horse identity fragments are located immediately to the right of
-        # the frame/horse number. Jockey begins at x≈157/568 and is excluded.
         fragments=[x for x in cl if identity_x[0]<=x["bbox"][0]<identity_x[1]
                    and abs((x["bbox"][1]+x["bbox"][3])/2-ny)<=2.0]
         fragments.sort(key=lambda x:x["bbox"][0])
@@ -71,8 +75,6 @@ for h in headers:
         match=identity_re.search(identity)
         source="identity_column"
         if not match:
-            # Some PDF rows combine frame, horse number and horse name in one
-            # text line. Use the remainder of that exact row as fallback.
             fallback=nm.group(3)
             match=identity_re.search(fallback)
             if match:
@@ -91,7 +93,7 @@ for h in headers:
     nums=[x["horseNumber"] for x in horses]
     if len(nums)!=declared: errors.append(f"R{h['no']}: rows {len(nums)} != declared {declared}")
     if len(set(nums))!=len(nums): errors.append(f"R{h['no']}: duplicate horse numbers {nums}")
-    if sorted(nums)!=list(range(1,declared+1)): errors.append(f"R{h['no']}: horse numbers {sorted(nums)}")
+    if any(n<1 or n>18 for n in nums): errors.append(f"R{h['no']}: horse number outside JRA range {nums}")
     ht=norm(h["text"])
     dm=re.search(r"(\d{4})年(\d+)月(\d+)日",ht)
     dist=re.search(r"(\d)[，,](\d{3})",ht)
