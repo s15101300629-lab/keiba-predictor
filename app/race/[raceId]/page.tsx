@@ -78,7 +78,7 @@ function HorseCard({ horse }: { horse: Horse }) {
   const profile = horse.profile ?? [];
   const profileValue = (label: string) => profile.find((item) => item.label.includes(label))?.value;
   const histories = horse.performances ?? [];
-  const facts: [string, string][] = [
+  const facts: [string, string][] = ([
     ["枠番", entry?.frameNumber == null ? "" : String(entry.frameNumber)],
     ["馬体重", entry?.bodyWeight == null ? "" : String(entry.bodyWeight) + "kg"],
     ["人気", entry?.popularity == null ? "" : String(entry.popularity)],
@@ -86,7 +86,7 @@ function HorseCard({ horse }: { horse: Horse }) {
     ["父", profileValue("父") ?? ""],
     ["母", profileValue("母") ?? ""],
     ["母父", profileValue("母父") ?? ""],
-  ].filter(([, value]) => value !== "");
+  ] as [string, string][]).filter(([, value]) => value !== "");
 
   return (
     <details className="horse-detail" onToggle={(event) => setExpanded(event.currentTarget.open)}>
