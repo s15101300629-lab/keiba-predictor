@@ -158,8 +158,8 @@ for h in headers:
         if weight_parts:
             carried_weight=int(norm(max(weight_parts,key=center_y)["text"]))
         else:
-            wm=re.search(rf"(?:{coat})(\d{{2}})$",identity)
-            if wm: carried_weight=int(wm.group(1))
+            wm=re.search(rf"(?:{coat})(\d{{2}}(?:[．.]\d)?)$",identity)
+            if wm: carried_weight=float(wm.group(1).replace("．","."))
 
         # Use separate PDF text spans and their x-coordinates for the narrow
         # official columns. This avoids confusing a two-digit weight change
@@ -286,7 +286,7 @@ for h in headers:
     date_year=int(year_match.group(1)) if year_match else URL_YEAR
     date=f"{date_year:04d}-{int(day_match.group(1)):02d}-{int(day_match.group(2)):02d}" if date_year and day_match else None
     distance_match=re.search(r"(\d)[，,](\d{3})",card_text)
-    distance_plain_match=re.search(r"(?<!\d)(\d{3,4})\\s*m",card_text,re.I)
+    distance_plain_match=re.search(r"(?<!\d)(\d{3,4})\s*m",card_text,re.I)
     index_match=re.match(r"(\d{5})",norm(h["text"]))
     start_match=re.search(r"発走(\d+)時(\d+)分",card_text)
     direction_match=re.search(r"（(?:芝|ダート|障害)[^）]*(右|左)",card_text)
