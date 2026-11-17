@@ -58,6 +58,15 @@ def fetch_html(url: str) -> tuple[str, str]:
         html = body.decode(charset)
     except (LookupError, UnicodeDecodeError):
         html = body.decode("utf-8", errors="replace")
+    if "\\ufffd" in html:
+        for fallback_charset in ("cp932", "shift_jis", "euc_jp"):
+            try:
+                candidate = body.decode(fallback_charset)
+            except (LookupError, UnicodeDecodeError):
+                continue
+            if "\\ufffd" not in candidate and "年" in candidate:
+                html = candidate
+                break
     return html, content_type
 
 
