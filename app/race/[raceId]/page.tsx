@@ -322,60 +322,115 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
   </details>;
 }
 
-function PredictionHorseCard({ horse, scores }: { horse: Horse; scores: FactorScore[] }) {
-  const entry = horse.raceEntry;
-  return <article className="prediction-horse">
-    <div className="prediction-horse-head">
-      {entry?.horseNumber != null && <span className="horse-number-badge">{entry.horseNumber}番</span>}
-      <div className="horse-main"><b>{horse.name}</b>
-        <small>{[entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
-      </div>
+const CATEGORY_GROUPS = [
+  { title: "成績・距離", labels: ["全体成績", "重賞実績", "前走距離"] },
+  { title: "コース・馬場適性", labels: ["コース適性", "距離適性", "馬場適性", "枠順"] },
+  { title: "騎手・位置取り", labels: ["騎手", "ポジション"] },
+  { title: "血統・調教", labels: ["血統", "種牡馬", "調教"] },
+];
+
+function OverallScoreChart({ horses, overallScores }: {
+  horses: Horse[];
+  overallScores: Map<string, OverallScore>;
+}) {
+  const rows = horses.map((horse) => ({
+    horse,
+    overall: overallScores.get(horse.horseId) ?? { score: null, rank: null, rankedCount: 0 },
+  })).filter((item) => item.overall.score !== null)
+    .sort((a, b) => (a.overall.rank ?? Number.MAX_SAFE_INTEGER) - (b.overall.rank ?? Number.MAX_SAFE_INTEGER));
+
+  return <section className="overall-chart-section">
+    <div className="result-section-heading">
+      <h3>総合スコアランキング</h3>
+      <p>各馬の評価スコアを高い順に比較しています。</p>
     </div>
-    {scores.length > 0 ? <div className="prediction-logic-list">
-      {scores.map((factor) => <div className="prediction-logic-row" key={factor.label}>
-        <div><b>{factor.label}</b><span>{factor.starts}走中 {Math.round(factor.rate * 100)}%が3着以内</span></div>
-        <strong>{factor.rank}位 / {factor.rankedCount}頭</strong>
+    {rows.length > 0 ? <div className="overall-score-chart">
+      {rows.map(({ horse, overall }) => <div className="overall-chart-row" key={horse.horseId}>
+        <div className="overall-chart-label">
+          <span className="overall-chart-rank">{overall.rank}位</span>
+          <b>{horse.name}</b>
+          <strong>{overall.score?.toFixed(1)}</strong>
+        </div>
+        <div className="overall-chart-track" role="img" aria-label={horse.name + " 総合スコア " + overall.score?.toFixed(1)}>
+          <div className="overall-chart-fill" style={{ width: Math.max(0, Math.min(100, overall.score ?? 0)) + "%" }} />
+        </div>
       </div>)}
-    </div> : <p className="prediction-no-data">評価に使える戦績データがありません</p>}
-  </article>;
+    </div> : <p className="prediction-no-data">総合スコアを算出できる馬がいません。</p>}
+    {horses.length > rows.length && <p className="chart-unranked-note">評価に必要な過去成績が不足している馬はランキング対象外です。</p>}
+  </section>;
 }
 
 function OverallHorseCard({ horse, overall, categories, factors }: {
   horse: Horse; overall: OverallScore; categories: CategoryRank[]; factors: FactorScore[];
 }) {
   const entry = horse.raceEntry;
-  return <article className="prediction-horse">
-    <div className="prediction-horse-head">
+  const factorByCategory: Record<string, string> = {
+    "コース適性": "競馬場・馬場適性",
+    "騎手": "騎手相性",
+    "枠順": "枠順実績",
+  };
+  const factorFor = (label: string) => {
+    const factorLabel = factorByCategory[label] ?? label;
+    return factors.find((factor) => factor.label === factorLabel);
+  };
+
+  return <details className="prediction-horse-details">
+    <summary className="prediction-horse-summary">
       {entry?.horseNumber != null && <span className="horse-number-badge">{entry.horseNumber}番</span>}
-      <div className="horse-main"><b>{horse.name}</b>
+      <span className="horse-main">
+        <b>{horse.name}</b>
         <small>{[entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
-      </div>
-    </div>
-    <div className="overall-score-block">
-      <div className="deviation-label"><span>総合偏差値</span>
-        <b>{overall.score === null ? "算出不可" : `偏差値 ${overall.score.toFixed(1)} ・ ${overall.rank}位 / ${overall.rankedCount}頭`}</b></div>
-      {overall.score !== null && <div className="deviation-track" role="img" aria-label={`総合偏差値 ${overall.score.toFixed(1)}`}>
-        <div className="deviation-fill" style={{ width: Math.max(0, Math.min(100, overall.score / 80 * 100)) + "%" }} />
-        <span className="deviation-average" />
-      </div>}
-    </div>
-    <div className="overall-factor-list">
-      {factors.map((factor) => <div className="deviation-row" key={factor.label}>
-        <div className="deviation-label"><span>{factor.label}</span><b>偏差値 {factor.score.toFixed(1)}</b></div>
-        <div className="deviation-track" role="img" aria-label={factor.label + "偏差値 " + factor.score.toFixed(1)}>
-          <div className="deviation-fill" style={{ width: Math.max(0, Math.min(100, factor.score / 80 * 100)) + "%" }} />
-          <span className="deviation-average" />
+      </span>
+      <span className="horse-result-rank">{overall.rank === null ? "順位なし" : overall.rank + "位"}</span>
+      <span className="horse-result-score">{overall.score === null ? "算出不可" : overall.score.toFixed(1)}</span>
+      <span className="horse-expand">＋</span>
+    </summary>
+
+    <div className="horse-result-content">
+      <section className="horse-result-overall">
+        <div className="result-section-heading">
+          <h4>総合スコア</h4>
+          <p>取得できた評価項目のスコア平均</p>
         </div>
-      </div>)}
+        <div className="horse-result-score-line">
+          <strong>{overall.score === null ? "算出不可" : overall.score.toFixed(1)}</strong>
+          <span>{overall.rank === null ? "順位対象外" : overall.rank + "位 / " + overall.rankedCount + "頭"}</span>
+        </div>
+        {overall.score !== null && <div className="overall-score-track" role="img" aria-label={"総合スコア " + overall.score.toFixed(1)}>
+          <div className="overall-score-fill" style={{ width: Math.max(0, Math.min(100, overall.score)) + "%" }} />
+        </div>}
+      </section>
+
+      <section className="horse-result-section">
+        <div className="result-section-heading">
+          <h4>評価項目別の結果</h4>
+          <p>各項目のスコア・順位・集計内容です。</p>
+        </div>
+        {CATEGORY_GROUPS.map((group) => {
+          const items = group.labels.map((label) => ({
+            item: categories.find((category) => category.label === label),
+            factor: factorFor(label),
+          })).filter((value): value is { item: CategoryRank; factor: FactorScore | undefined } => value.item !== undefined);
+          return <section className="result-category-group" key={group.title}>
+            <h5>{group.title}</h5>
+            <div className="result-category-grid">
+              {items.map(({ item, factor }) => <article className="result-category-card" key={item.label}>
+                <div className="result-category-heading">
+                  <b>{item.label}</b>
+                  <strong>{factor ? "スコア " + factor.score.toFixed(1) : item.rank === null ? "算出不可" : item.rank + "位 / " + item.total + "頭"}</strong>
+                </div>
+                {factor && <div className="category-score-track" role="img" aria-label={item.label + "スコア " + factor.score.toFixed(1)}>
+                  <div className="category-score-fill" style={{ width: Math.max(0, Math.min(100, factor.score)) + "%" }} />
+                </div>}
+                {factor && item.rank !== null && <div className="result-category-rank">{item.rank}位 / {item.total}頭</div>}
+                <p>{item.detail}</p>
+              </article>)}
+            </div>
+          </section>;
+        })}
+      </section>
     </div>
-    <div className="category-rank-list">
-      {categories.map((item) => <div className="category-rank-row" key={item.label}>
-        <b>{item.label}</b>
-        <span>{item.rank === null ? (item.detail.includes("取得済み") || item.detail.includes("未実装") ? "情報あり・評価未実装" : "算出不可") : `${item.rank}位 / ${item.total}頭`}</span>
-        <small>{item.detail}</small>
-      </div>)}
-    </div>
-  </article>;
+  </details>;
 }
 
 export default function RaceDetailPage() {
@@ -388,7 +443,7 @@ export default function RaceDetailPage() {
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [marks, setMarks] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "overall">("detail");
+  const [activeTab, setActiveTab] = useState<"detail" | "prediction">("detail");
 
   const load = useCallback(async (forceRefresh: boolean, background: boolean) => {
     try {
@@ -458,8 +513,6 @@ export default function RaceDetailPage() {
           onClick={() => setActiveTab("detail")}>レース詳細</button>
         <button type="button" role="tab" aria-selected={activeTab === "prediction"} className={"race-tab" + (activeTab === "prediction" ? " active" : "")}
           onClick={() => setActiveTab("prediction")}>AI予測結果</button>
-        <button type="button" role="tab" aria-selected={activeTab === "overall"} className={"race-tab" + (activeTab === "overall" ? " active" : "")}
-          onClick={() => setActiveTab("overall")}>総合評価</button>
       </div>
       {activeTab === "detail" && <div role="tabpanel">
         <section className="detail-section">
@@ -479,20 +532,25 @@ export default function RaceDetailPage() {
         </section>
       </div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
-        <div className="prediction-intro"><h2>AI予測ロジックの判定材料</h2>
-          <p>過去成績から全体成績・重賞実績・競馬場と芝ダート・距離・馬場・今回の騎手・今回の枠番の実績を比較しています。</p>
+        <div className="prediction-intro">
+          <h2>AI予測結果</h2>
+          <p>総合スコアは、取得できた評価項目のスコアを平均した相対評価です。全馬の比較グラフを確認し、各馬の名前をタップすると項目別の集計結果を確認できます。調教データは未取得のため、総合スコアには含めていません。</p>
         </div>
-        {horses.map((horse) => <PredictionHorseCard key={horse.horseId} horse={horse}
-          scores={factorScores.get(horse.horseId) ?? []} />)}
-      </section>}
-      {activeTab === "overall" && <section className="prediction-panel" role="tabpanel">
-        <div className="prediction-intro"><h2>全馬の総合評価</h2>
-          <p>総合偏差値は、過去成績から算出できた最大7項目の偏差値の平均です。血統情報は取得できた馬のみ表示し、調教データは未取得のため評価に含めていません。</p>
-        </div>
-        {horses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
-          overall={overallScores.get(horse.horseId) ?? { score: null, rank: null, rankedCount: 0 }}
-          categories={categoryRanks.get(horse.horseId) ?? []}
-          factors={factorScores.get(horse.horseId) ?? []} />)}
+        <OverallScoreChart horses={horses} overallScores={overallScores} />
+        <section className="horse-results-section">
+          <div className="result-section-heading">
+            <h3>各馬の評価結果</h3>
+            <p>総合順位順に表示しています。馬名をタップすると詳細が開きます。</p>
+          </div>
+          {[...horses].sort((a, b) => {
+            const rankA = overallScores.get(a.horseId)?.rank ?? Number.MAX_SAFE_INTEGER;
+            const rankB = overallScores.get(b.horseId)?.rank ?? Number.MAX_SAFE_INTEGER;
+            return rankA - rankB || (a.raceEntry?.horseNumber ?? 99) - (b.raceEntry?.horseNumber ?? 99);
+          }).map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
+            overall={overallScores.get(horse.horseId) ?? { score: null, rank: null, rankedCount: 0 }}
+            categories={categoryRanks.get(horse.horseId) ?? []}
+            factors={factorScores.get(horse.horseId) ?? []} />)}
+        </section>
       </section>}
     </>}
   </main>;
