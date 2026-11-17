@@ -10,7 +10,7 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-YEAR = int(os.environ.get("JRA_YEAR", "2025"))
+YEAR = int(os.environ.get("JRA_YEAR", "2025"))  # Selected annual PDF archive
 ROOT = Path("data/jra-results")
 ROOT.mkdir(parents=True, exist_ok=True)
 
