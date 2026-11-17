@@ -642,7 +642,12 @@ function findG1RaceUrl(
 
     const normalizedVenue = venue ? normalizeHorseName(venue) : "";
     const venueMatches = normalizedVenue
-      ? cells.some((cell) => normalizeHorseName(cell) === normalizedVenue)
+      ? cells.some((cell) => {
+          const cellVenue = normalizeHorseName(cell);
+          return cellVenue === normalizedVenue ||
+            cellVenue.includes(normalizedVenue) ||
+            normalizedVenue.includes(cellVenue);
+        })
       : false;
     if (normalizedVenue && !venueMatches) continue;
 
@@ -661,13 +666,14 @@ function findG1RaceUrl(
 
     if (links.length === 0) continue;
 
-    const nameMatchedLink = links.find((link) => {
-      const label = normalizeRaceNameForMatch(link.label);
-      return !wantedName ||
-        label === wantedName ||
-        label.includes(wantedName) ||
-        wantedName.includes(label);
-    });
+    const nameMatchedLink = wantedName
+      ? links.find((link) => {
+          const label = normalizeRaceNameForMatch(link.label);
+          return label === wantedName ||
+            label.includes(wantedName) ||
+            wantedName.includes(label);
+        })
+      : undefined;
     if (nameMatchedLink) return nameMatchedLink.href;
 
     dateVenueCandidates.push({
