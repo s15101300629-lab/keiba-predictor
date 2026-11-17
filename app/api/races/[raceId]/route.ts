@@ -596,13 +596,13 @@ function extractMonthlyJraRatings(
 
 function findG1RaceUrl(html: string, raceName: string | null, targetDate: string, baseUrl: string) {
   const wantedName = raceName ? normalizeRaceName(raceName) : "";
-  const rows = [...html.matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)];
+  const rows = [...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
 
   // 年度別一覧の同じ行にある開催日・レース名・リンクをセットで照合する。
   for (const row of rows) {
     const rowHtml = row[1];
     const rowText = cleanText(rowHtml);
-    const dateMatch = rowText.match(/(20\\d{2})年\\s*(\\d{1,2})月\\s*(\\d{1,2})日/);
+    const dateMatch = rowText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
     if (!dateMatch) continue;
 
     const rowDate = dateMatch[1] + "-" +
@@ -610,12 +610,12 @@ function findG1RaceUrl(html: string, raceName: string | null, targetDate: string
       dateMatch[3].padStart(2, "0");
     if (rowDate !== targetDate) continue;
 
-    const anchors = [...rowHtml.matchAll(/<a\\b([^>]*)>([\\s\\S]*?)<\\/a>/gi)];
+    const anchors = [...rowHtml.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)];
     for (const anchor of anchors) {
       const label = normalizeRaceName(cleanText(anchor[2]));
       if (!wantedName || label === wantedName ||
         label.includes(wantedName) || wantedName.includes(label)) {
-        const href = anchor[1].match(/\\bhref\\s*=\\s*(["'])(.*?)\\1/i)?.[2];
+        const href = anchor[1].match(/\bhref\s*=\s*(["'])(.*?)\1/i)?.[2];
         if (href) return new URL(decodeEntities(href), baseUrl).toString();
       }
     }
@@ -670,7 +670,7 @@ async function fetchG1PreRatings(
   }
 
   const pageText = cleanText(detail.html);
-  const publishedMatch = pageText.match(/(20\\d{2})年\\s*(\\d{1,2})月\\s*(\\d{1,2})日/);
+  const publishedMatch = pageText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
   const publishedDate = publishedMatch
     ? publishedMatch[1] + "-" + publishedMatch[2].padStart(2, "0") + "-" + publishedMatch[3].padStart(2, "0")
     : null;
@@ -686,11 +686,11 @@ async function fetchG1PreRatings(
 
   const wantedNames = new Set(horses.map((horse) => normalizeHorseName(horse.name)));
   const matchedNames = new Set<string>();
-  const rows = [...detail.html.matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)];
+  const rows = [...detail.html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
   result.diagnostics.parsedRowCount = rows.length;
 
   for (const rowMatch of rows) {
-    const cells = [...rowMatch[1].matchAll(/<t[dh]\\b[^>]*>([\\s\\S]*?)<\\/t[dh]>/gi)]
+    const cells = [...rowMatch[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)]
       .map((cell) => cleanText(cell[1]));
     if (cells.length < 2) continue;
 
@@ -728,7 +728,7 @@ async function fetchG1PreRatings(
       if (nextIndex >= 0 && nextIndex < segmentEnd) segmentEnd = nextIndex;
     }
 
-    const ratingMatch = afterName.slice(0, segmentEnd).match(/\\b(\\d{2,3})\\s*[SMILE]\\b/i);
+    const ratingMatch = afterName.slice(0, segmentEnd).match(/\b(\d{2,3})\s*[SMILE]\b/i);
     if (!ratingMatch) continue;
     const value = Number(ratingMatch[1]);
     if (value < 50 || value > 150) continue;
