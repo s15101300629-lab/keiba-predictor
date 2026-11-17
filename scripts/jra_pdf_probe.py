@@ -5,7 +5,9 @@ from pathlib import Path
 URL = os.environ.get("JRA_PDF_URL", "https://jra.jp/datafile/seiseki/report/2025/2025-1kyoto1.pdf")
 URL_YEAR_MATCH = re.search(r"/report/(\d{4})/", URL)
 URL_YEAR = int(URL_YEAR_MATCH.group(1)) if URL_YEAR_MATCH else None
-OUT = Path("jra-pdf-probe")
+OUT = Path(os.environ.get("JRA_OUTPUT_DIR", "jra-pdf-probe"))
+DIAGNOSTICS = os.environ.get("JRA_DIAGNOSTICS", "1") == "1"
+EXPECTED_RACES = int(os.environ.get("JRA_EXPECTED_RACES", "12"))
 OUT.mkdir(exist_ok=True)
 req = urllib.request.Request(URL, headers={"User-Agent":"Mozilla/5.0","Accept":"application/pdf"})
 with urllib.request.urlopen(req, timeout=45) as res:
@@ -13,7 +15,8 @@ with urllib.request.urlopen(req, timeout=45) as res:
 if not raw.startswith(b"%PDF"):
     raise RuntimeError(f"Not a PDF: {content_type}, {len(raw)} bytes")
 import pymupdf
-(OUT/"source.pdf").write_bytes(raw)
+if DIAGNOSTICS:
+    (OUT/"source.pdf").write_bytes(raw)
 
 def norm(s):
     return re.sub(r"\s+", "", re.sub(r"[\x00-\x1f]", "", s))
@@ -30,7 +33,8 @@ def time_to_seconds(value):
     return round(float(normalized),1)
 
 doc = pymupdf.open(stream=raw, filetype="pdf")
-doc[0].get_pixmap(matrix=pymupdf.Matrix(1.5,1.5), alpha=False).save(str(OUT/"page-1-preview.png"))
+if DIAGNOSTICS:
+    doc[0].get_pixmap(matrix=pymupdf.Matrix(1.5,1.5), alpha=False).save(str(OUT/"page-1-preview.png"))
 pages, blocks, lines, spans, chars = [], [], [], [], []
 popularity_maps = {}
 for pn, page in enumerate(doc, 1):
@@ -76,9 +80,11 @@ for pn, page in enumerate(doc, 1):
                     chars.append({"page":pn,"bbox":list(ch["bbox"]),"text":ch["c"],"font":sp["font"]})
 
 combined="\n\n".join(f"===== PAGE {p['page']} =====\n{p['text']}" for p in pages)
-(OUT/"sample-extracted.txt").write_text(combined,encoding="utf-8")
-for name,data in [("layout-blocks.json",blocks),("layout-lines.json",lines),("layout-spans.json",spans),("layout-chars.json",chars)]:
-    (OUT/name).write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding="utf-8")
+if DIAGNOSTICS:
+    (OUT/"sample-extracted.txt").write_text(combined,encoding="utf-8")
+if DIAGNOSTICS:
+    for name,data in [("layout-blocks.json",blocks),("layout-lines.json",lines),("layout-spans.json",spans),("layout-chars.json",chars)]:
+        (OUT/name).write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding="utf-8")
 
 headers=[]
 for b in blocks:
@@ -329,7 +335,8 @@ for h in headers:
                   "declaredRunnerCount":declared,"parsedRunnerCount":len(horses),
                   "horses":horses})
 
-if len(headers)!=12: errors.append(f"race headers: {len(headers)} != 12")
+if EXPECTED_RACES > 0 and len(headers)!=EXPECTED_RACES: errors.append(f"race headers: {len(headers)} != {EXPECTED_RACES}")
+if not headers: errors.append("no race headers found")
 if len({r["raceNumber"] for r in races})!=len(races): errors.append("duplicate race numbers")
 for race in races:
     for field in ("date","venue","distanceMeters","surface","going"):
@@ -372,5 +379,5 @@ summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCo
 (OUT/"parsed-races.json").write_text(json.dumps(races,ensure_ascii=False,indent=2),encoding="utf-8")
 (OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
 print(json.dumps(summary,ensure_ascii=False))
-if len(doc)==0 or len(combined)<1000 or len(headers)!=12 or errors:
+if len(doc)==0 or len(combined)<1000 or not headers or errors:
     raise RuntimeError(f"Structured validation failed: {len(errors)} errors")
