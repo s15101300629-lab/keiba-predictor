@@ -33,7 +33,9 @@ type ResponseData = {
   results: Horse[]; error?: string;
 };
 type CachedRace = { savedAt: number; data: ResponseData };
-type FactorScore = { label: string; score: number; starts: number; rate: number };
+type FactorScore = { label: string; score: number; starts: number; rate: number; rank: number; rankedCount: number };
+type OverallScore = { score: number | null; rank: number | null; rankedCount: number };
+type CategoryRank = { label: string; rank: number | null; total: number; detail: string };
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
 const cacheKey = (id: string) => "keiba-race-detail-v1:" + id;
@@ -100,12 +102,100 @@ function buildFactorScores(horses: Horse[]): Map<string, FactorScore[]> {
     const mean = values.reduce((sum, item) => sum + item.rate, 0) / values.length;
     const variance = values.reduce((sum, item) => sum + Math.pow(item.rate - mean, 2), 0) / values.length;
     const sd = Math.sqrt(variance);
-    for (const item of values) {
-      const score = sd === 0 ? 50 : Math.max(20, Math.min(80, 50 + 10 * (item.rate - mean) / sd));
+    const scored = values.map((item) => ({
+      ...item,
+      score: sd === 0 ? 50 : Math.max(20, Math.min(80, 50 + 10 * (item.rate - mean) / sd)),
+    })).sort((a, b) => b.score - a.score);
+    let currentRank = 0;
+    let previousScore: number | null = null;
+    scored.forEach((item, index) => {
+      if (previousScore === null || Math.abs(previousScore - item.score) >= 0.05) currentRank = index + 1;
+      previousScore = item.score;
       const list = result.get(item.horseId) ?? [];
-      list.push({ label: factor.label, score: Math.round(score * 10) / 10, starts: item.starts, rate: item.rate });
+      list.push({
+        label: factor.label,
+        score: Math.round(item.score * 10) / 10,
+        starts: item.starts,
+        rate: item.rate,
+        rank: currentRank,
+        rankedCount: scored.length,
+      });
       result.set(item.horseId, list);
+    });
+  }
+  return result;
+}
+
+function buildOverallScores(horses: Horse[], factorScores: Map<string, FactorScore[]>): Map<string, OverallScore> {
+  const raw = horses.map((horse) => {
+    const values = factorScores.get(horse.horseId) ?? [];
+    return { horseId: horse.horseId, score: values.length ? values.reduce((sum, item) => sum + item.score, 0) / values.length : null };
+  });
+  const ranked = raw.filter((item): item is { horseId: string; score: number } => item.score !== null)
+    .sort((a, b) => b.score - a.score);
+  const result = new Map<string, OverallScore>();
+  let currentRank = 0;
+  let previousScore: number | null = null;
+  ranked.forEach((item, index) => {
+    if (previousScore === null || Math.abs(previousScore - item.score) >= 0.05) currentRank = index + 1;
+    previousScore = item.score;
+    result.set(item.horseId, { score: Math.round(item.score * 10) / 10, rank: currentRank, rankedCount: ranked.length });
+  });
+  raw.filter((item) => item.score === null).forEach((item) => {
+    result.set(item.horseId, { score: null, rank: null, rankedCount: ranked.length });
+  });
+  return result;
+}
+
+function buildCategoryRanks(
+  horses: Horse[],
+  factorScores: Map<string, FactorScore[]>,
+  distanceMeters: number | null
+): Map<string, CategoryRank[]> {
+  const result = new Map<string, CategoryRank[]>();
+  const categories = ["騎手", "調教", "血統", "距離適性", "枠順", "種牡馬", "前走距離", "ポジション"];
+  for (const horse of horses) {
+    result.set(horse.horseId, categories.map((label) => ({
+      label, rank: null, total: 0, detail: "評価に必要なデータが未取得",
+    })));
+  }
+  const distanceValues = horses.map((horse) => {
+    const value = (factorScores.get(horse.horseId) ?? []).find((item) => item.label === "距離適性");
+    return value ? { horseId: horse.horseId, score: value.score, starts: value.starts, rate: value.rate } : null;
+  }).filter((value): value is { horseId: string; score: number; starts: number; rate: number } => value !== null)
+    .sort((a, b) => b.score - a.score);
+  let distanceRank = 0;
+  let previousDistanceScore: number | null = null;
+  distanceValues.forEach((value, index) => {
+    if (previousDistanceScore === null || Math.abs(previousDistanceScore - value.score) >= 0.05) distanceRank = index + 1;
+    previousDistanceScore = value.score;
+    const row = result.get(value.horseId)?.find((item) => item.label === "距離適性");
+    if (row) {
+      row.rank = distanceRank;
+      row.total = distanceValues.length;
+      row.detail = `近似距離 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`;
     }
+  });
+  if (distanceMeters !== null) {
+    const lastDistances = horses.map((horse) => {
+      const first = horse.performances?.[0]?.values ?? {};
+      const entry = Object.entries(first).find(([key]) => /距離/.test(key.replace(/\s+/g, "")));
+      const match = entry?.[1]?.match(/(\d{3,4})\s*m?/i);
+      return match ? { horseId: horse.horseId, distance: Number(match[1]), gap: Math.abs(Number(match[1]) - distanceMeters) } : null;
+    }).filter((value): value is { horseId: string; distance: number; gap: number } => value !== null)
+      .sort((a, b) => a.gap - b.gap);
+    let previousGap: number | null = null;
+    let previousRank = 0;
+    lastDistances.forEach((value, index) => {
+      if (previousGap === null || previousGap !== value.gap) previousRank = index + 1;
+      previousGap = value.gap;
+      const row = result.get(value.horseId)?.find((item) => item.label === "前走距離");
+      if (row) {
+        row.rank = previousRank;
+        row.total = lastDistances.length;
+        row.detail = `前走 ${value.distance}m・今回との差 ${value.gap}m`;
+      }
+    });
   }
   return result;
 }
@@ -165,16 +255,50 @@ function PredictionHorseCard({ horse, scores }: { horse: Horse; scores: FactorSc
         <small>{[entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
       </div>
     </div>
-    {scores.length > 0 ? <div className="prediction-factors">
-      {scores.map((factor) => <div className="deviation-row" key={factor.label}>
+    {scores.length > 0 ? <div className="prediction-logic-list">
+      {scores.map((factor) => <div className="prediction-logic-row" key={factor.label}>
+        <div><b>{factor.label}</b><span>{factor.starts}走中 {Math.round(factor.rate * 100)}%が3着以内</span></div>
+        <strong>{factor.rank}位 / {factor.rankedCount}頭</strong>
+      </div>)}
+    </div> : <p className="prediction-no-data">評価に使える戦績データがありません</p>}
+  </article>;
+}
+
+function OverallHorseCard({ horse, overall, categories, factors }: {
+  horse: Horse; overall: OverallScore; categories: CategoryRank[]; factors: FactorScore[];
+}) {
+  const entry = horse.raceEntry;
+  return <article className="prediction-horse">
+    <div className="prediction-horse-head">
+      {entry?.horseNumber != null && <span className="horse-number-badge">{entry.horseNumber}番</span>}
+      <div className="horse-main"><b>{horse.name}</b>
+        <small>{[entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
+      </div>
+    </div>
+    <div className="overall-score-block">
+      <div className="deviation-label"><span>総合偏差値</span>
+        <b>{overall.score === null ? "算出不可" : `偏差値 ${overall.score.toFixed(1)} ・ ${overall.rank}位 / ${overall.rankedCount}頭`}</b></div>
+      {overall.score !== null && <div className="deviation-track" role="img" aria-label={`総合偏差値 ${overall.score.toFixed(1)}`}>
+        <div className="deviation-fill" style={{ width: Math.max(0, Math.min(100, overall.score / 80 * 100)) + "%" }} />
+        <span className="deviation-average" />
+      </div>}
+    </div>
+    <div className="overall-factor-list">
+      {factors.map((factor) => <div className="deviation-row" key={factor.label}>
         <div className="deviation-label"><span>{factor.label}</span><b>偏差値 {factor.score.toFixed(1)}</b></div>
-        <div className="deviation-track" role="img" aria-label={factor.label + "の偏差値 " + factor.score.toFixed(1)}>
+        <div className="deviation-track" role="img" aria-label={factor.label + "偏差値 " + factor.score.toFixed(1)}>
           <div className="deviation-fill" style={{ width: Math.max(0, Math.min(100, factor.score / 80 * 100)) + "%" }} />
           <span className="deviation-average" />
         </div>
-        <small>対象 {factor.starts}走 ・ 3着以内率 {Math.round(factor.rate * 100)}%</small>
       </div>)}
-    </div> : <p className="prediction-no-data">評価に使える戦績データがありません</p>}
+    </div>
+    <div className="category-rank-list">
+      {categories.map((item) => <div className="category-rank-row" key={item.label}>
+        <b>{item.label}</b>
+        <span>{item.rank === null ? "算出不可" : `${item.rank}位 / ${item.total}頭`}</span>
+        <small>{item.detail}</small>
+      </div>)}
+    </div>
   </article>;
 }
 
@@ -188,7 +312,7 @@ export default function RaceDetailPage() {
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [marks, setMarks] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"detail" | "prediction">("detail");
+  const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "overall">("detail");
 
   const load = useCallback(async (forceRefresh: boolean, background: boolean) => {
     try {
@@ -225,6 +349,8 @@ export default function RaceDetailPage() {
   const conditions = data?.raceConditions;
   const horses = data?.results ?? [];
   const factorScores = useMemo(() => buildFactorScores(horses), [horses]);
+  const overallScores = useMemo(() => buildOverallScores(horses, factorScores), [horses, factorScores]);
+  const categoryRanks = useMemo(() => buildCategoryRanks(horses, factorScores, conditions?.distanceMeters ?? null), [horses, factorScores, conditions?.distanceMeters]);
   const handleMarkChange = (horseId: string, mark: string) => {
     setMarks((current) => {
       const next = { ...current };
@@ -256,6 +382,8 @@ export default function RaceDetailPage() {
           onClick={() => setActiveTab("detail")}>レース詳細</button>
         <button type="button" role="tab" aria-selected={activeTab === "prediction"} className={"race-tab" + (activeTab === "prediction" ? " active" : "")}
           onClick={() => setActiveTab("prediction")}>AI予測結果</button>
+        <button type="button" role="tab" aria-selected={activeTab === "overall"} className={"race-tab" + (activeTab === "overall" ? " active" : "")}
+          onClick={() => setActiveTab("overall")}>総合評価</button>
       </div>
       {activeTab === "detail" && <div role="tabpanel">
         <section className="detail-section">
@@ -275,11 +403,20 @@ export default function RaceDetailPage() {
         </section>
       </div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
-        <div className="prediction-intro"><h2>各馬の評価</h2>
-          <p>偏差値50を出走馬の平均として、各項目の成績率を相対比較しています。バーが長いほど、このレースの出走馬内で高い評価です。</p>
+        <div className="prediction-intro"><h2>AI予測ロジックの判定材料</h2>
+          <p>現在取得できている過去成績を使い、全体成績・重賞実績・競馬場適性・距離適性・馬場適性を比較しています。</p>
         </div>
         {horses.map((horse) => <PredictionHorseCard key={horse.horseId} horse={horse}
           scores={factorScores.get(horse.horseId) ?? []} />)}
+      </section>}
+      {activeTab === "overall" && <section className="prediction-panel" role="tabpanel">
+        <div className="prediction-intro"><h2>全馬の総合評価</h2>
+          <p>総合偏差値は、現時点で算出可能な5項目の偏差値の平均です。項目別順位は評価可能な馬同士で比較しています。取得できていない項目は順位を付けていません。</p>
+        </div>
+        {horses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
+          overall={overallScores.get(horse.horseId) ?? { score: null, rank: null, rankedCount: 0 }}
+          categories={categoryRanks.get(horse.horseId) ?? []}
+          factors={factorScores.get(horse.horseId) ?? []} />)}
       </section>}
     </>}
   </main>;
