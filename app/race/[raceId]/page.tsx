@@ -32,6 +32,22 @@ type CachedRace = {
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
 const cacheKey = (raceId: string) => "keiba-race-detail-v1:" + raceId;
+const marksCacheKey = (raceId: string) => "keiba-race-marks-v1:" + raceId;
+const MARK_OPTIONS = ["", "◎", "○", "▲", "△", "☆", "注", "消"];
+function readMarks(raceId: string): Record<string, string> {
+  try {
+    const raw = window.localStorage.getItem(marksCacheKey(raceId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(Object.entries(parsed).filter(([, value]) =>
+      typeof value === "string" && MARK_OPTIONS.includes(value)));
+  } catch { return {}; }
+}
+function saveMarks(raceId: string, marks: Record<string, string>) {
+  try { window.localStorage.setItem(marksCacheKey(raceId), JSON.stringify(marks)); }
+  catch { /* 保存できない場合も印の画面操作は継続する */ }
+}
 
 function readCachedRace(raceId: string): CachedRace | null {
   try {
@@ -72,7 +88,7 @@ function formatSavedAt(timestamp: number | null) {
   });
 }
 
-function HorseCard({ horse }: { horse: Horse }) {
+function HorseCard({ horse, mark, onMarkChange }: { horse: Horse; mark: string; onMarkChange: (horseId: string, mark: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const entry = horse.raceEntry;
   const profile = horse.profile ?? [];
@@ -100,6 +116,10 @@ function HorseCard({ horse }: { horse: Horse }) {
         </span>
         <span className="horse-expand">{expanded ? "－" : "＋"}</span>
       </summary>
+      <select className="horse-mark-select" aria-label={horse.name + "の印"} value={mark}
+        onChange={(event) => onMarkChange(horse.horseId, event.target.value)}>
+        {MARK_OPTIONS.map((option) => <option key={option || "none"} value={option}>{option || "印なし"}</option>)}
+      </select>
       {expanded && (
         <div className="horse-body">
           {facts.length > 0 && (
@@ -133,6 +153,7 @@ export default function RaceDetailPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [cacheChecked, setCacheChecked] = useState(false);
+  const [marks, setMarks] = useState<Record<string, string>>({});
 
   const load = useCallback(async (forceRefresh: boolean, background: boolean) => {
     try {
@@ -170,6 +191,7 @@ export default function RaceDetailPage() {
       return;
     }
 
+    setMarks(readMarks(raceId));
     const cached = readCachedRace(raceId);
     setCacheChecked(true);
     if (cached) {
@@ -187,6 +209,15 @@ export default function RaceDetailPage() {
 
   const conditions = data?.raceConditions;
   const horses = data?.results ?? [];
+  const handleMarkChange = (horseId: string, mark: string) => {
+    setMarks((current) => {
+      const next = { ...current };
+      if (mark) next[horseId] = mark;
+      else delete next[horseId];
+      saveMarks(raceId, next);
+      return next;
+    });
+  };
 
   return (
     <main className="race-detail-shell">
@@ -237,7 +268,9 @@ export default function RaceDetailPage() {
           </section>
           <section className="detail-section">
             <h2>出走馬 <span style={{ color: "var(--muted)", fontSize: 12 }}>（{data.horseCount}頭）</span></h2>
-            {horses.map((horse) => <HorseCard key={horse.horseId} horse={horse} />)}
+            {horses.map((horse) => (
+              <HorseCard key={horse.horseId} horse={horse} mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />
+            ))}
           </section>
         </>
       )}
