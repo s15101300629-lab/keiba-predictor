@@ -73,7 +73,7 @@ for name,data in [("layout-blocks.json",blocks),("layout-lines.json",lines),("la
 headers=[]
 for b in blocks:
     m=re.search(r"第\s*(\d+)\s*競走",b["text"])
-    if m: headers.append({"page":b["page"],"x":b["bbox"][0],"y0":b["bbox"][1],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
+    if m and re.match(r"^\d{5}",norm(b["text"])) and re.search(r"\d{4}年.*第\d+競走",norm(b["text"])): headers.append({"page":b["page"],"x":b["bbox"][0],"y0":b["bbox"][1],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
 races,errors=[],[]
 coat=r"黒鹿|青鹿|青毛|鹿毛|栃栗|鹿|栗|芦|白毛|白|青"
 identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン)?(\d)({coat})")
