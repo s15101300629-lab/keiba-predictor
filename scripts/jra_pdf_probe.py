@@ -220,7 +220,16 @@ for h in headers:
 
         horse_name=im.group(1)
         horse_sex=im.group(2)
-        if horse_sex is None and re.search(r"[\x01-\x1f]",identity_raw):
+        # JRA prints gelding (せん) with a custom-font glyph in the sex
+        # column. When the horse identity had to fall back to the number line,
+        # inspect that dedicated column instead of losing the glyph.
+        sex_x=(108,115) if left else (518,525)
+        sex_markers=[x for x in chars if x["page"]==h["page"]
+                     and sex_x[0]<=x["bbox"][0]<sex_x[1]
+                     and abs(center_y(x)-ny)<=2.5
+                     and len(x["text"])==1 and ord(x["text"])<32
+                     and x["font"].startswith("EdiF-")]
+        if horse_sex is None and (re.search(r"[\x01-\x1f]",identity_raw) or sex_markers):
             horse_sex="せん"
         horse_age=int(im.group(3))
         birth_year=URL_YEAR-horse_age if URL_YEAR else None
