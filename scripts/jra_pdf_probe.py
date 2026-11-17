@@ -182,7 +182,7 @@ for h in headers:
             glyph_code=ord(glyph_span["text"])
             popularity=popularity_maps.get(f"{h['page']}:{glyph_span['font']}",{}).get(glyph_code)
 
-        jockey_x=(150,192.1) if left else (560,603.0)
+        jockey_x=(150,192.1) if left else (560,602.8)
         jockey_parts=[x for x in chars if x["page"]==h["page"] and jockey_x[0]<=x["bbox"][0]<jockey_x[1] and abs(center_y(x)-ny)<=2.5]
         jockey_parts.sort(key=lambda x:x["bbox"][0])
         jockey_raw=norm("".join(x["text"] for x in jockey_parts)) or None
