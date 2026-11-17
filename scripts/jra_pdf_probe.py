@@ -129,7 +129,7 @@ for h in headers:
         if not im:
             fallback=nm.group(3)
             im=identity_re.search(fallback)
-            if im: identity=fallback; source="number_line_remainder"
+            if im: identity=fallback; identity_raw=fallback; source="number_line_remainder"
         if not im:
             errors.append(f"R{h['no']} horse {horse_no}: identity parse failed {identity!r}")
             continue
