@@ -82,10 +82,11 @@ function extractTables(html: string) {
   return tables;
 }
 
-async function fetchHtml(url: string, revalidateSeconds: number) {
+async function fetchHtml(url: string, revalidateSeconds: number, forceRefresh: boolean) {
   const response = await fetch(url, {
-    cache: "force-cache",
-    next: { revalidate: revalidateSeconds },
+    ...(forceRefresh
+      ? { cache: "no-store" as const }
+      : { cache: "force-cache" as const, next: { revalidate: revalidateSeconds } }),
     headers: { Accept: "text/html" },
     signal: AbortSignal.timeout(10000),
   });
@@ -425,7 +426,9 @@ export async function GET(
 ) {
   const startedAt = Date.now();
   const { raceId } = await context.params;
-  const summaryOnly = new URL(_request.url).searchParams.get("summary") === "1";
+  const searchParams = new URL(_request.url).searchParams;
+  const summaryOnly = searchParams.get("summary") === "1";
+  const forceRefresh = searchParams.get("refresh") === "1";
 
   if (!/^\d{12}$/.test(raceId)) {
     return NextResponse.json(
@@ -437,7 +440,7 @@ export async function GET(
   try {
     const raceUrl =
       `https://race.netkeiba.com/race/shutuba.html?race_id=${raceId}`;
-    const race = await fetchHtml(raceUrl, 600);
+    const race = await fetchHtml(raceUrl, 3600, forceRefresh);
 
     if (!race.ok) {
       return NextResponse.json(
@@ -483,7 +486,7 @@ export async function GET(
 
         try {
           const url = `https://db.sp.netkeiba.com/horse/${horse.horseId}/`;
-          const page = await fetchHtml(url, 86400);
+          const page = await fetchHtml(url, 604800, forceRefresh);
 
           if (!page.ok) {
             results[index] = {
