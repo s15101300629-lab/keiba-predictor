@@ -287,6 +287,8 @@ for race in races:
         if race["last4F"] is None or race["last3F"] is None:
             errors.append(f"R{race['raceNumber']}: missing final 4F/3F")
         winner=next((h for h in race["horses"] if h["finishOrder"]==1),None)
+        if winner is None or winner["finishTime"] is None:
+            errors.append(f"R{race['raceNumber']}: winner finish time missing")
         if winner and winner["finishTime"] and race["lapTimes"]:
             tm=re.fullmatch(r"(\d+):(\d+\.\d)",winner["finishTime"])
             if tm:
