@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/jra-pdf-debug.yml
       - scripts/jra_pdf_probe.py
+      - scripts/jra_jockey_probe.py
   workflow_dispatch:
 
 permissions:
@@ -24,6 +25,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install --disable-pip-version-check pymupdf
+      - name: Probe official JRA jockey name lists
+        run: python scripts/jra_jockey_probe.py
       - name: Parse selected problematic PDFs with full diagnostics
         run: |
           set +e
@@ -50,5 +53,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jra-pdf-parser-debug
-          path: jra-debug/
+          path: |
+            jra-debug/
+            jra-jockey-probe/
           if-no-files-found: error
