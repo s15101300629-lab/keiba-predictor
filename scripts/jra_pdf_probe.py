@@ -100,7 +100,7 @@ for h in headers:
         continue
 
     number_x=(18,42) if left else (429,452)
-    identity_x=(45,145) if left else (455,555)
+    identity_x=(45,145) if left else (449.5,555)
     number_lines=[x for x in cl if number_x[0]<=x["bbox"][0]<=number_x[1]
                   and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y]
     horses=[]
