@@ -105,7 +105,7 @@ for b in blocks:
             errors.append(f"R{race_no}: race header line missing on page {b['page']}")
 races,errors=[],[]
 coat=r"黒鹿|青鹿|青毛|鹿毛|栃栗|鹿|栗|芦|白毛|白|青"
-identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン|[\x01-\x1f])(\d{1,2})({coat})")
+identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン|[\x01-\x1f])(\d{{1,2}})({coat})")
 for h in headers:
     left=h["x"]<420
     col=lambda x:x["page"]==h["page"] and ((x["bbox"][0]<420)==left)
