@@ -164,7 +164,7 @@ async function fetchRaceList(date: string): Promise<string> {
 
 export async function GET() {
   try {
-    // 日本時間の今週（月曜〜日曜）を対象に、開催日ごとの一覧を取得する。
+    // 日本時間の今日から当月末までを対象にする。過去の開催日は予想対象から除外する。
     const todayParts = new Intl.DateTimeFormat("en-US", {
       timeZone: "Asia/Tokyo",
       year: "numeric",
@@ -175,34 +175,34 @@ export async function GET() {
     const month = Number(todayParts.find((part) => part.type === "month")?.value);
     const day = Number(todayParts.find((part) => part.type === "day")?.value);
     const today = new Date(Date.UTC(year, month - 1, day));
-    const mondayOffset = (today.getUTCDay() + 6) % 7;
-    const monday = new Date(today);
-    monday.setUTCDate(monday.getUTCDate() - mondayOffset);
-    const dates = Array.from({ length: 7 }, (_, offset) => {
-      const date = new Date(monday);
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const dates = Array.from({ length: lastDay - day + 1 }, (_, offset) => {
+      const date = new Date(today);
       date.setUTCDate(date.getUTCDate() + offset);
       return String(date.getUTCFullYear()) +
         String(date.getUTCMonth() + 1).padStart(2, "0") +
         String(date.getUTCDate()).padStart(2, "0");
     });
+
     const htmlByDate = await Promise.all(dates.map(async (date) => ({
       date,
       html: await fetchRaceList(date),
     })));
 
     const races = htmlByDate.flatMap(({ date, html }) => parseRaces(html, date));
-    const venues = Array.from(new Set(races.map((race) => race.venue)));
+    const raceDates = Array.from(new Set(races.map((race) => race.raceDate))).sort();
 
     return NextResponse.json(
       {
         ok: true,
+        month: String(month).padStart(2, "0"),
+        year,
         startDate: dates[0],
         endDate: dates[dates.length - 1],
-        dateCount: dates.length,
+        raceDates,
         raceCount: races.length,
-        venues,
         races,
-        filter: "今週（月曜〜日曜）に開催される各競馬場の11R（メイン）および重賞のみ。平場は除外。",
+        filter: "日本時間の今日から当月末までに開催される日の各競馬場の11R（メイン）および重賞のみ。平場は除外。",
       },
       {
         headers: {
