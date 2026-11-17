@@ -24,6 +24,32 @@ type RaceListResponse = {
 };
 
 const VENUE_ORDER = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
+const CLIENT_CACHE_TTL_MS = 10 * 60 * 1000;
+const RACE_LIST_CACHE_KEY = "keiba-race-list-v1";
+type CachedRaceList = { savedAt: number; data: RaceListResponse };
+
+function getJstToday() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  return { year: Number(year), month, today: year + month + day };
+}
+function readRaceListCache(): CachedRaceList | null {
+  try {
+    const raw = window.localStorage.getItem(RACE_LIST_CACHE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as CachedRaceList;
+    if (!cached || typeof cached.savedAt !== "number" || !cached.data?.ok ||
+      !Array.isArray(cached.data.races) || !Array.isArray(cached.data.raceDates) ||
+      typeof cached.data.month !== "string" || typeof cached.data.year !== "number") return null;
+    return cached;
+  } catch { return null; }
+}
+function saveRaceListCache(data: RaceListResponse) {
+  try { window.localStorage.setItem(RACE_LIST_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data })); }
+  catch { /* 保存できない環境でも通常の取得・表示は継続する */ }
+}
 
 function formatTabDate(date: string) {
   if (!/^\d{8}$/.test(date)) return date;
@@ -42,29 +68,42 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
+    const today = getJstToday();
+    const cached = readRaceListCache();
+    const cacheMatchesMonth = cached?.data.year === today.year && cached?.data.month === today.month;
+    const cacheHasToday = cached?.data.startDate === today.today;
+    const hasCache = Boolean(cached && cacheMatchesMonth);
+    if (hasCache && cached) {
+      const dates = cached.data.raceDates ?? [];
+      setRaces(cached.data.races ?? []);
+      setRaceDates(dates);
+      setMonth(cached.data.month ?? "");
+      setSelectedDate((current) => dates.includes(current) ? current : dates[0] ?? "");
+      setLoading(false);
+    }
+    const cacheIsFresh = Boolean(cached && cacheMatchesMonth && cacheHasToday &&
+      Date.now() - cached.savedAt < CLIENT_CACHE_TTL_MS);
+    if (cacheIsFresh) return () => { active = false; };
     async function load() {
       try {
-        setLoading(true);
+        if (!hasCache) setLoading(true);
         setError("");
         const response = await fetch("/api/race-list", { cache: "no-store" });
         const data = (await response.json()) as RaceListResponse;
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || `開催情報の取得に失敗しました（HTTP ${response.status}）`);
-        }
+        if (!response.ok || !data.ok) throw new Error(data.error || `開催情報の取得に失敗しました（HTTP ${response.status}）`);
         if (active) {
           const dates = data.raceDates ?? [];
           setRaces(data.races ?? []);
           setRaceDates(dates);
           setMonth(data.month ?? "");
-          setSelectedDate(dates[0] ?? "");
+          setSelectedDate((current) => dates.includes(current) ? current : dates[0] ?? "");
+          saveRaceListCache(data);
         }
       } catch (err) {
-        if (active) setError(err instanceof Error ? err.message : "開催情報の取得に失敗しました。");
-      } finally {
-        if (active) setLoading(false);
-      }
+        if (active && !hasCache) setError(err instanceof Error ? err.message : "開催情報の取得に失敗しました。");
+      } finally { if (active) setLoading(false); }
     }
-    load();
+    void load();
     return () => { active = false; };
   }, []);
 
