@@ -463,40 +463,71 @@ function createEmptyRaceHistoryStats(requestedYears: number[], status: RaceHisto
 function extractJraHistoricalEntries(html: string): JraHistoricalEntry[] {
   const tableRegex = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
   const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-  const cellRegex = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
+  const cellRegex = /<(t[dh])\b([^>]*)>([\s\S]*?)<\/\1>/gi;
   let tableMatch: RegExpExecArray | null;
+
+  const cellText = (value: string) => cleanText(
+    value.replace(/<img\b[^>]*\balt\s*=\s*(["'])(.*?)\1[^>]*>/gi, " $2 ")
+  );
+
   while ((tableMatch = tableRegex.exec(html)) !== null) {
-    const rows: string[][] = [];
+    const rows: { raw: string; cells: { text: string; raw: string; tag: string; attrs: string }[] }[] = [];
     let rowMatch: RegExpExecArray | null;
     rowRegex.lastIndex = 0;
     while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
-      const cells: string[] = [];
+      const cells: { text: string; raw: string; tag: string; attrs: string }[] = [];
       let cellMatch: RegExpExecArray | null;
       cellRegex.lastIndex = 0;
-      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) cells.push(cellMatch[1]);
-      if (cells.length) rows.push(cells);
+      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
+        cells.push({
+          text: cellText(cellMatch[3]),
+          raw: cellMatch[3],
+          tag: cellMatch[1].toLowerCase(),
+          attrs: cellMatch[2],
+        });
+      }
+      if (cells.length) rows.push({ raw: rowMatch[1], cells });
     }
-    const headerIndex = rows.findIndex((cells) => {
-      const h = cells.map(cleanText).join(" ");
-      return h.includes("着順") && h.includes("馬名") && h.includes("馬番") && h.includes("騎手");
-    });
-    if (headerIndex < 0) continue;
-    const headers = rows[headerIndex].map(cleanText);
-    const idx = (name: string) => headers.findIndex((h) => h.includes(name));
-    const columns = { finish: idx("着順"), frame: idx("枠"), number: idx("馬番"), name: idx("馬名"), jockey: idx("騎手") };
+
+    const firstDataRow = rows.findIndex((row) => /\/horse\/\d+/.test(row.raw));
+    if (firstDataRow < 1) continue;
+
+    const headerRows = rows.slice(0, firstDataRow);
+    const width = Math.max(...headerRows.map((row) => row.cells.length));
+    const headers = Array.from({ length: width }, (_, column) =>
+      headerRows.map((row) => row.cells[column]?.text ?? "").join("")
+    );
+    const findColumn = (pattern: RegExp) => headers.findIndex((value) => pattern.test(value.replace(/\s+/g, "")));
+    const columns = {
+      finish: findColumn(/着順/),
+      frame: findColumn(/枠/),
+      number: findColumn(/馬番/),
+      name: findColumn(/馬名/),
+      jockey: findColumn(/騎手名?/),
+    };
     if (columns.finish < 0 || columns.number < 0 || columns.name < 0 || columns.jockey < 0) continue;
+
     const entries: JraHistoricalEntry[] = [];
-    for (const cells of rows.slice(headerIndex + 1)) {
-      const horseNumber = parseNumber(cleanText(cells[columns.number] ?? ""));
-      const horseName = cleanText(cells[columns.name] ?? "");
+    for (const row of rows.slice(firstDataRow)) {
+      if (!/\/horse\/\d+/.test(row.raw)) continue;
+      const get = (index: number) => row.cells[index];
+      const horseNumber = parseNumber(get(columns.number)?.text);
+      const nameCell = get(columns.name);
+      const horseName = nameCell?.text ?? "";
       if (horseNumber === null || !horseName) continue;
-      const frameCell = cells[columns.frame] ?? "";
-      const frameMatch = frameCell.match(/枠\s*(\d+)/i) ?? cleanText(frameCell).match(/^\s*(\d+)\s*$/);
-      const finishMatch = cleanText(cells[columns.finish] ?? "").match(/^\s*(\d+)/);
-      const jockey = cleanText(cells[columns.jockey] ?? "");
+
+      const frameCell = get(columns.frame);
+      const frameRaw = frameCell?.raw ?? "";
+      const frameAlt = frameRaw.match(/\balt\s*=\s*(["'])(.*?)\1/i)?.[2] ?? "";
+      const frameText = (frameAlt + " " + (frameCell?.text ?? "")).trim();
+      const frameMatch = frameText.match(/(?:枠)?\s*(\d+)(?:\D|$)/);
+      const finishMatch = (get(columns.finish)?.text ?? "").match(/^\s*(\d+)/);
+      const jockey = get(columns.jockey)?.text ?? "";
+
       entries.push({
         frameNumber: frameMatch ? Number(frameMatch[1]) : null,
-        horseNumber, horseName,
+        horseNumber,
+        horseName,
         jockey: jockey && !/^(?:-|--|取消|除外)$/u.test(jockey) ? jockey : null,
         finish: finishMatch ? Number(finishMatch[1]) : null,
       });
@@ -505,7 +536,6 @@ function extractJraHistoricalEntries(html: string): JraHistoricalEntry[] {
   }
   return [];
 }
-
 function toRaceHistoryMetric(value: { starts: number; wins: number; top3: number }): RaceHistoryMetric {
   return { ...value, winRate: value.starts ? value.wins / value.starts : 0, placeRate: value.starts ? value.top3 / value.starts : 0 };
 }
