@@ -94,7 +94,7 @@ for b in blocks:
     if m and re.match(r"^\d{5}",normalized_header) and year_or_venue: headers.append({"page":b["page"],"x":b["bbox"][0],"y0":b["bbox"][1],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
 races,errors=[],[]
 coat=r"黒鹿|青鹿|青毛|鹿毛|栃栗|鹿|栗|芦|白毛|白|青"
-identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン)?(\d)({coat})")
+identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン|[\x01-\x1f])(\d)({coat})")
 for h in headers:
     left=h["x"]<420
     col=lambda x:x["page"]==h["page"] and ((x["bbox"][0]<420)==left)
@@ -126,22 +126,25 @@ for h in headers:
         if not nm: continue
         frame_no,horse_no=int(nm.group(1)),int(nm.group(2))
         ny=center_y(nl)
-        identity_parts=[x for x in cl if identity_x[0]<=x["bbox"][0]<identity_x[1]
-                        and abs(center_y(x)-ny)<=2.0]
+        identity_parts=[x for x in chars if x["page"]==h["page"]
+                        and identity_x[0]<=x["bbox"][0]<identity_x[1]
+                        and abs(center_y(x)-ny)<=2.7]
         identity_parts.sort(key=lambda x:x["bbox"][0])
         identity_raw="".join(x["text"] for x in identity_parts)
         sex_marker_codes=[ord(ch) for ch in identity_raw if 1<=ord(ch)<=31]
         sex_marker_code=sex_marker_codes[0] if sex_marker_codes else None
-        identity=norm(identity_raw)
+        identity=identity_raw.replace(" ","").replace("\\u3000","")
         im=identity_re.search(identity)
         source="identity_column"
         if not im:
             fallback_raw=re.sub(r"^\s*[1-8]\s*\d{1,2}", "", raw_number_line_source)
-            fallback=norm(fallback_raw)
+            fallback=fallback_raw.replace(" ","").replace("\\u3000","")
             im=identity_re.search(fallback)
             if im:
                 identity=fallback
                 identity_raw=fallback_raw
+                sex_marker_codes=[ord(ch) for ch in identity_raw if 1<=ord(ch)<=31]
+                sex_marker_code=sex_marker_codes[0] if sex_marker_codes else None
                 source="number_line_remainder"
         if not im:
             errors.append(f"R{h['no']} horse {horse_no}: identity parse failed {identity!r}")
@@ -229,7 +232,7 @@ for h in headers:
         if jockey_name: jockey_name=jockey_name.replace("．",".")
 
         horse_name=im.group(1)
-        horse_sex=im.group(2)
+        horse_sex="せん" if 1<=ord(im.group(2))<=31 else im.group(2)
         horse_age=int(im.group(3))
         birth_year=URL_YEAR-horse_age if URL_YEAR else None
         horse_key=f"{norm(horse_name)}|{horse_sex or '不明'}|{birth_year or '不明'}"
