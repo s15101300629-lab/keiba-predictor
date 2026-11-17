@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 type RaceItem = {
   raceId: string;
@@ -140,7 +141,7 @@ export default function Home() {
                   <div className="venue-heading"><h3>{venue}競馬場</h3><span>{venueRaces.length}レース</span></div>
                   <div className="race-list">
                     {venueRaces.map((race) => (
-                      <article className="race-card" key={race.raceId}>
+                      <Link href={`/race/${race.raceId}`} className="race-card race-card-link" key={race.raceId}>
                         <div className="race-time">{race.startTime ?? "--:--"}<span>{race.raceNumber}R</span></div>
                         <div className="race-info">
                           <div className="race-title">{race.raceTitle}</div>
@@ -151,7 +152,7 @@ export default function Home() {
                           </div>
                         </div>
                         <span className="race-number">{race.raceNumber}R</span>
-                      </article>
+                      </Link>
                     ))}
                   </div>
                 </section>
