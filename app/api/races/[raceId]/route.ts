@@ -527,20 +527,24 @@ function extractJraHistoricalEntries(html: string): JraHistoricalEntry[] {
   );
 
   while ((tableMatch = tableRegex.exec(html)) !== null) {
-    const rawRows: { raw: string; cells: { text: string; raw: string; attrs: string }[] }[] = [];
+    const rawRows: { raw: string; cells: { text: string; raw: string; attrs: string; tag: string }[] }[] = [];
     let rowMatch: RegExpExecArray | null;
     rowRegex.lastIndex = 0;
     while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
-      const cells: { text: string; raw: string; attrs: string }[] = [];
+      const cells: { text: string; raw: string; attrs: string; tag: string }[] = [];
       let cellMatch: RegExpExecArray | null;
       cellRegex.lastIndex = 0;
       while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
-        cells.push({ text: cellText(cellMatch[3]), raw: cellMatch[3], attrs: cellMatch[2] });
+        cells.push({ text: cellText(cellMatch[3]), raw: cellMatch[3], attrs: cellMatch[2], tag: cellMatch[1].toLowerCase() });
       }
       if (cells.length) rawRows.push({ raw: rowMatch[1], cells });
     }
 
-    const firstDataRow = rawRows.findIndex((row) => /\/horse\/\d+/.test(row.raw));
+    const firstDataRow = rawRows.findIndex((row) =>
+      row.cells.some((cell) => cell.tag === "td") &&
+      /^\d{1,2}$/.test(row.cells[0]?.text ?? "") &&
+      row.cells.length >= 5
+    );
     if (firstDataRow < 1) continue;
 
     const grid: ({ text: string; raw: string } | undefined)[][] = [];
@@ -580,7 +584,7 @@ function extractJraHistoricalEntries(html: string): JraHistoricalEntry[] {
     const entries: JraHistoricalEntry[] = [];
     for (let rowIndex = firstDataRow; rowIndex < rawRows.length; rowIndex++) {
       const rawRow = rawRows[rowIndex];
-      if (!/\/horse\/\d+/.test(rawRow.raw)) continue;
+      if (!rawRow.cells.some((cell) => cell.tag === "td") || !/^\d{1,2}$/.test(rawRow.cells[0]?.text ?? "")) continue;
       const row = grid[rowIndex] ?? [];
       const get = (index: number) => row[index];
       const horseNumber = parseNumber(get(columns.number)?.text);
