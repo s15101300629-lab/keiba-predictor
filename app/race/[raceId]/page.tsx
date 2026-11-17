@@ -40,8 +40,11 @@ function readMarks(raceId: string): Record<string, string> {
     if (!raw) return {};
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return Object.fromEntries(Object.entries(parsed).filter(([, value]) =>
-      typeof value === "string" && MARK_OPTIONS.includes(value)));
+    const validEntries: [string, string][] = Object.entries(parsed).filter(
+      (entry): entry is [string, string] =>
+        typeof entry[1] === "string" && MARK_OPTIONS.includes(entry[1])
+    );
+    return Object.fromEntries(validEntries);
   } catch { return {}; }
 }
 function saveMarks(raceId: string, marks: Record<string, string>) {
