@@ -12,9 +12,6 @@ type RaceItem = {
   startTime: string | null;
   course: string | null;
   runners: number | null;
-  isMain: boolean;
-  grade: string | null;
-  labels: string[];
 };
 
 type RaceListResponse = {
@@ -90,17 +87,16 @@ export default function Home() {
         <span className="private-pill">PRIVATE</span>
       </header>
 
-      <section className="hero">
-        <p className="eyebrow">UPCOMING RACE CENTER</p>
-        <h1>開催レースを、<br /><span>日程ごとに。</span></h1>
-      </section>
-
-      <section className="section-head">
-        <div><p className="eyebrow">FEATURED RACES</p><h2>注目レース</h2></div>
+      <div className="month-row">
         <span className="date-chip">{month ? `${Number(month)}月` : "取得中"}</span>
-      </section>
+      </div>
 
-      {loading && <div className="state-panel">当月の開催情報を取得しています…</div>}
+      {loading && (
+        <div className="state-panel loading-panel">
+          <span className="loading-spinner" aria-hidden="true" />
+          <span>当月の開催情報を取得しています…</span>
+        </div>
+      )}
       {!loading && error && (
         <div className="state-panel error-panel">
           <b>開催情報を取得できませんでした</b>
@@ -146,10 +142,7 @@ export default function Home() {
                         <div className="race-info">
                           <div className="race-title">{race.raceTitle}</div>
                           <p>{[race.course, race.runners !== null ? `${race.runners}頭` : null].filter(Boolean).join(" ・ ") || "詳細情報は未取得"}</p>
-                          <div className="race-labels">
-                            {race.isMain && <span className="race-label main-label">メイン</span>}
-                            {race.grade && <span className="race-label grade-label">重賞 {race.grade}</span>}
-                          </div>
+                
                         </div>
                         <span className="race-number">{race.raceNumber}R</span>
                       </Link>
