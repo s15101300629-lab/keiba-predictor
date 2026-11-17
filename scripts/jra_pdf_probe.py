@@ -309,7 +309,9 @@ for h in headers:
         legacy_venue=re.search(r"[（(]\d{2}(札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\d+[）)]",card_text)
         venue_name=legacy_venue.group(1) if legacy_venue else None
     weather_match=re.search(r"\d+月\d+日(晴|曇|雨|小雨|雪)",card_text)
-    going_match=re.search(r"\d+月\d+日(?:晴|曇|雨|小雨|雪)?\s*(良|稍重|重|不良)",card_text)
+    going_match=re.search(r"\d+月\d+日(?:晴|曇|雨|小雨|雪)?(?:（[^）]*）|\([^)]*\))*\s*(良|稍重|重|不良)",card_text)
+    turf_going_match=re.search(r"（芝）\s*(良|稍重|重|不良)",card_text)
+    dirt_going_match=re.search(r"（ダート）\s*(良|稍重|重|不良)",card_text)
     lower_blocks=[b for b in cb if b["bbox"][1]>300]
     lap_block=next((b for b in lower_blocks if "ハロンタイム" in b["text"]),None)
     passing_block=next((b for b in lower_blocks if "コーナー通過順位" in norm(b["text"])),None)
@@ -330,7 +332,9 @@ for h in headers:
     races.append({"raceNumber":h["no"],"jraIndexNumber":index_match.group(1) if index_match else None,"raceKey":race_key,"date":date,
                   "venue":venue_name,
                   "distanceMeters":int(distance_match.group(1)+distance_match.group(2)) if distance_match else (int(distance_plain_match.group(1)) if distance_plain_match else None),
-                  "surface":surface_match.group(1) if surface_match else None,
+                  "surface":"障害" if "障害" in card_text else (surface_match.group(1) if surface_match else None),
+                  "goingTurf":turf_going_match.group(1) if turf_going_match else None,
+                  "goingDirt":dirt_going_match.group(1) if dirt_going_match else None,
                   "direction":direction_match.group(1) if direction_match else None,
                   "courseLayout":layout_match.group(1) if layout_match else None,
                   "startTime":f"{int(start_match.group(1)):02d}:{int(start_match.group(2)):02d}" if start_match else None,
