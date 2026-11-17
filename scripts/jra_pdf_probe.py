@@ -142,7 +142,7 @@ for h in headers:
         body_text=norm(body_span["text"]) if body_span else ""
         body_match=re.search(r"(\d{3})",body_text)
         body_weight=int(body_match.group(1)) if body_match else None
-        change_text=norm(change_span["text"]) if change_span else ""
+        change_parts=[x for x in cs if (320.9<=x["bbox"][0]<334.4 if left else 731.3<=x["bbox"][0]<744.9) and abs(center_y(x)-ny)<=3.0]\n        change_parts.sort(key=lambda x:x["bbox"][0])\n        change_text=norm("".join(x["text"] for x in change_parts))
         change_match=re.search(r"([＋+－−±])(\d{1,2})",change_text)
         body_change=None
         if change_match:
@@ -159,7 +159,7 @@ for h in headers:
             finish_time=None
         if finish_time is not None: previous_time=finish_time
 
-        margin_raw=norm(margin_span["text"]) if margin_span else ""
+        margin_parts=[x for x in cs if (355.4<=x["bbox"][0]<380 if left else 765.8<=x["bbox"][0]<790) and abs(center_y(x)-ny)<=3.0]\n        margin_parts.sort(key=lambda x:x["bbox"][0])\n        margin_raw=norm("".join(x["text"] for x in margin_parts))
         margin_text=previous_margin if margin_raw=="〃" else (margin_raw or None)
         if margin_text is not None: previous_margin=margin_text
 
