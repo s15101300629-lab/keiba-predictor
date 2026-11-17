@@ -26,6 +26,8 @@ jobs:
             url: https://jra.jp/datafile/seiseki/report/2017/2017-1tokyo1.pdf
           - sample: sapporo
             url: https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1sapporo1.pdf
+          - sample: chukyo-2026
+            url: https://www.jra.go.jp/datafile/seiseki/report/2026/2026-1chukyo1.pdf
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
