@@ -173,7 +173,7 @@ for h in headers:
         margin_text=previous_margin if margin_raw=="〃" else (margin_raw or None)
         if margin_text is not None: previous_margin=margin_text
 
-        odds_raw=norm(odds_span["text"]) if odds_span else ""
+        odds_parts=[x for x in cs if (380<=x["bbox"][0]<402.9 if left else 790<=x["bbox"][0]<813.3) and abs(center_y(x)-ny)<=3.0]\n        odds_parts.sort(key=lambda x:x["bbox"][0])\n        odds_raw=norm("".join(x["text"] for x in odds_parts))
         odds_match=re.search(r"(\d+)[．.](\d)",odds_raw)
         win_odds=float(odds_match.group(1)+"."+odds_match.group(2)) if odds_match else None
 
@@ -221,7 +221,7 @@ for h in headers:
     if any(p is None or p<1 or p>declared for p in pops): errors.append(f"R{h['no']}: invalid popularity values {pops}")
     ranked=sorted([x for x in horses if x["winOdds"] is not None and x["popularity"] is not None],key=lambda x:x["winOdds"])
     for a,b in zip(ranked,ranked[1:]):
-        if a["popularity"]>b["popularity"]:
+        if a["winOdds"]<b["winOdds"] and a["popularity"]>b["popularity"]:
             errors.append(f"R{h['no']}: popularity/odds order conflict {a['horseNumber']}:{a['winOdds']}/{a['popularity']} > {b['horseNumber']}:{b['winOdds']}/{b['popularity']}")
     if any(x["winOdds"] is None or x["winOdds"]<=0 for x in horses): errors.append(f"R{h['no']}: missing/invalid win odds")
     if any(x["carriedWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing carried weight")
@@ -232,7 +232,7 @@ for h in headers:
     year_match=re.search(r"(\d{4})年",card_text)
     day_match=re.search(r"(\d+)月(\d+)日",card_text)
     date=f"{int(year_match.group(1)):04d}-{int(day_match.group(1)):02d}-{int(day_match.group(2)):02d}" if year_match and day_match else None
-    distance_match=re.search(r"(\d)[，,](\d{3})",h["text"])
+    distance_match=re.search(r"(\d)[，,](\d{3})",h["text"])\n    index_match=re.match(r"(\d{5})",norm(h["text"]))\n    start_match=re.search(r"発走(\d+)時(\d+)分",card_text)\n    direction_match=re.search(r"（(?:芝|ダート|障害)[^）]*(右|左)",card_text)\n    layout_match=re.search(r"（(?:芝|ダート|障害)[^）]*(内|外)",card_text)
     surface_match=re.search(r"（(芝|ダート|障害)[^）]*）",card_text)
     venue_match=re.search(r"\d{4}年\d+([^）]+)",card_text)
     weather_match=re.search(r"\d+月\d+日(晴|曇|雨|小雨|雪)",card_text)
@@ -241,7 +241,7 @@ for h in headers:
     lap_block=next((b for b in lower_blocks if "ハロンタイム" in b["text"]),None)
     passing_block=next((b for b in lower_blocks if "コーナー通過順位" in norm(b["text"])),None)
     corner_block=next((b for b in lower_blocks if "通過コーナー順" in b["text"]),None)
-    lap_raw=lap_block["text"] if lap_block else ""
+    lap_raw=norm(lap_block["text"]) if lap_block else ""
     passing_raw=norm(passing_block["text"]) if passing_block else ""
     corner_raw=corner_block["text"] if corner_block else ""
     lap_match=re.search(r"ハロンタイム\s*([0-9０-９．.―ー\-]+)",lap_raw)
@@ -252,10 +252,10 @@ for h in headers:
     last_match=re.search(r"上り4F(\d{2}[．.]\d)[―ー\-]+3F(\d{2}[．.]\d)",norm(corner_raw))
     last4f=float(last_match.group(1).replace("．",".")) if last_match else None
     last3f=float(last_match.group(2).replace("．",".")) if last_match else None
-    races.append({"raceNumber":h["no"],"date":date,
+    races.append({"raceNumber":h["no"],"jraIndexNumber":index_match.group(1) if index_match else None,"date":date,
                   "venue":venue_match.group(1) if venue_match else None,
                   "distanceMeters":int(distance_match.group(1)+distance_match.group(2)) if distance_match else None,
-                  "surface":surface_match.group(1) if surface_match else None,
+                  "surface":surface_match.group(1) if surface_match else None,\n                  "direction":direction_match.group(1) if direction_match else None,\n                  "courseLayout":layout_match.group(1) if layout_match else None,\n                  "startTime":f"{int(start_match.group(1)):02d}:{int(start_match.group(2)):02d}" if start_match else None,
                   "weather":weather_match.group(1) if weather_match else None,
                   "going":going_match.group(1) if going_match else None,
                   "lapTimes":lap_times,"passingTimes":passing_times,
