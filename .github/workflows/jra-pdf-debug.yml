@@ -6,6 +6,7 @@ on:
       - feature/jra-pdf-ingestion-pilot
     paths:
       - .github/workflows/jra-pdf-debug.yml
+      - scripts/jra_pdf_probe.py
   workflow_dispatch:
 
 permissions:
