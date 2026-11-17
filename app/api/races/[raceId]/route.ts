@@ -303,6 +303,7 @@ export async function GET(
 ) {
   const startedAt = Date.now();
   const { raceId } = await context.params;
+  const summaryOnly = new URL(_request.url).searchParams.get("summary") === "1";
 
   if (!/^\d{12}$/.test(raceId)) {
     return NextResponse.json(
@@ -434,7 +435,22 @@ export async function GET(
         completeCount,
         partialCount,
         failedCount,
-        results,
+        ...(summaryOnly
+          ? {
+              sampleRaceEntries: results.slice(0, 3).map((item) => {
+                const result = item as {
+                  name?: string;
+                  status?: string;
+                  raceEntry?: RaceEntry | null;
+                };
+                return {
+                  name: result.name ?? null,
+                  status: result.status ?? null,
+                  raceEntry: result.raceEntry ?? null,
+                };
+              }),
+            }
+          : { results }),
         elapsedMs: Date.now() - startedAt,
         notes: {
           frameAndHorseNumber: "Not published until the draw is announced; null is expected before then.",
