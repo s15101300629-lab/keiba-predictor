@@ -21,7 +21,6 @@ type RaceEntry = {
   trainer: string | null;
   bodyWeight: number | null;
   bodyWeightChange: number | null;
-  odds: number | null;
   popularity: number | null;
   fieldStatus: {
     frameNumber: string;
@@ -30,7 +29,6 @@ type RaceEntry = {
     carriedWeight: string;
     jockey: string;
     bodyWeight: string;
-    odds: string;
     popularity: string;
   };
 };
@@ -84,9 +82,10 @@ function extractTables(html: string) {
   return tables;
 }
 
-async function fetchHtml(url: string) {
+async function fetchHtml(url: string, revalidateSeconds: number) {
   const response = await fetch(url, {
-    cache: "no-store",
+    cache: "force-cache",
+    next: { revalidate: revalidateSeconds },
     headers: { Accept: "text/html" },
     signal: AbortSignal.timeout(10000),
   });
@@ -288,7 +287,6 @@ function extractRaceEntries(html: string): RaceEntry[] {
       jockey: indexOf("騎手"),
       trainer: indexOf("厩舎"),
       bodyWeight: indexOf("馬体重"),
-      odds: indexOf("単勝オッズ"),
       popularity: indexOf("人気"),
     };
 
@@ -317,7 +315,6 @@ function extractRaceEntries(html: string): RaceEntry[] {
       const carriedText = get(indexes.carriedWeight);
       const jockeyText = get(indexes.jockey);
       const bodyText = get(indexes.bodyWeight);
-      const oddsText = get(indexes.odds);
       const popularityText = get(indexes.popularity);
 
       const bodyMatch = bodyText.match(/(\d{3})\s*\(([+-]?\d+)\)/);
@@ -344,7 +341,6 @@ function extractRaceEntries(html: string): RaceEntry[] {
             ? Number(bodyOnlyMatch[1])
             : null,
         bodyWeightChange: bodyMatch ? Number(bodyMatch[2]) : null,
-        odds: parseNumber(oddsText),
         popularity: parseNumber(popularityText),
         fieldStatus: {
           frameNumber: parseNumber(frameText) === null ? "not_published" : "available",
@@ -353,7 +349,6 @@ function extractRaceEntries(html: string): RaceEntry[] {
           carriedWeight: parseNumber(carriedText) === null ? "unavailable" : "available",
           jockey: jockey ? "available" : "not_confirmed",
           bodyWeight: bodyMatch || bodyOnlyMatch ? "available" : "not_published",
-          odds: parseNumber(oddsText) === null ? "not_published" : "available",
           popularity: parseNumber(popularityText) === null ? "not_published" : "available",
         },
       });
@@ -382,6 +377,18 @@ function extractProfile(tables: string[][][]) {
     }));
 }
 
+const EXCLUDED_HISTORY_COLUMNS = [
+  /映像/,
+  /オッズ/,
+  /馬場指数/,
+  /タイム指数/,
+  /スタート指数/,
+  /上がり指数/,
+  /厩舎コメント/,
+  /備考/,
+  /賞金/,
+];
+
 function extractPerformances(tables: string[][][]) {
   const table = tables.find((candidate) =>
     candidate[0]?.includes("レース名") &&
@@ -391,7 +398,14 @@ function extractPerformances(tables: string[][][]) {
 
   if (!table || table.length < 2) return null;
 
-  const headers = table[0];
+  const sourceHeaders = table[0];
+  const visibleColumns = sourceHeaders
+    .map((header, index) => ({ header, index }))
+    .filter(({ header }) => {
+      const normalized = header.replace(/\s+/g, "");
+      return !EXCLUDED_HISTORY_COLUMNS.some((pattern) => pattern.test(normalized));
+    });
+  const headers = visibleColumns.map(({ header }) => header);
   const rows = table.slice(1, MAX_HISTORY + 1);
 
   return {
@@ -399,9 +413,8 @@ function extractPerformances(tables: string[][][]) {
     countOnPage: table.length - 1,
     rows: rows.map((cells) => ({
       values: Object.fromEntries(
-        headers.map((header, index) => [header, cells[index] ?? ""])
+        visibleColumns.map(({ header, index }) => [header, cells[index] ?? ""])
       ),
-      rawCells: cells,
     })),
   };
 }
@@ -424,7 +437,7 @@ export async function GET(
   try {
     const raceUrl =
       `https://race.netkeiba.com/race/shutuba.html?race_id=${raceId}`;
-    const race = await fetchHtml(raceUrl);
+    const race = await fetchHtml(raceUrl, 600);
 
     if (!race.ok) {
       return NextResponse.json(
@@ -470,7 +483,7 @@ export async function GET(
 
         try {
           const url = `https://db.sp.netkeiba.com/horse/${horse.horseId}/`;
-          const page = await fetchHtml(url);
+          const page = await fetchHtml(url, 86400);
 
           if (!page.ok) {
             results[index] = {
@@ -566,7 +579,6 @@ export async function GET(
         notes: {
           frameAndHorseNumber: "Not published until the draw is announced; null is expected before then.",
           bodyWeight: "Usually published on race day; null before publication is expected.",
-          odds: "Null means no numeric odds were present in the fetched page at request time.",
           jockey: "A provisional placeholder is reported as not_confirmed.",
         },
       },
