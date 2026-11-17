@@ -31,7 +31,9 @@ jobs:
           for item in \
             "2025-1hakodate12 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1hakodate12.pdf" \
             "2025-1niigata5 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1niigata5.pdf" \
-            "2025-1chukyo3 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1chukyo3.pdf"
+            "2025-1chukyo3 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1chukyo3.pdf" \
+            "2025-5tokyo4 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-5tokyo4.pdf" \
+            "2025-1hanshin2 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1hanshin2.pdf"
           do
             set -- $item
             name=$1
