@@ -43,7 +43,7 @@ type OverallScore = { score: number | null; rank: number | null; rankedCount: nu
 type CategoryRank = { label: string; rank: number | null; total: number; detail: string };
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
-const cacheKey = (id: string) => "keiba-race-detail-v2:" + id;
+const cacheKey = (id: string) => "keiba-race-detail-v3:" + id;
 const marksCacheKey = (id: string) => "keiba-race-marks-v1:" + id;
 const MARK_OPTIONS = ["", "◎", "○", "▲", "△", "☆", "注", "消"];
 
