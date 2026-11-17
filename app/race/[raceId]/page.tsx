@@ -123,6 +123,7 @@ export default function RaceDetailPage() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [cachedAt, setCachedAt] = useState<number | null>(null);
+  const [cacheChecked, setCacheChecked] = useState(false);
 
   const load = useCallback(async (forceRefresh: boolean, background: boolean) => {
     try {
@@ -156,10 +157,12 @@ export default function RaceDetailPage() {
     if (!/^\d{12}$/.test(raceId)) {
       setError("レースIDが正しくありません。");
       setLoading(false);
+      setCacheChecked(true);
       return;
     }
 
     const cached = readCachedRace(raceId);
+    setCacheChecked(true);
     if (cached) {
       setData(cached.data);
       setCachedAt(cached.savedAt);
@@ -179,7 +182,8 @@ export default function RaceDetailPage() {
   return (
     <main className="race-detail-shell">
       <Link href="/" className="back-link">← 開催レース一覧へ戻る</Link>
-      {loading && <div className="state-panel">初回データを取得しています…</div>}
+      {loading && !cacheChecked && <div className="state-panel">初回データを確認しています…</div>}
+      {loading && cacheChecked && !data && <div className="state-panel">初回データを取得しています…</div>}
       {!data && !loading && error && <div className="state-panel error-panel"><b>レース情報を取得できませんでした</b><p>{error}</p></div>}
       {data && conditions && (
         <>
