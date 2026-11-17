@@ -33,6 +33,7 @@ for index, entry in enumerate(entries, 1):
     temp_dir = Path(tempfile.mkdtemp(prefix=f"jra-{YEAR}-"))
     os.environ["JRA_PDF_URL"] = entry["sourceUrl"]
     os.environ["JRA_OUTPUT_DIR"] = str(temp_dir)
+    os.environ["JRA_DIAGNOSTICS"] = "0"
     output = io.StringIO()
     try:
         with contextlib.redirect_stdout(output):
