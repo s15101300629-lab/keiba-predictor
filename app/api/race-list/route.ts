@@ -17,6 +17,7 @@ const VENUES: Record<string, string> = {
 
 type RaceItem = {
   raceId: string;
+  raceDate: string;
   venue: string;
   raceNumber: number;
   raceTitle: string;
@@ -63,7 +64,7 @@ function parseGrade(title: string): string | null {
   return match ? `G${match[1]}` : null;
 }
 
-function parseRaces(html: string): RaceItem[] {
+function parseRaces(html: string, raceDate: string): RaceItem[] {
   const races: RaceItem[] = [];
   const seen = new Set<string>();
   const itemRegex = /<li\b[^>]*class=["'][^"']*RaceList_DataItem[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
@@ -107,6 +108,7 @@ function parseRaces(html: string): RaceItem[] {
     seen.add(raceId);
     races.push({
       raceId,
+      raceDate,
       venue,
       raceNumber,
       raceTitle: title,
@@ -120,7 +122,11 @@ function parseRaces(html: string): RaceItem[] {
   }
 
   const venueOrder = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
-  return races.sort((a, b) => venueOrder.indexOf(a.venue) - venueOrder.indexOf(b.venue) || a.raceNumber - b.raceNumber);
+  return races.sort((a, b) =>
+    venueOrder.indexOf(a.venue) - venueOrder.indexOf(b.venue) ||
+    a.raceDate.localeCompare(b.raceDate) ||
+    a.raceNumber - b.raceNumber
+  );
 }
 
 function getJstDate(offsetDays: number): string {
@@ -139,16 +145,7 @@ function getJstDate(offsetDays: number): string {
     String(date.getUTCDate()).padStart(2, "0");
 }
 
-function hasRaceEntries(html: string): boolean {
-  const itemRegex = /<li\b[^>]*class=["'][^"']*RaceList_DataItem[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
-  let itemMatch: RegExpExecArray | null;
-  while ((itemMatch = itemRegex.exec(html)) !== null) {
-    if (/race_id=\d{12}/i.test(itemMatch[1])) return true;
-  }
-  return false;
-}
-
-async function fetchRaceList(date: string): Promise<{ html: string; status: number }> {
+async function fetchRaceList(date: string): Promise<string> {
   const response = await fetch(
     "https://race.netkeiba.com/top/race_list_sub.html?kaisai_date=" + date,
     {
@@ -162,70 +159,31 @@ async function fetchRaceList(date: string): Promise<{ html: string; status: numb
     throw new Error("開催一覧の取得に失敗しました（HTTP " + response.status + " / " + date + "）");
   }
   const buffer = await response.arrayBuffer();
-  return {
-    html: new TextDecoder("utf-8").decode(new Uint8Array(buffer)),
-    status: response.status,
-  };
+  return new TextDecoder("utf-8").decode(new Uint8Array(buffer));
 }
 
-export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const requestedDate = url.searchParams.get("date");
-
-  if (requestedDate && !/^\d{8}$/.test(requestedDate)) {
-    return NextResponse.json(
-      { ok: false, error: "date must be YYYYMMDD." },
-      { status: 400 }
-    );
-  }
-
+export async function GET() {
   try {
-    let date: string | null = requestedDate;
-    let html = "";
-    let sourceStatus = 200;
+    // 日本時間の今日から7日間（今日を含む）を対象に、開催日ごとの一覧を取得する。
+    const dates = Array.from({ length: 7 }, (_, offset) => getJstDate(offset));
+    const htmlByDate = await Promise.all(dates.map(async (date) => ({
+      date,
+      html: await fetchRaceList(date),
+    })));
 
-    if (requestedDate) {
-      const result = await fetchRaceList(requestedDate);
-      html = result.html;
-      sourceStatus = result.status;
-    } else {
-      // 閲覧日ではなく、今日以降で最初にJRA開催が確認できた日を採用する。
-      // 各日付の取得結果は1時間キャッシュし、最大21日先まで検索する。
-      for (let offset = 0; offset <= 21; offset += 1) {
-        const candidateDate = getJstDate(offset);
-        const result = await fetchRaceList(candidateDate);
-        if (hasRaceEntries(result.html)) {
-          date = candidateDate;
-          html = result.html;
-          sourceStatus = result.status;
-          break;
-        }
-      }
-    }
-
-    if (!date) {
-      return NextResponse.json({
-        ok: true,
-        date: null,
-        raceCount: 0,
-        venues: [],
-        races: [],
-        error: "今後21日以内にJRAの開催日を確認できませんでした。",
-      });
-    }
-
-    const races = parseRaces(html);
+    const races = htmlByDate.flatMap(({ date, html }) => parseRaces(html, date));
     const venues = Array.from(new Set(races.map((race) => race.venue)));
 
     return NextResponse.json(
       {
         ok: true,
-        date,
-        sourceStatus,
+        startDate: dates[0],
+        endDate: dates[dates.length - 1],
+        dateCount: dates.length,
         raceCount: races.length,
         venues,
         races,
-        filter: "次回開催日の各競馬場の11R（メイン）および重賞のみ。平場は除外。",
+        filter: "今日から7日間に開催される各競馬場の11R（メイン）および重賞のみ。平場は除外。",
       },
       {
         headers: {
