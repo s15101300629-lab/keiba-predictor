@@ -535,9 +535,31 @@ function normalizeHorseName(value: string) {
 
 function normalizeRaceName(value: string) {
   return normalizeHorseName(value)
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (character) =>
+      String.fromCharCode(character.charCodeAt(0) - 0xFEE0)
+    )
     .replace(/[Ｓｓ]/g, "S")
+    .replace(/[Ｃｃ]/g, "C")
     .replace(/ステークス/g, "S")
-    .replace(/カップ/g, "C");
+    .replace(/カップ/g, "C")
+    .toUpperCase();
+}
+
+function normalizeRaceNameForMatch(value: string) {
+  const normalized = normalizeRaceName(value);
+  const aliases: Record<string, string> = {
+    "マイルCS": "マイルチャンピオンシップ",
+    "マイルチャンピオンシップ": "マイルチャンピオンシップ",
+    "スプリンターズS": "スプリンターズS",
+    "スプリンターズステークス": "スプリンターズS",
+    "ジャパンC": "ジャパンC",
+    "ジャパンカップ": "ジャパンC",
+    "NHKマイルC": "NHKマイルC",
+    "NHKマイルカップ": "NHKマイルC",
+    "チャンピオンズC": "チャンピオンズC",
+    "チャンピオンズカップ": "チャンピオンズC",
+  };
+  return aliases[normalized] ?? normalized;
 }
 
 function parseRatingValue(value: string) {
@@ -594,13 +616,21 @@ function extractMonthlyJraRatings(
   return ratings;
 }
 
-function findG1RaceUrl(html: string, raceName: string | null, targetDate: string, baseUrl: string) {
-  const wantedName = raceName ? normalizeRaceName(raceName) : "";
+function findG1RaceUrl(
+  html: string,
+  raceName: string | null,
+  targetDate: string,
+  venue: string | null,
+  baseUrl: string
+) {
+  const wantedName = raceName ? normalizeRaceNameForMatch(raceName) : "";
   const rows = [...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
+  const dateVenueCandidates: { href: string; rowText: string; linkCount: number }[] = [];
 
-  // 年度別一覧の同じ行にある開催日・レース名・リンクをセットで照合する。
   for (const row of rows) {
     const rowHtml = row[1];
+    const cells = [...rowHtml.matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)]
+      .map((cell) => cleanText(cell[1]));
     const rowText = cleanText(rowHtml);
     const dateMatch = rowText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
     if (!dateMatch) continue;
@@ -610,24 +640,58 @@ function findG1RaceUrl(html: string, raceName: string | null, targetDate: string
       dateMatch[3].padStart(2, "0");
     if (rowDate !== targetDate) continue;
 
+    const normalizedVenue = venue ? normalizeHorseName(venue) : "";
+    const venueMatches = normalizedVenue
+      ? cells.some((cell) => normalizeHorseName(cell) === normalizedVenue)
+      : false;
+    if (normalizedVenue && !venueMatches) continue;
+
     const anchors = [...rowHtml.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)];
-    for (const anchor of anchors) {
-      const label = normalizeRaceName(cleanText(anchor[2]));
-      if (!wantedName || label === wantedName ||
-        label.includes(wantedName) || wantedName.includes(label)) {
+    const links = anchors
+      .map((anchor) => {
         const href = anchor[1].match(/\bhref\s*=\s*(["'])(.*?)\1/i)?.[2];
-        if (href) return new URL(decodeEntities(href), baseUrl).toString();
-      }
-    }
+        return href
+          ? {
+              href: new URL(decodeEntities(href), baseUrl).toString(),
+              label: cleanText(anchor[2]),
+            }
+          : null;
+      })
+      .filter((link): link is { href: string; label: string } => link !== null);
+
+    if (links.length === 0) continue;
+
+    const nameMatchedLink = links.find((link) => {
+      const label = normalizeRaceNameForMatch(link.label);
+      return !wantedName ||
+        label === wantedName ||
+        label.includes(wantedName) ||
+        wantedName.includes(label);
+    });
+    if (nameMatchedLink) return nameMatchedLink.href;
+
+    dateVenueCandidates.push({
+      href: links.length === 1 ? links[0].href : "",
+      rowText,
+      linkCount: links.length,
+    });
   }
 
+  // 略称でも開催日・競馬場が一致する行が一意で、リンクも1つだけなら採用する。
+  // 同日同競馬場に複数リンクがある場合は誤ったレースを選ばない。
+  if (
+    dateVenueCandidates.length === 1 &&
+    dateVenueCandidates[0].linkCount === 1
+  ) {
+    return dateVenueCandidates[0].href;
+  }
   return null;
 }
-
 async function fetchG1PreRatings(
   horses: HorseEntry[],
   raceName: string | null,
   targetDate: string,
+  venue: string | null,
   year: number,
   forceRefresh: boolean
 ): Promise<JraRatingMap> {
@@ -648,7 +712,7 @@ async function fetchG1PreRatings(
     return result;
   }
 
-  const targetUrl = findG1RaceUrl(yearPage.html, raceName, targetDate, yearListUrl);
+  const targetUrl = findG1RaceUrl(yearPage.html, raceName, targetDate, venue, yearListUrl);
   if (!targetUrl) {
     result.diagnostics.error =
       "年度別G1一覧に開催日・レース名が一致するリンクが見つかりませんでした";
@@ -754,6 +818,7 @@ async function fetchJraRatings(
   horses: HorseEntry[],
   raceName: string | null,
   targetDate: string | null,
+  venue: string | null,
   forceRefresh: boolean
 ) {
   const result = createJraRatingMap();
@@ -770,6 +835,7 @@ async function fetchJraRatings(
     horses,
     raceName,
     targetDate,
+    venue,
     targetYear,
     forceRefresh
   );
@@ -885,7 +951,7 @@ export async function GET(
       raceEntries.map((entry) => [entry.horseId, entry])
     );
 
-    const jraRatings = await fetchJraRatings(horses, raceConditions.raceName, raceConditions.date, forceRefresh);
+    const jraRatings = await fetchJraRatings(horses, raceConditions.raceName, raceConditions.date, raceConditions.venue, forceRefresh);
     const results: Record<string, unknown>[] = new Array(horses.length);
     let nextIndex = 0;
 
