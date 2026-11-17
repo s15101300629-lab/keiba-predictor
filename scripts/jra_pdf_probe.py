@@ -11,11 +11,14 @@ with urllib.request.urlopen(req, timeout=45) as res:
 if not raw.startswith(b"%PDF"):
     raise RuntimeError(f"Not a PDF: {content_type}, {len(raw)} bytes")
 import pymupdf
+(OUT/"source.pdf").write_bytes(raw)
 
 def norm(s):
     return re.sub(r"\s+", "", re.sub(r"[\x00-\x1f]", "", s))
 
 doc = pymupdf.open(stream=raw, filetype="pdf")
+# A rendered page image is retained for visual cross-checks against extracted text.
+doc[0].get_pixmap(matrix=pymupdf.Matrix(1.5,1.5), alpha=False).save(str(OUT/"page-1-preview.png"))
 pages, blocks, lines = [], [], []
 for pn, page in enumerate(doc, 1):
     txt = page.get_text("text", sort=True)
@@ -93,17 +96,11 @@ for h in headers:
     if len(set(nums))!=len(nums): errors.append(f"R{h['no']}: duplicate horse numbers {nums}")
     if any(n<1 or n>18 for n in nums): errors.append(f"R{h['no']}: horse number outside JRA range {nums}")
 
-    # The race title, date and surface can be in a separate text block from
-    # the race-number header. Combine only the nearby blocks in this race card.
-    nearby=[b["text"] for b in cb
-            if h["y0"]-20 <= b["bbox"][1] <= h["y1"]+60]
+    nearby=[b["text"] for b in cb if h["y0"]-20 <= b["bbox"][1] <= h["y1"]+60]
     card_text="\n".join([h["text"],*nearby])
-    date_match=re.search(r"(\d{4})年.*?(\d+)月(\d+)日",card_text,re.S)
     year_match=re.search(r"(\d{4})年",card_text)
     day_match=re.search(r"(\d+)月(\d+)日",card_text)
-    date=None
-    if year_match and day_match:
-        date=f"{int(year_match.group(1)):04d}-{int(day_match.group(1)):02d}-{int(day_match.group(2)):02d}"
+    date=f"{int(year_match.group(1)):04d}-{int(day_match.group(1)):02d}-{int(day_match.group(2)):02d}" if year_match and day_match else None
     distance_match=re.search(r"(\d)[，,](\d{3})",h["text"])
     surface_match=re.search(r"（(芝|ダート|障害)[^）]*）",card_text)
     venue_match=re.search(r"\d{4}年\d+([^）]+)",card_text)
@@ -132,5 +129,5 @@ summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCo
 (OUT/"parsed-races.json").write_text(json.dumps(races,ensure_ascii=False,indent=2),encoding="utf-8")
 (OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
 print(json.dumps(summary,ensure_ascii=False))
-if len(doc)==0 or len(combined)<1000 or errors:
+if len(doc)==0 or len(combined)<1000 or len(headers)!=12 or errors:
     raise RuntimeError(f"Structured validation failed: {len(errors)} errors")
