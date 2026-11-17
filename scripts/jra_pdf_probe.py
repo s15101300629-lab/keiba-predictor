@@ -142,7 +142,8 @@ for h in headers:
         body_text=norm(body_span["text"]) if body_span else ""
         body_match=re.search(r"(\d{3})",body_text)
         body_weight=int(body_match.group(1)) if body_match else None
-        change_parts=[x for x in cs if (320.9<=x["bbox"][0]<334.4 if left else 731.3<=x["bbox"][0]<744.9) and abs(center_y(x)-ny)<=3.0]\n        change_parts.sort(key=lambda x:x["bbox"][0])\n        change_text=norm("".join(x["text"] for x in change_parts))
+        change_parts=[x for x in cs if (320.9<=x["bbox"][0]<334.4 if left else 731.3<=x["bbox"][0]<744.9) and abs(center_y(x)-ny)<=3.0]
+        change_parts.sort(key=lambda x:x["bbox"][0])\n        change_text=norm("".join(x["text"] for x in change_parts))
         change_match=re.search(r"([＋+－−±])(\d{1,2})",change_text)
         body_change=None
         if change_match:
@@ -159,7 +160,8 @@ for h in headers:
             finish_time=None
         if finish_time is not None: previous_time=finish_time
 
-        margin_parts=[x for x in cs if (355.4<=x["bbox"][0]<380 if left else 765.8<=x["bbox"][0]<790) and abs(center_y(x)-ny)<=3.0]\n        margin_parts.sort(key=lambda x:x["bbox"][0])\n        margin_raw=norm("".join(x["text"] for x in margin_parts))
+        margin_parts=[x for x in cs if (355.4<=x["bbox"][0]<380 if left else 765.8<=x["bbox"][0]<790) and abs(center_y(x)-ny)<=3.0]
+        margin_parts.sort(key=lambda x:x["bbox"][0])\n        margin_raw=norm("".join(x["text"] for x in margin_parts))
         margin_text=previous_margin if margin_raw=="〃" else (margin_raw or None)
         if margin_text is not None: previous_margin=margin_text
 
@@ -172,10 +174,10 @@ for h in headers:
             glyph_code=ord(glyph_span["text"])
             popularity=popularity_maps.get(f"{h['page']}:{glyph_span['font']}",{}).get(glyph_code)
 
-        jockey_x=(145,213) if left else (555,623)
-        jockey_parts=[x for x in cl if jockey_x[0]<=x["bbox"][0]<jockey_x[1] and abs(center_y(x)-ny)<=2.5]
+        jockey_x=(150,193.7) if left else (560,604.2)
+        jockey_parts=[x for x in cs if jockey_x[0]<=x["bbox"][0]<jockey_x[1] and abs(center_y(x)-ny)<=2.5]
         jockey_parts.sort(key=lambda x:x["bbox"][0])
-        jockey_raw="".join(x["text"] for x in jockey_parts).strip() or None
+        jockey_raw=norm("".join(x["text"] for x in jockey_parts)) or None
 
         horses.append({"frameNumber":frame_no,"horseNumber":horse_no,
                        "horseName":im.group(1),"sex":im.group(2),"age":int(im.group(3)),
