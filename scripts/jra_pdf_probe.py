@@ -163,8 +163,10 @@ for h in headers:
         odds_span=nearest_span(386,402.9) if left else nearest_span(797,813.3)
         glyph_span=nearest_span(402.9,411) if left else nearest_span(813.3,821)
 
-        body_text=norm(body_span["text"]) if body_span else ""
-        body_match=re.search(r"(\d{3})",body_text)
+        body_parts=[x for x in cs if (300<=x["bbox"][0]<320.9 if left else 710<=x["bbox"][0]<731.3) and abs(center_y(x)-ny)<=3.0]
+        body_parts.sort(key=lambda x:x["bbox"][0])
+        body_text=norm("".join(x["text"] for x in body_parts))
+        body_match=re.search(r"(?<!\d)(\d{3})(?!\d)",body_text)
         body_weight=int(body_match.group(1)) if body_match else None
         change_parts=[x for x in cs if (320.9<=x["bbox"][0]<334.4 if left else 731.3<=x["bbox"][0]<744.9) and abs(center_y(x)-ny)<=3.0]
         change_parts.sort(key=lambda x:x["bbox"][0])
