@@ -133,7 +133,7 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
   const conditionText = raceDataText || pageText;
 
   const raceNameMatch =
-    headingText.match(/([ぁ-んァ-ヶ一-龠A-Za-z0-9ー・]+(?:ステークス|Ｓ|S|記念|賞))/) ||
+    headingText.match(/([ぁ-んァ-ヶ一-龠A-Za-z0-9ー・]+(?:チャンピオンシップ|ステークス|Ｓ|S|記念|賞))/) ||
     titleText.match(/^(.+?)(?:\(|（| 出馬表| レース情報)/);
   const dateMatch = pageText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
   const meetingMatch = pageText.match(/(\d+)回\s*([^\s　]+)\s*(\d+)日目/);
@@ -654,16 +654,19 @@ async function fetchG1PreRatings(
   const tables = extractTables(detail.html);
   const table = tables.find((candidate) =>
     candidate.some((row) => row.some((cell) => cell.includes("馬名"))) &&
-    candidate.some((row) => row.some((cell) => cell.includes("レーティングの") || cell.includes("最高値")))
+    candidate.some((row) => row.some((cell) =>
+      cell.includes("レーティング") || cell.includes("最高値")
+    ))
   );
   if (!table) return new Map<string, JraRating>();
 
   const headerIndex = table.findIndex((row) => row.some((cell) => cell.includes("馬名")));
   const header = table[headerIndex] ?? [];
   const nameIndex = header.findIndex((cell) => cell.includes("馬名"));
-  const previousIndex = header.findIndex((cell) => cell.includes("JPNランキング"));
-  const currentIndex = header.findIndex((cell) => cell.includes("レーティングの") || cell.includes("最高値"));
-  if (nameIndex < 0 || currentIndex < 0) return new Map<string, JraRating>();
+  const currentIndex = header.findIndex((cell) =>
+    cell.includes("最高値") || cell.includes("レーティング")
+  );
+  if (nameIndex < 0) return new Map<string, JraRating>();
 
   const wantedNames = new Set(horses.map((horse) => normalizeHorseName(horse.name)));
   const result = new Map<string, JraRating>();
@@ -672,9 +675,13 @@ async function fetchG1PreRatings(
     const horseName = normalizeHorseName(row[nameIndex] ?? "");
     if (!wantedNames.has(horseName)) continue;
 
-    const currentValue = parseRatingValue(row[currentIndex] ?? "");
-    const previousValue = previousIndex >= 0 ? parseRatingValue(row[previousIndex] ?? "") : null;
-    const value = currentValue ?? previousValue;
+    let value = currentIndex >= 0 ? parseRatingValue(row[currentIndex] ?? "") : null;
+    if (value === null) {
+      value = row
+        .filter((_cell, index) => index !== nameIndex)
+        .map((cell) => parseRatingValue(cell))
+        .find((candidate) => candidate !== null) ?? null;
+    }
     if (value === null) continue;
 
     result.set(horseName, {
