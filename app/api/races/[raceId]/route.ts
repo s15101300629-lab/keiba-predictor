@@ -710,6 +710,7 @@ async function fetchJraRatings(
   }
 
   const wantedNames = new Set(horses.map((horse) => normalizeHorseName(horse.name)));
+  const monthlyFoundNames = new Set<string>();
 
   for (let offset = 0; offset < pages.length; offset += 4) {
     const batch = pages.slice(offset, offset + 4);
@@ -734,11 +735,14 @@ async function fetchJraRatings(
       for (const name of wantedNames) {
         const rating = monthlyRatings.get(name);
         const existing = result.get(name);
+        if (rating) monthlyFoundNames.add(name);
         if (rating && (!existing || rating.raceDate > existing.raceDate)) {
           result.set(name, rating);
         }
       }
     }
+
+    if (monthlyFoundNames.size === wantedNames.size) break;
   }
 
   return result;
