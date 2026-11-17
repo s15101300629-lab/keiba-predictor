@@ -151,11 +151,11 @@ for h in headers:
         def nearest_span(xmin,xmax):
             found=[x for x in cs if xmin<=x["bbox"][0]<xmax and abs(center_y(x)-ny)<=3.0]
             return min(found,key=lambda x:abs(center_y(x)-ny)) if found else None
-        body_span=nearest_span(300,320.9) if left else nearest_span(710,731.3)
+        body_span=nearest_span(308,320.9) if left else nearest_span(719,731.3)
         change_span=nearest_span(320.9,334.4) if left else nearest_span(731.3,744.9)
         time_span=nearest_span(334.4,355.4) if left else nearest_span(744.9,765.8)
-        margin_span=nearest_span(355.4,380) if left else nearest_span(765.8,790)
-        odds_span=nearest_span(380,403) if left else nearest_span(790,814)
+        margin_span=nearest_span(355.4,386) if left else nearest_span(765.8,797)
+        odds_span=nearest_span(386,402.9) if left else nearest_span(797,813.3)
         glyph_span=nearest_span(402.9,411) if left else nearest_span(813.3,821)
 
         body_text=norm(body_span["text"]) if body_span else ""
@@ -228,7 +228,7 @@ for h in headers:
                        "finishTime":finish_time,"finishTimeSeconds":finish_time_seconds,
                        "marginText":margin_text,"resultStatus":result_status,
                        "winOdds":win_odds,"popularity":popularity,
-                       "jockeyColumnRaw":jockey_raw,"jockeyAllowanceMark":jockey_mark,"jockeyName":jockey_name,"identitySource":source,
+                       "jockeyNameRaw":jockey_raw,"jockeyAllowanceMark":jockey_mark,"jockeyName":jockey_name,"identitySource":source,
                        "sourcePage":h["page"],"sourceY":round(ny,2)})
 
     horses.sort(key=lambda x:x["sourceY"])
