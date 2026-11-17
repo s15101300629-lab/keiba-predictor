@@ -1,8 +1,8 @@
 from __future__ import annotations
-import json, re, urllib.request
+import json, os, re, urllib.request
 from pathlib import Path
 
-URL = "https://jra.jp/datafile/seiseki/report/2025/2025-1kyoto1.pdf"
+URL = os.environ.get("JRA_PDF_URL", "https://jra.jp/datafile/seiseki/report/2025/2025-1kyoto1.pdf")
 OUT = Path("jra-pdf-probe")
 OUT.mkdir(exist_ok=True)
 req = urllib.request.Request(URL, headers={"User-Agent":"Mozilla/5.0","Accept":"application/pdf"})
