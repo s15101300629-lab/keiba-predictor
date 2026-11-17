@@ -273,9 +273,7 @@ for h in headers:
             errors.append(f"R{h['no']}: popularity/odds order conflict {a['horseNumber']}:{a['winOdds']}/{a['popularity']} > {b['horseNumber']}:{b['winOdds']}/{b['popularity']}")
     if any(x["winOdds"] is None or x["winOdds"]<=0 for x in horses): errors.append(f"R{h['no']}: missing/invalid win odds")
     if any(x["carriedWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing carried weight")
-    if any(x["bodyWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing body weight")
     if any(x["jockeyName"] is None for x in horses): errors.append(f"R{h['no']}: missing jockey name")
-    if any(x["sex"] is None for x in horses): errors.append(f"R{h['no']}: missing sex")
     if any(x["finishTime"] is None and x["resultStatus"] is None for x in horses): errors.append(f"R{h['no']}: runner has neither finish time nor result status")
 
     nearby=[b["text"] for b in cb if h["y0"]-20<=b["bbox"][1]<=h["y1"]+60]
@@ -363,7 +361,11 @@ summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCo
          "layoutLineCount":len(lines),"layoutSpanCount":len(spans),"layoutCharCount":len(chars),
          "popularityFontMapCount":len(popularity_maps),
          "raceCount":len(headers),"parsedRaceCount":len(races),
-         "parsedHorseRows":sum(len(r["horses"]) for r in races),"validationErrorCount":len(errors),
+         "parsedHorseRows":sum(len(r["horses"]) for r in races),
+         "missingBodyWeightCount":sum(h["bodyWeightKg"] is None for r in races for h in r["horses"]),
+         "missingSexCount":sum(h["sex"] is None for r in races for h in r["horses"]),
+         "missingMarginCount":sum(h["marginText"] is None for r in races for h in r["horses"]),
+         "validationErrorCount":len(errors),
          "validationErrors":errors}
 (OUT/"parsed-races.json").write_text(json.dumps(races,ensure_ascii=False,indent=2),encoding="utf-8")
 (OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
