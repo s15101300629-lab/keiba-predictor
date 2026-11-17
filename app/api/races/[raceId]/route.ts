@@ -140,7 +140,7 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
   const meetingMatch = pageText.match(/(\d+)回\s*([^\s　]+)\s*(\d+)日目/);
 
   const startMatch = conditionText.match(/(\d{1,2}:\d{2})\s*発走/);
-  const trackMatch = conditionText.match(/(芝|ダート?|障害?|障)\s*(\d{3,4})\s*m/i);
+  const trackMatch = conditionText.match(/(芝|ダート|ダ|障害|障)\s*(\d{3,4})\s*m/i);
   const trackDetail = trackMatch
     ? conditionText.slice(trackMatch.index! + trackMatch[0].length)
     : "";
@@ -204,7 +204,7 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
       distanceMeters: distanceMeters !== null ? "available" : "unavailable",
       direction: direction ? "available" : "unavailable",
       courseLayout: courseLayout ? "available" : "not_applicable_or_unpublished",
-      courseLetter: courseLetterMatch ? "available" : "not_found",
+      courseLetter: surface && surface !== "芝" ? "not_applicable" : courseLetterMatch ? "available" : "not_found",
       weather: weather ? "available" : "not_published_or_not_found",
       going: going ? "available" : "not_published_or_not_found",
     },
