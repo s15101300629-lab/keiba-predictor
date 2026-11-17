@@ -157,7 +157,9 @@ for h in headers:
             n=int(change_match.group(2))
             body_change=n if change_match.group(1) in ("＋","+") else (-n if change_match.group(1) in ("－","−") else 0)
 
-        time_parts=[x for x in cs if (334.4<=x["bbox"][0]<355.4 if left else 744.9<=x["bbox"][0]<765.8) and abs(center_y(x)-ny)<=3.0]\n        time_parts.sort(key=lambda x:x["bbox"][0])\n        time_raw=norm("".join(x["text"] for x in time_parts))
+        time_parts=[x for x in cs if (334.4<=x["bbox"][0]<355.4 if left else 744.9<=x["bbox"][0]<765.8) and abs(center_y(x)-ny)<=3.0]
+        time_parts.sort(key=lambda x:x["bbox"][0])
+        time_raw=norm("".join(x["text"] for x in time_parts))
         time_match=re.search(r"(\d{1,2})[:：](\d{2})[．.](\d)",time_raw)
         if time_match:
             finish_time=f"{int(time_match.group(1))}:{time_match.group(2)}.{time_match.group(3)}"
