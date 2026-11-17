@@ -1,0 +1,39 @@
+name: Recover validated JRA 2025 dataset
+
+on:
+  push:
+    branches:
+      - feature/jra-pdf-ingestion-pilot
+    paths:
+      - .github/workflows/jra-pdf-recover.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/jra-pdf-ingestion-pilot
+      - name: Download the fully validated 2025 dataset artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jra-results-2025
+          path: jra-pdf-data
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 44203522005
+      - name: Commit dataset without overwriting concurrent branch work
+        run: |
+          test -s jra-pdf-data/jra-results-2025.jsonl.gz
+          test -s jra-pdf-data/validation-2025.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add jra-pdf-data/jra-results-2025.jsonl.gz jra-pdf-data/validation-2025.json
+          git commit -m "Add validated JRA official results dataset for 2025"
+          git fetch origin feature/jra-pdf-ingestion-pilot
+          git rebase FETCH_HEAD
+          git push origin HEAD:feature/jra-pdf-ingestion-pilot
