@@ -66,51 +66,63 @@ function parseGrade(title: string): string | null {
 function parseRaces(html: string): RaceItem[] {
   const races: RaceItem[] = [];
   const seen = new Set<string>();
-  const itemRegex = /<li\b[^>]*class=["'][^"']*RaceList_DataItem[^"']*["'][^>]*>([\s\S]*?)<\/li>/gi;
-  let itemMatch: RegExpExecArray | null;
+  const anchorRegex = /<a\\b([^>]*)>([\\s\\S]*?)<\\/a>/gi;
+  let anchorMatch: RegExpExecArray | null;
 
-  while ((itemMatch = itemRegex.exec(html)) !== null) {
-    const item = itemMatch[1];
-    const linkMatch = item.match(/<a\b([^>]*)>([\s\S]*?)<\/a>/i);
-    if (!linkMatch) continue;
-
-    const hrefMatch = linkMatch[1].match(/href=["']([^"']+)["']/i);
-    const raceIdMatch = hrefMatch?.[1].match(/race_id=(\d{12})/);
+  while ((anchorMatch = anchorRegex.exec(html)) !== null) {
+    const hrefMatch = anchorMatch[1].match(/href=["']([^"']+)["']/i);
+    const raceIdMatch = hrefMatch?.[1].match(/race_id=(\\d{12})/);
     if (!raceIdMatch) continue;
 
     const raceId = raceIdMatch[1];
     if (seen.has(raceId)) continue;
-    seen.add(raceId);
-
     const venue = VENUES[raceId.slice(4, 6)];
     if (!venue) continue;
 
-    const linkHtml = linkMatch[2];
-    const raceNumberText = textOf(extractInner(linkHtml, "Race_Num"));
-    const raceNumberMatch = raceNumberText.match(/(\d{1,2})\s*R/i);
+    const anchorStart = anchorMatch.index;
+    const listStart = html.lastIndexOf("<li", anchorStart);
+    const divStart = html.lastIndexOf("<div", anchorStart);
+    const contextStart = Math.max(listStart, divStart);
+    const listEnd = html.indexOf("</li>", anchorMatch.index + anchorMatch[0].length);
+    const divEnd = html.indexOf("</div>", anchorMatch.index + anchorMatch[0].length);
+    const contextEndCandidates = [listEnd >= 0 ? listEnd + 5 : -1, divEnd >= 0 ? divEnd + 6 : -1].filter((value) => value > anchorMatch!.index);
+    const contextEnd = contextEndCandidates.length ? Math.min(...contextEndCandidates) : anchorMatch.index + anchorMatch[0].length;
+    const context = html.slice(contextStart >= 0 ? contextStart : anchorMatch.index, contextEnd);
+    const linkHtml = anchorMatch[2];
+    const contextText = textOf(context);
+    const anchorText = textOf(linkHtml);
+
+    const raceNumberText = textOf(extractInner(linkHtml, "Race_Num")) || contextText;
+    const raceNumberMatch = raceNumberText.match(/(\\d{1,2})\\s*R/i) || anchorText.match(/(\\d{1,2})\\s*R/i);
     if (!raceNumberMatch) continue;
-
     const raceNumber = Number(raceNumberMatch[1]);
-    const title = textOf(extractInner(linkHtml, "ItemTitle")) || `${raceNumber}R`;
-    const timeText = textOf(extractInner(linkHtml, "RaceList_Itemtime"));
-    const courseText = textOf(extractInner(linkHtml, "RaceList_ItemLong"));
-    const runnersText = textOf(extractInner(linkHtml, "RaceList_Itemnumber"));
-    const timeMatch = timeText.match(/\d{1,2}:\d{2}/);
-    const runnersMatch = runnersText.match(/(\d+)\s*頭/);
-    const grade = parseGrade(title);
-    const isMain = raceNumber === 11;
 
+    const titleCandidates = [
+      extractInner(context, "ItemTitle"),
+      extractInner(context, "RaceName"),
+      extractInner(linkHtml, "ItemTitle"),
+      extractInner(linkHtml, "RaceName"),
+    ].map(textOf).filter(Boolean);
+    const raceTitle = titleCandidates[0] || anchorText.replace(/\\b\\d{1,2}\\s*R\\b/i, "").trim() || `${raceNumber}R`;
+    const grade = parseGrade(`${raceTitle} ${contextText}`);
+    const isMain = raceNumber === 11;
     if (!isMain && !grade) continue;
 
+    const timeText = textOf(extractInner(context, "RaceList_Itemtime")) || contextText;
+    const courseText = textOf(extractInner(context, "RaceList_ItemLong")) || "";
+    const runnersText = textOf(extractInner(context, "RaceList_Itemnumber")) || contextText;
+    const timeMatch = timeText.match(/\\d{1,2}:\\d{2}/);
+    const runnersMatch = runnersText.match(/(\\d+)\\s*頭/);
     const labels: string[] = [];
     if (isMain) labels.push("メイン");
     if (grade) labels.push(`重賞 ${grade}`);
 
+    seen.add(raceId);
     races.push({
       raceId,
       venue,
       raceNumber,
-      raceTitle: title,
+      raceTitle,
       startTime: timeMatch?.[0] ?? null,
       course: courseText || null,
       runners: runnersMatch ? Number(runnersMatch[1]) : null,
@@ -120,12 +132,10 @@ function parseRaces(html: string): RaceItem[] {
     });
   }
 
-  return races.sort(
-    (a, b) =>
-      a.venue.localeCompare(b.venue, "ja") ||
-      a.raceNumber - b.raceNumber
-  );
+  return races.sort((a, b) => VENUE_ORDER.indexOf(a.venue) - VENUE_ORDER.indexOf(b.venue) || a.raceNumber - b.raceNumber);
 }
+
+const VENUE_ORDER = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
