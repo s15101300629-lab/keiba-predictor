@@ -122,18 +122,18 @@ type RaceConditions = {
 
 function extractRaceConditions(html: string, raceId: string): RaceConditions {
   const pageText = cleanText(html);
-  const titleMatch = html.match(/<title\\b[^>]*>([\\s\\S]*?)<\\/title>/i);
+  const titleMatch = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
   const titleText = titleMatch ? cleanText(titleMatch[1]) : "";
-  const headingMatch = html.match(/<h1\\b[^>]*>([\\s\\S]*?)<\\/h1>/i);
+  const headingMatch = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
   const headingText = headingMatch ? cleanText(headingMatch[1]) : "";
   const raceNameMatch =
     headingText.match(/([ぁ-んァ-ヶ一-龠A-Za-z0-9ー・]+(?:ステークス|Ｓ|S|記念|賞))/) ||
-    titleText.match(/^(.+?)(?:\\(|（| 出馬表| レース情報)/);
-  const dateMatch = pageText.match(/(20\\d{2})年\\s*(\\d{1,2})月\\s*(\\d{1,2})日/);
-  const meetingMatch = pageText.match(/(\\d+)回\\s*([^\\s　]+)\\s*(\\d+)日目/);
-  const startMatch = pageText.match(/(\\d{1,2}:\\d{2})発走\\s*\\/\\s*(芝|ダ|障)(?:ート)?\\s*(\\d{3,4})m\\s*(右|左|直線)?/);
-  const weatherMatch = pageText.match(/天候\\s*[:：]\\s*(晴|曇|雨|小雨|雪|小雪)/);
-  const goingMatch = pageText.match(/馬場\\s*[:：]\\s*(良|稍重|重|不良)/);
+    titleText.match(/^(.+?)(?:\(|（| 出馬表| レース情報)/);
+  const dateMatch = pageText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
+  const meetingMatch = pageText.match(/(\d+)回\s*([^\s　]+)\s*(\d+)日目/);
+  const startMatch = pageText.match(/(\d{1,2}:\d{2})発走\s*\/\s*(芝|ダ|障)(?:ート)?\s*(\d{3,4})m\s*(右|左|直線)?/);
+  const weatherMatch = pageText.match(/天候\s*[:：]\s*(晴|曇|雨|小雨|雪|小雪)/);
+  const goingMatch = pageText.match(/馬場\s*[:：]\s*(良|稍重|重|不良)/);
   const courseLetterMatch = pageText.match(/([A-D])コース/);
   const courseLayout = /外回り|芝・外/.test(pageText)
     ? "外回り"
@@ -141,24 +141,24 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
       ? "内回り"
       : null;
   const raceNumber = Number(raceId.slice(-2));
-
   const date = dateMatch
-    ? `${dateMatch[1]}-${dateMatch[2].padStart(2, "0")}-${dateMatch[3].padStart(2, "0")}`
+    ? dateMatch[1] + "-" + dateMatch[2].padStart(2, "0") + "-" + dateMatch[3].padStart(2, "0")
     : null;
   const meeting = meetingMatch ? Number(meetingMatch[1]) : null;
   const day = meetingMatch ? Number(meetingMatch[3]) : null;
   const venue = meetingMatch?.[2] ?? null;
   const surface = startMatch
-    ? startMatch[2] === "ダ" || startMatch[2] === "障"
-      ? startMatch[2] === "ダ" ? "ダート" : "障害"
-      : "芝"
+    ? startMatch[2] === "ダ"
+      ? "ダート"
+      : startMatch[2] === "障"
+        ? "障害"
+        : "芝"
     : null;
   const distanceMeters = startMatch ? Number(startMatch[3]) : null;
   const direction = startMatch?.[4] ?? null;
   const startTime = startMatch?.[1] ?? null;
   const weather = weatherMatch?.[1] ?? null;
   const going = goingMatch?.[1] ?? null;
-
   return {
     raceName: raceNameMatch?.[1]?.trim() ?? null,
     date,
