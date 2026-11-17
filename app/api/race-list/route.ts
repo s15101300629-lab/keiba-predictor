@@ -95,7 +95,7 @@ function parseRaces(html: string): RaceItem[] {
     const runnersText = textOf(extractInner(linkHtml, "RaceList_Itemnumber"));
     const timeMatch = timeText.match(/\\d{1,2}:\\d{2}/);
     const runnersMatch = runnersText.match(/(\\d+)\\s*頭/);
-    const grade = parseGrade(title);
+    const grade = parseGrade(`${title} ${textOf(item)}`);
     const isMain = raceNumber === 11;
 
     if (!isMain && !grade) continue;
