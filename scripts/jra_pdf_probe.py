@@ -243,7 +243,7 @@ for h in headers:
         birth_year=URL_YEAR-horse_age if URL_YEAR else None
         horse_key=f"{norm(horse_name)}|{horse_sex or '不明'}|{birth_year or '不明'}"
         horses.append({"frameNumber":frame_no,"horseNumber":horse_no,
-                       "horseName":horse_name,"sex":horse_sex,"age":horse_age,
+                       "horseName":horse_name,"sex":horse_sex,"sexMarkerCode":sex_marker_code,"age":horse_age,
                        "birthYear":birth_year,"horseKey":horse_key,
                        "coatColor":im.group(4),"carriedWeightKg":carried_weight,
                        "bodyWeightKg":body_weight,"bodyWeightChangeKg":body_change,
