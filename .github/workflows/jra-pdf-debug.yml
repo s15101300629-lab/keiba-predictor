@@ -1,0 +1,42 @@
+name: JRA PDF parser debug
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/jra-pdf-ingestion-pilot
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check pymupdf
+      - name: Parse selected problematic PDFs with full diagnostics
+        run: |
+          set +e
+          mkdir -p jra-debug
+          for item in \
+            "2025-1hakodate12 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1hakodate12.pdf" \
+            "2025-1niigata5 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1niigata5.pdf" \
+            "2025-1chukyo3 https://www.jra.go.jp/datafile/seiseki/report/2025/2025-1chukyo3.pdf"
+          do
+            set -- $item
+            name=$1
+            url=$2
+            JRA_PDF_URL="$url" JRA_OUTPUT_DIR="jra-debug/$name" JRA_DIAGNOSTICS=1 JRA_EXPECTED_RACES=12 python scripts/jra_pdf_probe.py >"jra-debug/$name.log" 2>&1
+            echo "$name exit=$?"
+          done
+      - name: Upload parser debug materials
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jra-pdf-parser-debug
+          path: jra-debug/
+          if-no-files-found: error
