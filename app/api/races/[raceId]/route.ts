@@ -498,12 +498,11 @@ function normalizeHorseName(value: string) {
 }
 
 function parseRatingValue(value: string) {
-  const match = value.match(/(?:^|\s)(\d{2,3})(?=\s|$)/);
+  const match = value.match(/(\d{2,3})(?:\s*[SMILE]*)?\s*$/);
   if (!match) return null;
   const rating = Number(match[1]);
   return rating >= 50 && rating <= 150 ? rating : null;
 }
-
 function extractMonthlyJraRatings(html: string, year: number, targetDate: string, sourceUrl: string) {
   const ratings = new Map<string, JraRating>();
   const tables = extractTables(html);
