@@ -81,22 +81,22 @@ export default function Home() {
       </header>
 
       <section className="hero">
-        <p className="eyebrow">TODAY'S RACE CENTER</p>
-        <h1>今日の注目レースを、<br /><span>競馬場ごとに。</span></h1>
-        <p className="hero-copy">当日のJRA開催情報から、各競馬場のメインレースと重賞だけを表示します。平場のレースは表示しません。</p>
+        <p className="eyebrow">UPCOMING RACE CENTER</p>
+        <h1>次回の注目レースを、<br /><span>競馬場ごとに。</span></h1>
+        <p className="hero-copy">画面を開いた日ではなく、今日以降で最初に開催が確認できたJRA開催日のメインレースと重賞を表示します。平場のレースは表示しません。</p>
         <div className="hero-stats">
           <div><small>対象</small><b>JRA</b></div>
           <div><small>表示対象</small><b>メイン・重賞</b></div>
-          <div><small>開催日</small><b>{date ? formatDate(date) : "取得中"}</b></div>
+          <div><small>次回開催日</small><b>{date ? formatDate(date) : "取得中"}</b></div>
         </div>
       </section>
 
       <section className="section-head">
-        <div><p className="eyebrow">FEATURED RACES</p><h2>本日のメイン・重賞</h2></div>
-        <span className="date-chip">{date ? formatDate(date) : "本日"}</span>
+        <div><p className="eyebrow">FEATURED RACES</p><h2>次回開催日のメイン・重賞</h2></div>
+        <span className="date-chip">{date ? formatDate(date) : "開催日を検索中"}</span>
       </section>
 
-      {loading && <div className="state-panel">本日の開催レースを取得しています…</div>}
+      {loading && <div className="state-panel">次回のJRA開催日を検索しています…</div>}
       {!loading && error && (
         <div className="state-panel error-panel">
           <b>開催情報を取得できませんでした</b>
@@ -106,8 +106,8 @@ export default function Home() {
       )}
       {!loading && !error && grouped.length === 0 && (
         <div className="state-panel">
-          <b>本日の表示対象レースはありません</b>
-          <p>JRAの開催がない日、または開催一覧からメイン・重賞を取得できなかった場合に表示されます。</p>
+          <b>表示対象レースはありません</b>
+          <p>今後21日以内にJRAの開催日を確認できなかったか、開催一覧からメイン・重賞を取得できなかった場合に表示されます。</p>
         </div>
       )}
 
