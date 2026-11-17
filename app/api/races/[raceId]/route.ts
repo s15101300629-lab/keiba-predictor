@@ -652,9 +652,9 @@ async function fetchG1PreRatings(
 
   // JRAのGⅠページは年度によってヘッダーが複数行に分かれるため、
   // 見出し行の列番号に依存せず、各行の馬名セルと数値セルを直接照合する。
-  const rows = [...detail.html.matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)];
+  const rows = [...detail.html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
   for (const rowMatch of rows) {
-    const cells = [...rowMatch[1].matchAll(/<t[dh]\\b[^>]*>([\\s\\S]*?)<\\/t[dh]>/gi)]
+    const cells = [...rowMatch[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi)]
       .map((cell) => cleanText(cell[1]));
     if (cells.length < 2) continue;
 
