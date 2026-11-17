@@ -18,6 +18,8 @@ type RaceListResponse = {
   ok: boolean;
   month?: string;
   year?: number;
+  startDate?: string;
+  endDate?: string;
   raceDates?: string[];
   races?: RaceItem[];
   error?: string;
