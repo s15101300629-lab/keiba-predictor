@@ -866,7 +866,7 @@ export async function GET(
           results[index] = {
             horseId: horse.horseId, name: horse.name, raceEntry,
             raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
-            status: profile && performance ? "complete" : "partial",
+            status: profile && performance && historyResult.failedPages.length === 0 ? "complete" : "partial",
             sourceStatus: profilePage.status,
             historyPagesFetched: historyResult.pagesFetched,
             historyFailedPages: historyResult.failedPages,
