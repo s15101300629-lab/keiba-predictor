@@ -424,6 +424,63 @@ function extractPerformances(tables: string[][][]) {
 }
 
 
+async function fetchAllPerformances(
+  horseId: string,
+  forceRefresh: boolean
+): Promise<{ performance: ReturnType<typeof extractPerformances>; pagesFetched: number; failedPages: number[] }> {
+  const baseUrl = \`https://db.netkeiba.com/horse/result/\${horseId}/\`;
+  const firstPage = await fetchHtml(baseUrl, 604800, forceRefresh, "euc-jp");
+  if (!firstPage.ok) return { performance: null, pagesFetched: 0, failedPages: [1] };
+
+  const firstPerformance = extractPerformances(extractTables(firstPage.html));
+  if (!firstPerformance) return { performance: null, pagesFetched: 1, failedPages: [] };
+
+  const pageNumbers = new Set<number>();
+  const pageLinkRegex = /[?&]page=(\d+)/gi;
+  let pageMatch: RegExpExecArray | null;
+  while ((pageMatch = pageLinkRegex.exec(firstPage.html)) !== null) {
+    const pageNumber = Number(pageMatch[1]);
+    if (Number.isInteger(pageNumber) && pageNumber > 1 && pageNumber <= 50) pageNumbers.add(pageNumber);
+  }
+
+  const rows = [...firstPerformance.rows];
+  const failedPages: number[] = [];
+  let pagesFetched = 1;
+  const pagesToFetch = pageNumbers.size
+    ? [...pageNumbers].sort((a, b) => a - b)
+    : firstPerformance.rows.length >= 20
+      ? Array.from({ length: 49 }, (_, index) => index + 2)
+      : [];
+
+  for (const pageNumber of pagesToFetch) {
+    const page = await fetchHtml(baseUrl + \`?page=\${pageNumber}\`, 604800, forceRefresh, "euc-jp");
+    if (!page.ok) {
+      failedPages.push(pageNumber);
+      if (!pageNumbers.size) break;
+      continue;
+    }
+    const parsed = extractPerformances(extractTables(page.html));
+    if (!parsed || parsed.rows.length === 0) {
+      if (!pageNumbers.size) break;
+      continue;
+    }
+    pagesFetched++;
+    rows.push(...parsed.rows);
+  }
+
+  const uniqueRows = new Map<string, { values: Record<string, string> }>();
+  for (const row of rows) uniqueRows.set(JSON.stringify(row.values), row);
+  return {
+    performance: {
+      headers: firstPerformance.headers,
+      countOnPage: uniqueRows.size,
+      rows: [...uniqueRows.values()],
+    },
+    pagesFetched,
+    failedPages,
+  };
+}
+
 type PerformanceStats = {
   parsedStarts: number; wins: number; top3: number; averageFinish: number | null;
   gradedStarts: number; gradedWins: number;
@@ -788,30 +845,32 @@ export async function GET(
         try {
           const raceEntry = entryByHorseId.get(horse.horseId) ?? null;
           const profileUrl = `https://db.sp.netkeiba.com/horse/${horse.horseId}/`;
-          const historyUrl = `https://db.netkeiba.com/horse/result/${horse.horseId}/`;
-          const [profilePage, historyPage] = await Promise.all([
+          const [profilePage, historyResult] = await Promise.all([
             fetchHtml(profileUrl, 604800, forceRefresh),
-            fetchHtml(historyUrl, 604800, forceRefresh, "euc-jp"),
+            fetchAllPerformances(horse.horseId, forceRefresh),
           ]);
-          if (!profilePage.ok && !historyPage.ok) {
+          if (!profilePage.ok && !historyResult.performance) {
             results[index] = {
               horseId: horse.horseId, name: horse.name, raceEntry,
               raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
               status: "fetch_failed",
-              profileHttpStatus: profilePage.status, historyHttpStatus: historyPage.status,
+              profileHttpStatus: profilePage.status,
+              historyFailedPages: historyResult.failedPages,
             };
             continue;
           }
           const profile = profilePage.ok ? extractProfile(extractTables(profilePage.html)) : null;
-          const performance = historyPage.ok ? extractPerformances(extractTables(historyPage.html)) : null;
+          const performance = historyResult.performance;
           const performanceRows = performance?.rows ?? [];
           const performanceStats = summarizePerformances(performanceRows, raceConditions);
           results[index] = {
             horseId: horse.horseId, name: horse.name, raceEntry,
             raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
             status: profile && performance ? "complete" : "partial",
-            sourceStatus: profilePage.status, historyStatus: historyPage.status,
-            responseBytes: profilePage.bytes + historyPage.bytes, profile,
+            sourceStatus: profilePage.status,
+            historyPagesFetched: historyResult.pagesFetched,
+            historyFailedPages: historyResult.failedPages,
+            responseBytes: profilePage.bytes, profile,
             performanceCountOnPage: performance?.countOnPage ?? null,
             performanceHeaders: performance?.headers ?? [],
             performances: performance?.rows ?? [],
