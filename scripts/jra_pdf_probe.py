@@ -132,12 +132,12 @@ for h in headers:
         def nearest_span(xmin,xmax):
             found=[x for x in cs if xmin<=x["bbox"][0]<xmax and abs(center_y(x)-ny)<=3.0]
             return min(found,key=lambda x:abs(center_y(x)-ny)) if found else None
-        body_span=nearest_span(300,322) if left else nearest_span(710,733)
-        change_span=nearest_span(321,338) if left else nearest_span(731,748)
-        time_span=nearest_span(334,357) if left else nearest_span(745,768)
-        margin_span=nearest_span(355,381) if left else nearest_span(765,791)
+        body_span=nearest_span(300,321) if left else nearest_span(710,731.4)
+        change_span=nearest_span(321,334.5) if left else nearest_span(731.4,745)
+        time_span=nearest_span(334.5,355.5) if left else nearest_span(745,765.9)
+        margin_span=nearest_span(355.5,380) if left else nearest_span(765.9,790)
         odds_span=nearest_span(380,403) if left else nearest_span(790,814)
-        glyph_span=nearest_span(403,411) if left else nearest_span(813,821)
+        glyph_span=nearest_span(402.9,411) if left else nearest_span(813.3,821)
 
         body_text=norm(body_span["text"]) if body_span else ""
         body_match=re.search(r"(\d{3})",body_text)
