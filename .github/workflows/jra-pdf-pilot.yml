@@ -44,3 +44,22 @@ jobs:
           name: jra-pdf-probe-${{ matrix.sample }}
           path: jra-pdf-probe/
           if-no-files-found: error
+
+
+  discover-pdfs:
+    name: discover-official-pdf-index
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Discover annual PDF links from JRA official index
+        run: python scripts/jra_pdf_index.py
+      - name: Upload official PDF manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: jra-pdf-index-manifest
+          path: jra-pdf-index/
+          if-no-files-found: error
