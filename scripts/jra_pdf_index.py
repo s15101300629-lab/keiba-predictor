@@ -48,9 +48,17 @@ def fetch_html(url: str) -> tuple[str, str]:
     with urllib.request.urlopen(request, timeout=45) as response:
         body = response.read()
         content_type = response.headers.get("Content-Type", "")
+        charset = response.headers.get_content_charset()
     if not body:
         raise RuntimeError(f"Empty HTML response: {url}")
-    return body.decode("utf-8", errors="replace"), content_type
+    if not charset:
+        charset_match = re.search(rb"charset=([A-Za-z0-9._-]+)", body[:4096], re.I)
+        charset = charset_match.group(1).decode("ascii") if charset_match else "utf-8"
+    try:
+        html = body.decode(charset)
+    except (LookupError, UnicodeDecodeError):
+        html = body.decode("utf-8", errors="replace")
+    return html, content_type
 
 
 def parse_links(html: str) -> list[dict]:
