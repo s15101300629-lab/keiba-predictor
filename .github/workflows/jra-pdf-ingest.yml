@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
-      JRA_YEAR: \${{ github.event.inputs.year || '2025' }}
+      JRA_YEAR: ${{ github.event.inputs.year || '2025' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,15 +39,15 @@ jobs:
       - name: Upload validated annual dataset
         uses: actions/upload-artifact@v4
         with:
-          name: jra-results-\${{ env.JRA_YEAR }}
+          name: jra-results-${{ env.JRA_YEAR }}
           path: |
-            data/jra-results/\${{ env.JRA_YEAR }}.json
-            data/jra-results/\${{ env.JRA_YEAR }}.validation.json
+            data/jra-results/${{ env.JRA_YEAR }}.json
+            data/jra-results/${{ env.JRA_YEAR }}.validation.json
           if-no-files-found: error
       - name: Commit validated annual dataset to the feature branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "data/jra-results/\${JRA_YEAR}.json" "data/jra-results/\${JRA_YEAR}.validation.json"
-          git commit -m "Add validated JRA official results dataset for \${JRA_YEAR}"
+          git add "data/jra-results/${JRA_YEAR}.json" "data/jra-results/${JRA_YEAR}.validation.json"
+          git commit -m "Add validated JRA official results dataset for ${JRA_YEAR}"
           git push origin HEAD:feature/jra-pdf-ingestion-pilot
