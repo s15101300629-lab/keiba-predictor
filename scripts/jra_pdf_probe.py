@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, os, re, urllib.request
+import hashlib, json, os, re, urllib.request
 from pathlib import Path
 
 URL = os.environ.get("JRA_PDF_URL", "https://jra.jp/datafile/seiseki/report/2025/2025-1kyoto1.pdf")
@@ -365,7 +365,7 @@ for race in races:
             if abs(sum(race["lapTimes"][-3:])-race["last3F"])>0.11:
                 errors.append(f"R{race['raceNumber']}: final 3F does not match last three lap times")
 
-summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),
+summary={"source":URL,"sourceSha256":hashlib.sha256(raw).hexdigest(),"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),
          "pageCharacters":[p["characters"] for p in pages],"layoutBlockCount":len(blocks),
          "layoutLineCount":len(lines),"layoutSpanCount":len(spans),"layoutCharCount":len(chars),
          "popularityFontMapCount":len(popularity_maps),
