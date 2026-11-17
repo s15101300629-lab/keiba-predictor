@@ -496,12 +496,14 @@ type RaceHistoryMetric = { starts: number; wins: number; top3: number; winRate: 
 type RaceHistoryStats = {
   status: "available" | "partial" | "unavailable";
   requestedYears: number[]; fetchedYears: number[]; failedYears: number[];
+  frameYears: number[]; jockeyYears: number[];
   totalEntries: number;
   frameStats: Record<string, RaceHistoryMetric>;
   jockeyStats: Record<string, RaceHistoryMetric>;
 };
 type RaceHistoryForHorse = {
-  frame: RaceHistoryMetric | null; jockey: RaceHistoryMetric | null; sourceYears: number[];
+  frame: RaceHistoryMetric | null; jockey: RaceHistoryMetric | null;
+  frameYears: number[]; jockeyYears: number[];
 } | null;
 type JraHistoricalEntry = {
   frameNumber: number | null; horseNumber: number; horseName: string;
@@ -514,7 +516,7 @@ function normalizeJockeyName(value: string | null | undefined) {
 
 
 function createEmptyRaceHistoryStats(requestedYears: number[], status: RaceHistoryStats["status"]): RaceHistoryStats {
-  return { status, requestedYears, fetchedYears: [], failedYears: [...requestedYears], totalEntries: 0, frameStats: {}, jockeyStats: {} };
+  return { status, requestedYears, fetchedYears: [], failedYears: [...requestedYears], frameYears: [], jockeyYears: [], totalEntries: 0, frameStats: {}, jockeyStats: {} };
 }
 
 function extractJraHistoricalEntries(html: string): JraHistoricalEntry[] {
@@ -633,7 +635,7 @@ async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: b
   }
   const failedYears = requestedYears.filter((year) => !yearUrls.has(year));
   const pending = requestedYears.filter((year) => yearUrls.has(year));
-  const fetched: { year: number; entries: JraHistoricalEntry[] }[] = [];
+  const fetched: { year: number; venue: string | null; entries: JraHistoricalEntry[] }[] = [];
   let next = 0;
   async function worker() {
     while (true) {
@@ -644,7 +646,9 @@ async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: b
       if (!page.ok) { failedYears.push(year); continue; }
       const entries = extractJraHistoricalEntries(page.html);
       if (!entries.length) { failedYears.push(year); continue; }
-      fetched.push({ year, entries });
+      const pageText = cleanText(page.html);
+      const venueMatch = pageText.match(/\d+回\s*(札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\s*\d+日/);
+      fetched.push({ year, venue: venueMatch?.[1] ?? null, entries });
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, () => worker()));
@@ -652,6 +656,8 @@ async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: b
   const frameCounts: Record<string, { starts: number; wins: number; top3: number }> = {};
   const jockeyCounts: Record<string, { starts: number; wins: number; top3: number }> = {};
   let totalEntries = 0;
+  const frameYears = fetched.filter((race) => race.venue === conditions.venue).map((race) => race.year).sort((a, b) => a - b);
+  const jockeyYears = fetched.map((race) => race.year).sort((a, b) => a - b);
   for (const race of fetched) for (const entry of race.entries) {
     totalEntries++;
     const add = (bucket: Record<string, { starts: number; wins: number; top3: number }>, key: string) => {
@@ -660,13 +666,14 @@ async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: b
       if (entry.finish === 1) item.wins++;
       if (entry.finish !== null && entry.finish <= 3) item.top3++;
     };
-    if (entry.frameNumber !== null) add(frameCounts, String(entry.frameNumber));
+    if (race.venue === conditions.venue && entry.frameNumber !== null) add(frameCounts, String(entry.frameNumber));
     if (entry.jockey) add(jockeyCounts, normalizeJockeyName(entry.jockey));
   }
   const fetchedYears = fetched.map((race) => race.year).sort((a, b) => a - b);
   return {
     status: fetchedYears.length === 0 ? "unavailable" : failedYears.length ? "partial" : "available",
-    requestedYears, fetchedYears, failedYears: failedYears.sort((a, b) => a - b), totalEntries,
+    requestedYears, fetchedYears, failedYears: failedYears.sort((a, b) => a - b),
+    frameYears, jockeyYears, totalEntries,
     frameStats: Object.fromEntries(Object.entries(frameCounts).map(([k, v]) => [k, toRaceHistoryMetric(v)])),
     jockeyStats: Object.fromEntries(Object.entries(jockeyCounts).map(([k, v]) => [k, toRaceHistoryMetric(v)])),
   };
@@ -677,7 +684,8 @@ function getRaceHistoryForHorse(entry: RaceEntry | null, history: RaceHistorySta
   return {
     frame: entry.frameNumber === null ? null : history.frameStats[String(entry.frameNumber)] ?? null,
     jockey: entry.jockey ? history.jockeyStats[normalizeJockeyName(entry.jockey)] ?? null : null,
-    sourceYears: history.fetchedYears,
+    frameYears: history.frameYears,
+    jockeyYears: history.jockeyYears,
   };
 }
 
