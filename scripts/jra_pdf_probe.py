@@ -49,39 +49,64 @@ for h in headers:
         if m: declared,decl_y=int(m.group(1)),b["bbox"][1]; break
     if declared is None:
         errors.append(f"R{h['no']}: headcount missing"); continue
-    candidates=[x for x in cl if x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
-    candidates.sort(key=lambda x:((x["bbox"][1]+x["bbox"][3])/2,x["bbox"][0]))
-    rows=[]
-    for ln in candidates:
-        cy=(ln["bbox"][1]+ln["bbox"][3])/2
-        if not rows or abs(cy-rows[-1]["y"])>3.0: rows.append({"y":cy,"lines":[ln]})
-        else:
-            rows[-1]["lines"].append(ln)
-            rows[-1]["y"]=sum((z["bbox"][1]+z["bbox"][3])/2 for z in rows[-1]["lines"])/len(rows[-1]["lines"])
+
+    # In JRA's PDF layout, the finish/frame/horse-number field is at x≈21
+    # (left card) or x≈431 (right card); horse identity starts at x≈49/460.
+    number_x=(18,42) if left else (429,452)
+    identity_x=(45,155) if left else (455,560)
+    num_lines=[x for x in cl if number_x[0]<=x["bbox"][0]<=number_x[1]
+               and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
     horses=[]
-    for row in rows:
-        numline=next((norm(x["text"]) for x in row["lines"] if x["bbox"][0]<(25 if left else 435)),"")
-        nm=re.match(r"^([1-8])\s*(\d{1,2})",numline)
-        if not nm: continue
-        xmin,xmax=(40,155) if left else (450,585)
-        fr=[x for x in cl if xmin<=x["bbox"][0]<xmax and abs((x["bbox"][1]+x["bbox"][3])/2-row["y"])<=4.5]
-        fr.sort(key=lambda x:(x["bbox"][0],x["bbox"][1]))
-        identity=norm("".join(x["text"] for x in fr))
-        im=re.search(rf"(.+?)(牡|牝|せん|セン)(\d)({coat})",identity)
-        if not im:
-            errors.append(f"R{h['no']} horse {nm.group(2)} identity={identity!r}")
+    for nl in num_lines:
+        number_text=norm(nl["text"])
+        # Finish order, frame number and horse number are printed in that order.
+        # Text extraction can omit spacing, so read the final two digits as frame/horse.
+        nm=re.search(r"(\d{1,2})\s*([1-8])\s*(\d{1,2})$",number_text)
+        if not nm:
+            nm=re.search(r"^([1-8])\s*(\d{1,2})$",number_text)
+            if not nm: continue
+            finish=None; frame=int(nm.group(1)); horse_no=int(nm.group(2))
+        else:
+            finish=int(nm.group(1)); frame=int(nm.group(2)); horse_no=int(nm.group(3))
+        ny=(nl["bbox"][1]+nl["bbox"][3])/2
+        id_candidates=[x for x in cl if identity_x[0]<=x["bbox"][0]<identity_x[1]
+                       and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
+        if not id_candidates:
+            errors.append(f"R{h['no']} horse {horse_no}: no identity-column text")
             continue
-        horses.append({"frameNumber":int(nm.group(1)),"horseNumber":int(nm.group(2)),"horseName":im.group(1),"sex":im.group(2),"age":int(im.group(3)),"coatColor":im.group(4),"sourcePage":h["page"],"sourceY":round(row["y"],2)})
+        nearest=min(id_candidates,key=lambda x:abs((x["bbox"][1]+x["bbox"][3])/2-ny))
+        iy=(nearest["bbox"][1]+nearest["bbox"][3])/2
+        if abs(iy-ny)>8:
+            errors.append(f"R{h['no']} horse {horse_no}: identity baseline mismatch {iy-ny:.2f}")
+            continue
+        identity=norm(nearest["text"])
+        im=re.search(rf"(.+?)(牡|牝|せん|セン)?(\d)({coat})",identity)
+        if not im:
+            errors.append(f"R{h['no']} horse {horse_no}: identity parse failed {identity!r}")
+            continue
+        horses.append({"finishOrder":finish,"frameNumber":frame,"horseNumber":horse_no,
+                       "horseName":im.group(1),"sex":im.group(2),"age":int(im.group(3)),
+                       "coatColor":im.group(4),"sourcePage":h["page"],"sourceY":round(ny,2)})
+
     nums=[x["horseNumber"] for x in horses]
     if len(nums)!=declared: errors.append(f"R{h['no']}: rows {len(nums)} != declared {declared}")
+    if len(set(nums))!=len(nums): errors.append(f"R{h['no']}: duplicate horse numbers {nums}")
     if sorted(nums)!=list(range(1,declared+1)): errors.append(f"R{h['no']}: horse numbers {sorted(nums)}")
+    if any(x["finishOrder"] is None for x in horses): errors.append(f"R{h['no']}: missing finish order")
     ht=norm(h["text"])
     dm=re.search(r"(\d{4})年(\d+)月(\d+)日",ht)
     dist=re.search(r"(\d)[，,](\d{3})",ht)
     surf=re.search(r"（(芝|ダート|障害)[^）]*）",ht)
     vm=re.search(r"\d{4}年\d+([^）]+)",ht)
-    races.append({"raceNumber":h["no"],"date":f"{int(dm.group(1)):04d}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else None,"venue":vm.group(1) if vm else None,"distanceMeters":int(dist.group(1)+dist.group(2)) if dist else None,"surface":surf.group(1) if surf else None,"declaredRunnerCount":declared,"parsedRunnerCount":len(horses),"horses":horses})
-summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),"pageCharacters":[p["characters"] for p in pages],"layoutBlockCount":len(blocks),"layoutLineCount":len(lines),"raceCount":len(headers),"parsedRaceCount":len(races),"parsedHorseRows":sum(len(r["horses"]) for r in races),"validationErrorCount":len(errors),"validationErrors":errors}
+    races.append({"raceNumber":h["no"],"date":f"{int(dm.group(1)):04d}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else None,
+                  "venue":vm.group(1) if vm else None,"distanceMeters":int(dist.group(1)+dist.group(2)) if dist else None,
+                  "surface":surf.group(1) if surf else None,"declaredRunnerCount":declared,
+                  "parsedRunnerCount":len(horses),"horses":sorted(horses,key=lambda x:x["horseNumber"])})
+summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),
+         "pageCharacters":[p["characters"] for p in pages],"layoutBlockCount":len(blocks),
+         "layoutLineCount":len(lines),"raceCount":len(headers),"parsedRaceCount":len(races),
+         "parsedHorseRows":sum(len(r["horses"]) for r in races),"validationErrorCount":len(errors),
+         "validationErrors":errors}
 (OUT/"parsed-races.json").write_text(json.dumps(races,ensure_ascii=False,indent=2),encoding="utf-8")
 (OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
 print(json.dumps(summary,ensure_ascii=False))
