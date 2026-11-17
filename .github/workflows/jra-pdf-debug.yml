@@ -1,6 +1,11 @@
 name: JRA PDF parser debug
 
 on:
+  push:
+    branches:
+      - feature/jra-pdf-ingestion-pilot
+    paths:
+      - .github/workflows/jra-pdf-debug.yml
   workflow_dispatch:
 
 permissions:
