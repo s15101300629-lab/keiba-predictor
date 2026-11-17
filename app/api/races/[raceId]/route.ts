@@ -133,7 +133,7 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
   const conditionText = raceDataText || pageText;
 
   const raceNameMatch =
-    headingText.match(/([ぁ-んァ-ヶ一-龠A-Za-z0-9ー・]+(?:チャンピオンシップ|ステークス|Ｓ|S|記念|賞))/) ||
+    headingText.match(/([ぁ-んァ-ヶ一-龠A-Za-zＡ-Ｚａ-ｚ0-9０-９ー・]+(?:（(?:春|秋)）|\((?:春|秋)\)|チャンピオンシップ|ステークス|記念|賞|杯|オークス|マイル|[ＣC]?[ＳS]|[ＦF][ＳS]|[ＪJ][ＦF]))/) ||
     titleText.match(/^(.+?)(?:\(|（| 出馬表| レース情報)/);
   const dateMatch = pageText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
   const meetingMatch = pageText.match(/(\d+)回\s*([^\s　]+)\s*(\d+)日目/);
@@ -555,6 +555,7 @@ const RACE_NAME_ALIASES: Record<string, string> = {
   "朝日杯FS": "朝日杯フューチュリティS",
   "朝日杯フューチュリティS": "朝日杯フューチュリティS",
   "エリ女": "エリザベス女王杯",
+  "エリ女杯": "エリザベス女王杯",
   "エリザベス女王杯": "エリザベス女王杯",
   "オークス": "優駿牝馬",
   "優駿牝馬オークス": "優駿牝馬",
@@ -562,8 +563,16 @@ const RACE_NAME_ALIASES: Record<string, string> = {
   "日本ダービー": "東京優駿",
   "東京優駿日本ダービー": "東京優駿",
   "東京優駿": "東京優駿",
+  "春天": "天皇賞春",
   "天皇賞春": "天皇賞春",
+  "秋天": "天皇賞秋",
   "天皇賞秋": "天皇賞秋",
+  "ヴィクトリアM": "ヴィクトリアマイル",
+  "ヴィクトリアマイル": "ヴィクトリアマイル",
+  "有馬": "有馬記念",
+  "有馬記念": "有馬記念",
+  "宝塚": "宝塚記念",
+  "宝塚記念": "宝塚記念",
 };
 
 function normalizeRaceNameForMatch(value: string) {
