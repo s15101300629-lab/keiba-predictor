@@ -23,7 +23,7 @@ jobs:
       - name: Download and inspect official JRA PDF
         continue-on-error: true
         run: python scripts/jra_pdf_probe.py
-      - name: Upload diagnostics even when parsing fails
+      - name: Upload parser diagnostics for row-level validation
         if: always()
         uses: actions/upload-artifact@v4
         with:
