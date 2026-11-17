@@ -28,7 +28,8 @@ type RaceHistoryMetric = { starts: number; wins: number; top3: number; winRate: 
 type RaceHistoryForHorse = {
   frame: RaceHistoryMetric | null;
   jockey: RaceHistoryMetric | null;
-  sourceYears: number[];
+  frameYears: number[];
+  jockeyYears: number[];
 } | null;
 type Horse = {
   horseId: string; name: string; status: string; raceEntry: Entry | null;
@@ -161,7 +162,8 @@ function buildOverallScores(horses: Horse[], factorScores: Map<string, FactorSco
 function buildCategoryRanks(
   horses: Horse[],
   factorScores: Map<string, FactorScore[]>,
-  distanceMeters: number | null
+  distanceMeters: number | null,
+  venue: string | null
 ): Map<string, CategoryRank[]> {
   const result = new Map<string, CategoryRank[]>();
   const categories = ["騎手", "調教", "血統", "距離適性", "コース適性", "馬場適性", "枠順", "種牡馬", "ポジション"];
@@ -208,9 +210,11 @@ function buildCategoryRanks(
           const metric = categoryLabel === "騎手" ? source?.jockey : source?.frame;
           if (metric) {
             const percent = (rate: number) => Math.round(rate * 100) + "%";
+            const years = categoryLabel === "騎手" ? source?.jockeyYears ?? [] : source?.frameYears ?? [];
+            const yearLabel = years.length + "年分";
             row.detail = categoryLabel === "騎手"
-              ? `エリザベス女王杯の過去10年・今回の騎手 ${metric.starts}騎乗／勝率 ${percent(metric.winRate)}／複勝率 ${percent(metric.placeRate)}`
-              : `エリザベス女王杯の過去10年・今回の枠番 ${metric.starts}回／勝率 ${percent(metric.winRate)}／複勝率 ${percent(metric.placeRate)}`;
+              ? `エリザベス女王杯の過去${yearLabel}・今回の騎手 ${metric.starts}騎乗／勝率 ${percent(metric.winRate)}／複勝率 ${percent(metric.placeRate)}`
+              : `エリザベス女王杯の${venue ?? "同競馬場"}開催・過去${yearLabel}・今回の枠番 ${metric.starts}回／勝率 ${percent(metric.winRate)}／複勝率 ${percent(metric.placeRate)}`;
           }
         }
       }
@@ -448,7 +452,7 @@ export default function RaceDetailPage() {
   const horses = data?.results ?? [];
   const factorScores = useMemo(() => buildFactorScores(horses), [horses]);
   const overallScores = useMemo(() => buildOverallScores(horses, factorScores), [horses, factorScores]);
-  const categoryRanks = useMemo(() => buildCategoryRanks(horses, factorScores, conditions?.distanceMeters ?? null), [horses, factorScores, conditions?.distanceMeters]);
+  const categoryRanks = useMemo(() => buildCategoryRanks(horses, factorScores, conditions?.distanceMeters ?? null, conditions?.venue ?? null), [horses, factorScores, conditions?.distanceMeters, conditions?.venue]);
   const handleMarkChange = (horseId: string, mark: string) => {
     setMarks((current) => {
       const next = { ...current };
