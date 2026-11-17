@@ -132,6 +132,20 @@ export default function Home() {
         <span className="date-chip">{month ? `${Number(month)}月` : "取得中"}</span>
       </div>
 
+      <section className="venue-section">
+        <div className="venue-heading"><h3>検証用レース</h3><span>過去開催</span></div>
+        <div className="race-list">
+          <Link href="/race/202608050411" className="race-card race-card-link">
+            <div className="race-time">15:40<span>11R</span></div>
+            <div className="race-info">
+              <div className="race-title">エリザベス女王杯</div>
+              <p>11/15（日）京都 ・ 芝2200m ・ 18頭</p>
+            </div>
+            <span className="race-number">検証</span>
+          </Link>
+        </div>
+      </section>
+
       {loading && (
         <div className="state-panel loading-panel">
           <span className="loading-spinner" aria-hidden="true" />
