@@ -66,7 +66,7 @@ for pn, page in enumerate(doc, 1):
             t = "".join(s["text"] for s in ln["spans"]).strip()
             if t: lines.append({"page":pn,"bbox":list(ln["bbox"]),"text":t})
             for sp in ln["spans"]:
-                if sp["text"].strip():
+                if sp["text"] :
                     spans.append({"page":pn,"bbox":list(sp["bbox"]),"text":sp["text"],"font":sp["font"]})
 combined = "\n\n".join(f"===== PAGE {p['page']} =====\n{p['text']}" for p in pages)
 (OUT/"sample-extracted.txt").write_text(combined,encoding="utf-8")
