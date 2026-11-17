@@ -91,7 +91,7 @@ export default function Home() {
       <section className="hero">
         <p className="eyebrow">UPCOMING RACE CENTER</p>
         <h1>今後7日間の注目レースを、<br /><span>競馬場ごとに。</span></h1>
-        <p className="hero-copy">日本時間の今日から7日間に開催されるJRAレースを取得し、各競馬場のメインレースと重賞だけを表示します。平場のレースは表示しません。</p>
+        <p className="hero-copy">日本時間の今週（月曜〜日曜）に開催されるJRAレースを取得し、各競馬場のメインレースと重賞だけを表示します。平場のレースは表示しません。</p>
         <div className="hero-stats">
           <div><small>対象</small><b>JRA</b></div>
           <div><small>表示対象</small><b>メイン・重賞</b></div>
@@ -104,7 +104,7 @@ export default function Home() {
         <span className="date-chip">{periodLabel}</span>
       </section>
 
-      {loading && <div className="state-panel">今後7日間のJRA開催情報を取得しています…</div>}
+      {loading && <div className="state-panel">今週のJRA開催情報を取得しています…</div>}
       {!loading && error && (
         <div className="state-panel error-panel">
           <b>開催情報を取得できませんでした</b>
@@ -115,7 +115,7 @@ export default function Home() {
       {!loading && !error && grouped.length === 0 && (
         <div className="state-panel">
           <b>表示対象レースはありません</b>
-          <p>対象期間内にJRA開催がないか、開催一覧からメイン・重賞を取得できなかった場合に表示されます。</p>
+          <p>今週にJRA開催がないか、開催一覧からメイン・重賞を取得できなかった場合に表示されます。</p>
         </div>
       )}
 
