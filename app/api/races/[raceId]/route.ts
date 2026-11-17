@@ -425,15 +425,31 @@ type PerformanceStats = {
   parsedStarts: number; wins: number; top3: number; averageFinish: number | null;
   gradedStarts: number; gradedWins: number;
   sameVenueStarts: number; sameVenueTop3: number;
+  sameVenueSurfaceStarts: number; sameVenueSurfaceTop3: number;
   similarDistanceStarts: number; similarDistanceTop3: number;
   sameGoingStarts: number; sameGoingTop3: number;
+  sameJockeyStarts: number; sameJockeyTop3: number;
+  sameFrameStarts: number; sameFrameTop3: number;
+  positionStarts: number; positionGainTotal: number;
+  positionForwardStarts: number; positionForwardTop3: number;
 };
 
-function summarizePerformances(rows: { values: Record<string, string> }[], conditions: RaceConditions): PerformanceStats {
+function normalizeJockeyName(value: string | null | undefined) {
+  return (value ?? "").normalize("NFKC").replace(/[\s　.・]/g, "").toLowerCase();
+}
+
+function summarizePerformances(
+  rows: { values: Record<string, string> }[],
+  conditions: RaceConditions,
+  raceEntry: RaceEntry | null
+): PerformanceStats {
   const stats: PerformanceStats = {
     parsedStarts: 0, wins: 0, top3: 0, averageFinish: null,
     gradedStarts: 0, gradedWins: 0, sameVenueStarts: 0, sameVenueTop3: 0,
+    sameVenueSurfaceStarts: 0, sameVenueSurfaceTop3: 0,
     similarDistanceStarts: 0, similarDistanceTop3: 0, sameGoingStarts: 0, sameGoingTop3: 0,
+    sameJockeyStarts: 0, sameJockeyTop3: 0, sameFrameStarts: 0, sameFrameTop3: 0,
+    positionStarts: 0, positionGainTotal: 0, positionForwardStarts: 0, positionForwardTop3: 0,
   };
   const venueNames = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
   const finishes: number[] = [];
@@ -465,6 +481,41 @@ function summarizePerformances(rows: { values: Record<string, string> }[], condi
       stats.sameVenueStarts++;
       if (finish <= 3) stats.sameVenueTop3++;
     }
+
+    const pastJockey = findValue([/^騎手$/]);
+    if (raceEntry?.jockey && finish !== null &&
+      normalizeJockeyName(pastJockey) === normalizeJockeyName(raceEntry.jockey)) {
+      stats.sameJockeyStarts++;
+      if (finish <= 3) stats.sameJockeyTop3++;
+    }
+
+    const pastFrameText = findValue([/^枠番$/, /^枠$/]);
+    const pastFrameMatch = pastFrameText.match(/^\s*(\d+)/);
+    const pastFrame = pastFrameMatch ? Number(pastFrameMatch[1]) : null;
+    if (raceEntry?.frameNumber !== null && raceEntry?.frameNumber !== undefined &&
+      pastFrame === raceEntry.frameNumber && finish !== null) {
+      stats.sameFrameStarts++;
+      if (finish <= 3) stats.sameFrameTop3++;
+    }
+
+    const passageText = findValue([/^通過$/, /通過順位/]);
+    const passagePositions = passageText.match(/\d+/g)?.map(Number) ?? [];
+    const fieldSizeText = findValue([/^頭数$/]);
+    const fieldSizeMatch = fieldSizeText.match(/\d+/);
+    const fieldSize = fieldSizeMatch ? Number(fieldSizeMatch[0]) : null;
+    const finalCornerPosition = passagePositions.length
+      ? passagePositions[passagePositions.length - 1]
+      : null;
+    if (finish !== null && finalCornerPosition !== null && finalCornerPosition > 0) {
+      stats.positionStarts++;
+      stats.positionGainTotal += finalCornerPosition - finish;
+      if (fieldSize !== null && fieldSize > 0 &&
+        finalCornerPosition <= Math.ceil(fieldSize / 3)) {
+        stats.positionForwardStarts++;
+        if (finish <= 3) stats.positionForwardTop3++;
+      }
+    }
+
     const distanceText = findValue([/^距離$/]);
     const distanceMatch = distanceText.match(/(芝|ダート|ダ|障害|障)?\s*(\d{3,4})\s*m?/i);
     if (distanceMatch && conditions.distanceMeters !== null) {
@@ -473,6 +524,11 @@ function summarizePerformances(rows: { values: Record<string, string> }[], condi
         : distanceMatch[1] === "芝" ? "芝" : null;
       const pastDistance = Number(distanceMatch[2]);
       const surfaceMatches = !conditions.surface || !pastSurface || conditions.surface === pastSurface;
+      if (conditions.venue && pastVenue === conditions.venue &&
+        conditions.surface && pastSurface === conditions.surface && finish !== null) {
+        stats.sameVenueSurfaceStarts++;
+        if (finish <= 3) stats.sameVenueSurfaceTop3++;
+      }
       if (surfaceMatches && Math.abs(pastDistance - conditions.distanceMeters) <= 200 && finish !== null) {
         stats.similarDistanceStarts++;
         if (finish <= 3) stats.similarDistanceTop3++;
@@ -575,7 +631,11 @@ export async function GET(
           const profile = extractProfile(tables);
           const performance = extractPerformances(tables);
           const performanceRows = performance?.rows ?? [];
-          const performanceStats = summarizePerformances(performanceRows, raceConditions);
+          const performanceStats = summarizePerformances(
+            performanceRows,
+            raceConditions,
+            entryByHorseId.get(horse.horseId) ?? null
+          );
 
           results[index] = {
             horseId: horse.horseId,
