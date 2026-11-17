@@ -491,6 +491,76 @@ function summarizePerformances(rows: { values: Record<string, string> }[], condi
   return stats;
 }
 
+type JraRating = { value: number; raceDate: string; raceName: string; source: string; };
+
+function normalizeHorseName(value: string) { return value.replace(/[\\s　]+/g, ""); }
+
+function parseJraRatingEntries(value: string) {
+  const text = value.replace(/&nbsp;/gi, " ").replace(/\\u00a0/g, " ").trim();
+  const entries: { name: string; value: number }[] = [];
+  const pattern = /([^\\d\\s]+?)\\s*(\\d{2,3})(?=\\s|$)/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) !== null) {
+    const rating = Number(match[2]);
+    if (rating >= 50 && rating <= 150) entries.push({ name: normalizeHorseName(match[1]), value: rating });
+  }
+  return entries;
+}
+
+function extractMonthlyJraRatings(html: string, year: number, targetDate: string, sourceUrl: string) {
+  const ratings = new Map<string, JraRating>();
+  const tables = extractTables(html);
+  const table = tables.find((candidate) => candidate.some((row) => row.some((cell) => cell.includes("実施日")) && row.some((cell) => cell.includes("第1着馬名レーティング"))));
+  if (!table) return ratings;
+  const headerIndex = table.findIndex((row) => row.some((cell) => cell.includes("実施日")) && row.some((cell) => cell.includes("第1着馬名レーティング")));
+  if (headerIndex < 0) return ratings;
+  for (const row of table.slice(headerIndex + 1)) {
+    const dateMatch = (row[0] ?? "").match(/(\\d{1,2})月\\s*(\\d{1,2})日/);
+    if (!dateMatch) continue;
+    const raceDate = `${year}-${dateMatch[1].padStart(2, "0")}-${dateMatch[2].padStart(2, "0")}`;
+    if (raceDate >= targetDate) continue;
+    const raceName = row[2] ?? "";
+    for (const cell of row.slice(3)) {
+      for (const entry of parseJraRatingEntries(cell)) {
+        const existing = ratings.get(entry.name);
+        if (!existing || raceDate > existing.raceDate) ratings.set(entry.name, { value: entry.value, raceDate, raceName, source: sourceUrl });
+      }
+    }
+  }
+  return ratings;
+}
+
+async function fetchJraRatings(horses: HorseEntry[], targetDate: string | null, forceRefresh: boolean) {
+  const result = new Map<string, JraRating>();
+  if (!targetDate) return result;
+  const [yearText, monthText] = targetDate.split("-");
+  const targetYear = Number(yearText);
+  const targetMonth = Number(monthText);
+  const pages: { year: number; url: string }[] = [];
+  for (const year of [targetYear - 1, targetYear]) {
+    const lastMonth = year === targetYear ? targetMonth : 12;
+    for (let month = 1; month <= lastMonth; month++) pages.push({ year, url: `https://www.jra.go.jp/datafile/ranking/jyusyo/${year}/${String(month).padStart(2, "0")}.html` });
+  }
+  const horseNames = new Set(horses.map((horse) => normalizeHorseName(horse.name)));
+  const pageResults: { year: number; url: string; html: string }[] = [];
+  for (let offset = 0; offset < pages.length; offset += 4) {
+    const batch = pages.slice(offset, offset + 4);
+    const fetched = await Promise.all(batch.map(async (page) => {
+      try { const response = await fetchHtml(page.url, 604800, forceRefresh); return response.ok ? { year: page.year, url: page.url, html: response.html } : null; }
+      catch { return null; }
+    }));
+    for (const page of fetched) if (page) pageResults.push(page);
+  }
+  for (const page of pageResults) {
+    const pageRatings = extractMonthlyJraRatings(page.html, page.year, targetDate, page.url);
+    for (const horseName of horseNames) {
+      const rating = pageRatings.get(horseName);
+      const existing = result.get(horseName);
+      if (rating && (!existing || rating.raceDate > existing.raceDate)) result.set(horseName, rating);
+    }
+  }
+  return result;
+}
 export async function GET(
   _request: Request,
   context: { params: Promise<{ raceId: string }> }
@@ -545,6 +615,8 @@ export async function GET(
     const entryByHorseId = new Map(
       raceEntries.map((entry) => [entry.horseId, entry])
     );
+
+    const jraRatings = await fetchJraRatings(horses, raceConditions.date, forceRefresh);
     const results: Record<string, unknown>[] = new Array(horses.length);
     let nextIndex = 0;
 
@@ -564,6 +636,7 @@ export async function GET(
               horseId: horse.horseId,
               name: horse.name,
               raceEntry: entryByHorseId.get(horse.horseId) ?? null,
+              rating: jraRatings.get(normalizeHorseName(horse.name)) ?? null,
               status: "fetch_failed",
               httpStatus: page.status,
             };
@@ -580,6 +653,7 @@ export async function GET(
             horseId: horse.horseId,
             name: horse.name,
             raceEntry: entryByHorseId.get(horse.horseId) ?? null,
+            rating: jraRatings.get(normalizeHorseName(horse.name)) ?? null,
             status: profile && performance ? "complete" : "partial",
             sourceStatus: page.status,
             responseBytes: page.bytes,
@@ -595,6 +669,7 @@ export async function GET(
             horseId: horse.horseId,
             name: horse.name,
             raceEntry: entryByHorseId.get(horse.horseId) ?? null,
+            rating: jraRatings.get(normalizeHorseName(horse.name)) ?? null,
             status: "fetch_failed",
             error: error instanceof Error ? error.message : "Unknown error",
           };
