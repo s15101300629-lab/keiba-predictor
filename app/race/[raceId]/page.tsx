@@ -26,15 +26,10 @@ type Horse = {
   profile: { label: string; value: string }[] | null;
   performances: { values: Record<string, string> }[]; historyReturned: number;
   performanceStats?: PerformanceStats;
-  rating?: { value: number; raceDate: string; raceName: string; source: string } | null;
 };
 type ResponseData = {
   ok: boolean; raceId: string; raceConditions: Conditions; horseCount: number;
   completeCount: number; partialCount: number; failedCount: number;
-  ratingDiagnostics?: {
-    sourceUrl: string | null; httpStatus: number | null; publishedDate: string | null;
-    parsedRowCount: number; matchedHorseCount: number; ratingCount: number; error: string | null;
-  };
   results: Horse[]; error?: string;
 };
 type CachedRace = { savedAt: number; data: ResponseData };
@@ -43,7 +38,7 @@ type OverallScore = { score: number | null; rank: number | null; rankedCount: nu
 type CategoryRank = { label: string; rank: number | null; total: number; detail: string };
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
-const cacheKey = (id: string) => "keiba-race-detail-v1:" + id;
+const cacheKey = (id: string) => "keiba-race-detail-v2:" + id;
 const marksCacheKey = (id: string) => "keiba-race-marks-v1:" + id;
 const MARK_OPTIONS = ["", "◎", "○", "▲", "△", "☆", "注", "消"];
 
@@ -158,7 +153,6 @@ function buildCategoryRanks(
   distanceMeters: number | null
 ): Map<string, CategoryRank[]> {
   const result = new Map<string, CategoryRank[]>();
-  const categories = ["騎手", "調教", "血統", "距離適性", "コース適性", "馬場適性", "枠順", "種牡馬", "前走距離", "ポジション", "レーティング"];
   for (const horse of horses) {
     result.set(horse.horseId, categories.map((label) => ({
       label, rank: null, total: 0, detail: "評価に必要なデータが未取得",
@@ -226,21 +220,6 @@ function buildCategoryRanks(
       }
     });
   }
-  const ratingValues = horses.map((horse) => horse.rating ? { horseId: horse.horseId, rating: horse.rating } : null)
-    .filter((value): value is { horseId: string; rating: NonNullable<Horse["rating"]> } => value !== null)
-    .sort((a, b) => b.rating.value - a.rating.value);
-  let ratingRank = 0;
-  let previousRating: number | null = null;
-  ratingValues.forEach((value, index) => {
-    if (previousRating === null || previousRating !== value.rating.value) ratingRank = index + 1;
-    previousRating = value.rating.value;
-    const row = result.get(value.horseId)?.find((item) => item.label === "レーティング");
-    if (row) {
-      row.rank = ratingRank;
-      row.total = ratingValues.length;
-      row.detail = `JRA Rt ${value.rating.value}・${value.rating.raceDate}時点`;
-    }
-  });
   return result;
 }
 
@@ -305,10 +284,6 @@ function PredictionHorseCard({ horse, scores }: { horse: Horse; scores: FactorSc
         <strong>{factor.rank}位 / {factor.rankedCount}頭</strong>
       </div>)}
     </div> : <p className="prediction-no-data">評価に使える戦績データがありません</p>}
-    <div className="prediction-logic-row">
-      <div><b>JRAレーティング</b><span>{horse.rating ? `Rt ${horse.rating.value}・${horse.rating.raceDate}（${horse.rating.raceName}）` : "公式掲載値なし"}</span></div>
-      <strong>{horse.rating ? "取得済み" : "算出不可"}</strong>
-    </div>
   </article>;
 }
 
@@ -453,15 +428,6 @@ export default function RaceDetailPage() {
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         <div className="prediction-intro"><h2>AI予測ロジックの判定材料</h2>
           <p>現在取得できている過去成績を使い、全体成績・重賞実績・競馬場適性・距離適性・馬場適性を比較しています。</p>
-        </div>
-        <div className="prediction-intro" role="status">
-          <h3>JRAレーティング取得状況</h3>
-          <p>取得件数：{data.ratingDiagnostics?.ratingCount ?? horses.filter((horse) => horse.rating).length}頭 / {data.horseCount}頭</p>
-          <p>JRAページ：{data.ratingDiagnostics?.httpStatus == null ? "未確認" : "HTTP " + data.ratingDiagnostics.httpStatus}</p>
-          <p>公開日：{data.ratingDiagnostics?.publishedDate ?? "取得できず"}</p>
-          <p>解析行数：{data.ratingDiagnostics?.parsedRowCount ?? "未確認"} ・ 馬名照合：{data.ratingDiagnostics?.matchedHorseCount ?? "未確認"}頭</p>
-          {data.ratingDiagnostics?.error && <p>{data.ratingDiagnostics.error}</p>}
-          {data.ratingDiagnostics?.sourceUrl && <p><a href={data.ratingDiagnostics.sourceUrl} target="_blank" rel="noreferrer">JRA公式プレレーティングを開く</a></p>}
         </div>
         {horses.map((horse) => <PredictionHorseCard key={horse.horseId} horse={horse}
           scores={factorScores.get(horse.horseId) ?? []} />)}
