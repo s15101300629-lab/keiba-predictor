@@ -583,9 +583,17 @@ async function fetchJraRatings(horses: HorseEntry[], raceName: string | null, ta
   const g1Ratings = await fetchG1PreRatings(horses, raceName, targetDate, targetYear, forceRefresh);
   for (const [name, rating] of g1Ratings) result.set(name, rating);
   const pages: { year: number; url: string }[] = [];
-  for (const year of [targetYear - 1, targetYear]) {
-    const lastMonth = year === targetYear ? targetMonth : 12;
-    for (let month = 1; month <= lastMonth; month++) pages.push({ year, url: `https://www.jra.go.jp/datafile/ranking/jyusyo/${year}/${String(month).padStart(2, "0")}.html` });
+  for (let offset = 0; offset < 12; offset++) {
+    let year = targetYear;
+    let month = targetMonth - offset;
+    while (month <= 0) {
+      month += 12;
+      year--;
+    }
+    pages.push({
+      year,
+      url: `https://www.jra.go.jp/datafile/ranking/jyusyo/${year}/${String(month).padStart(2, "0")}.html`,
+    });
   }
   const wantedNames = new Set(horses.map((horse) => normalizeHorseName(horse.name)));
   for (let offset = 0; offset < pages.length; offset += 4) {
