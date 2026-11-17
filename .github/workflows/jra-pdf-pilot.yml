@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   inspect-sample:
-    name: inspect-\${{ matrix.sample }}
+    name: inspect-${{ matrix.sample }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -31,12 +31,12 @@ jobs:
         run: python -m pip install --disable-pip-version-check pymupdf
       - name: Download and parse official JRA PDF
         env:
-          JRA_PDF_URL: \${{ matrix.url }}
+          JRA_PDF_URL: ${{ matrix.url }}
         run: python scripts/jra_pdf_probe.py
       - name: Upload parser diagnostics and source PDF
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jra-pdf-probe-\${{ matrix.sample }}
+          name: jra-pdf-probe-${{ matrix.sample }}
           path: jra-pdf-probe/
           if-no-files-found: error
