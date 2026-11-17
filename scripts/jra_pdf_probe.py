@@ -1,284 +1,89 @@
 from __future__ import annotations
-
-import json
-import re
-import urllib.request
-from collections import defaultdict
+import json, re, urllib.request
 from pathlib import Path
 
-PDF_URL = "https://jra.jp/datafile/seiseki/report/2025/2025-1kyoto1.pdf"
+URL = "https://jra.jp/datafile/seiseki/report/2025/2025-1kyoto1.pdf"
 OUT = Path("jra-pdf-probe")
 OUT.mkdir(exist_ok=True)
+req = urllib.request.Request(URL, headers={"User-Agent":"Mozilla/5.0","Accept":"application/pdf"})
+with urllib.request.urlopen(req, timeout=45) as res:
+    raw, content_type = res.read(), res.headers.get("Content-Type", "")
+if not raw.startswith(b"%PDF"):
+    raise RuntimeError(f"Not a PDF: {content_type}, {len(raw)} bytes")
+import pymupdf
 
-request = urllib.request.Request(
-    PDF_URL,
-    headers={
-        "User-Agent": "Mozilla/5.0 (compatible; JRAResultResearch/1.0)",
-        "Accept": "application/pdf",
-    },
-)
-with urllib.request.urlopen(request, timeout=45) as response:
-    pdf_bytes = response.read()
-    content_type = response.headers.get("Content-Type", "")
+def norm(s):
+    return re.sub(r"\s+", "", re.sub(r"[\x00-\x1f]", "", s))
 
-if not pdf_bytes.startswith(b"%PDF"):
-    raise RuntimeError(
-        f"JRA response is not a PDF: content-type={content_type}, bytes={len(pdf_bytes)}"
-    )
+doc = pymupdf.open(stream=raw, filetype="pdf")
+pages, blocks, lines = [], [], []
+for pn, page in enumerate(doc, 1):
+    txt = page.get_text("text", sort=True)
+    pages.append({"page":pn,"characters":len(txt),"text":txt})
+    for b in page.get_text("dict")["blocks"]:
+        if b.get("type") != 0: continue
+        bt = "\n".join("".join(s["text"] for s in ln["spans"]) for ln in b["lines"]).strip()
+        if bt: blocks.append({"page":pn,"bbox":list(b["bbox"]),"text":bt})
+        for ln in b["lines"]:
+            t = "".join(s["text"] for s in ln["spans"]).strip()
+            if t: lines.append({"page":pn,"bbox":list(ln["bbox"]),"text":t})
+combined = "\n\n".join(f"===== PAGE {p['page']} =====\n{p['text']}" for p in pages)
+(OUT/"sample-extracted.txt").write_text(combined,encoding="utf-8")
+for name,data in [("layout-blocks.json",blocks),("layout-lines.json",lines)]:
+    (OUT/name).write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding="utf-8")
 
-try:
-    import fitz
-except ImportError as exc:
-    raise RuntimeError("PyMuPDF is required to inspect the JRA PDF text layer") from exc
-
-def clean(value: str) -> str:
-    value = re.sub(r"[\x00-\x1f]", "", value)
-    return re.sub(r"\s+", "", value)
-
-document = fitz.open(stream=pdf_bytes, filetype="pdf")
-pages = []
-layout_blocks = []
-layout_lines = []
-
-for page_number, page in enumerate(document, start=1):
-    text = page.get_text("text", sort=True)
-    pages.append({"page": page_number, "characters": len(text), "text": text})
-    page_dict = page.get_text("dict")
-    for block in page_dict["blocks"]:
-        if block.get("type") != 0:
-            continue
-        block_text = "\n".join(
-            span["text"]
-            for line in block.get("lines", [])
-            for span in line.get("spans", [])
-        ).strip()
-        if block_text:
-            layout_blocks.append({
-                "page": page_number,
-                "bbox": [round(value, 2) for value in block["bbox"]],
-                "text": block_text,
-            })
-        for line in block.get("lines", []):
-            line_text = "".join(span["text"] for span in line.get("spans", [])).strip()
-            if line_text:
-                layout_lines.append({
-                    "page": page_number,
-                    "bbox": [round(value, 2) for value in line["bbox"]],
-                    "text": line_text,
-                })
-
-combined = "\n\n".join(
-    f"===== PAGE {item['page']} =====\n{item['text']}" for item in pages
-)
-(OUT / "sample-extracted.txt").write_text(combined, encoding="utf-8")
-(OUT / "layout-blocks.json").write_text(
-    json.dumps(layout_blocks, ensure_ascii=False, indent=2), encoding="utf-8"
-)
-(OUT / "layout-lines.json").write_text(
-    json.dumps(layout_lines, ensure_ascii=False, indent=2), encoding="utf-8"
-)
-
-# A race card is one column on one page. The PDF text blocks can contain
-# multiple horse rows, so runner extraction is based on individual text lines.
-headers = []
-for block in layout_blocks:
-    match = re.search(r"第\s*(\d+)\s*競走", block["text"])
-    if match:
-        headers.append({
-            "page": block["page"],
-            "x": block["bbox"][0],
-            "y0": block["bbox"][1],
-            "y1": block["bbox"][3],
-            "raceNumber": int(match.group(1)),
-            "text": block["text"],
-        })
-
-parsed_races = []
-validation_errors = []
-coat_pattern = r"黒鹿|青鹿|青毛|鹿|栗|芦|白毛|白|青|栃栗|鹿毛"
-
-for header in headers:
-    page_number = header["page"]
-    left_column = header["x"] < 420
-    column_blocks = [
-        block for block in layout_blocks
-        if block["page"] == page_number
-        and ((block["bbox"][0] < 420) == left_column)
-    ]
-    column_lines = [
-        line for line in layout_lines
-        if line["page"] == page_number
-        and ((line["bbox"][0] < 420) == left_column)
-    ]
-
-    headcount = None
-    headcount_y = None
-    for block in column_blocks:
-        match = re.search(r"（\s*(\d+)\s*頭\s*）", block["text"])
-        if match:
-            headcount = int(match.group(1))
-            headcount_y = block["bbox"][1]
-            break
-
-    if headcount is None:
-        validation_errors.append(
-            f"race {header['raceNumber']}: declared horse count not found"
-        )
-        continue
-
-    # Excluded runners appear in the table but are not part of the final
-    # declared field count. Keep their records and mark them explicitly.
-    excluded_numbers = set()
-    for block in column_blocks:
-        if "競走除外" not in block["text"]:
-            continue
-        match = re.match(r"\s*([1-8])\s*(\d{1,2})", block["text"])
-        if match:
-            excluded_numbers.add(int(match.group(2)))
-
-    # Group line fragments by vertical position. A 3.0pt tolerance joins
-    # columns belonging to one horse row without joining adjacent runners.
-    candidates = [
-        line for line in column_lines
-        if line["bbox"][1] >= header["y1"] + 25
-        and line["bbox"][1] < headcount_y + 1
-    ]
-    candidates.sort(key=lambda item: (
-        (item["bbox"][1] + item["bbox"][3]) / 2,
-        item["bbox"][0],
-    ))
-
-    clusters = []
-    for line in candidates:
-        center_y = (line["bbox"][1] + line["bbox"][3]) / 2
-        if not clusters or abs(center_y - clusters[-1]["centerY"]) > 3.0:
-            clusters.append({"centerY": center_y, "lines": [line]})
+headers=[]
+for b in blocks:
+    m=re.search(r"第\s*(\d+)\s*競走",b["text"])
+    if m: headers.append({"page":b["page"],"x":b["bbox"][0],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
+races, errors=[],[]
+coat=r"黒鹿|青鹿|青毛|鹿毛|栃栗|鹿|栗|芦|白毛|白|青"
+for h in headers:
+    left=h["x"]<420
+    col=lambda x: x["page"]==h["page"] and ((x["bbox"][0]<420)==left)
+    cb=[x for x in blocks if col(x)]
+    cl=[x for x in lines if col(x)]
+    declared=decl_y=None
+    for b in cb:
+        m=re.search(r"（\s*(\d+)\s*頭\s*）",b["text"])
+        if m: declared,decl_y=int(m.group(1)),b["bbox"][1]; break
+    if declared is None:
+        errors.append(f"R{h['no']}: headcount missing"); continue
+    candidates=[x for x in cl if x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
+    candidates.sort(key=lambda x:(sum(x["bbox"][1:4:2])/2,x["bbox"][0]))
+    rows=[]
+    for ln in candidates:
+        cy=(ln["bbox"][1]+ln["bbox"][3])/2
+        if not rows or abs(cy-rows[-1]["y"])>3.0: rows.append({"y":cy,"lines":[ln]})
         else:
-            clusters[-1]["lines"].append(line)
-            clusters[-1]["centerY"] = sum(
-                (part["bbox"][1] + part["bbox"][3]) / 2
-                for part in clusters[-1]["lines"]
-            ) / len(clusters[-1]["lines"])
-
-    horses = []
-    for cluster in clusters:
-        row_lines = sorted(cluster["lines"], key=lambda item: item["bbox"][0])
-        number_line = next(
-            (
-                clean(line["text"])
-                for line in row_lines
-                if line["bbox"][0] < (25 if left_column else 435)
-            ),
-            "",
-        )
-        number_match = re.match(r"^([1-8])(\d{1,2})", number_line)
-        if not number_match:
+            rows[-1]["lines"].append(ln)
+            rows[-1]["y"]=sum((z["bbox"][1]+z["bbox"][3])/2 for z in rows[-1]["lines"])/len(rows[-1]["lines"])
+    horses=[]
+    for row in rows:
+        numline=next((norm(x["text"]) for x in row["lines"] if x["bbox"][0]<(25 if left else 435)),"")
+        nm=re.match(r"^([1-8])\s*(\d{1,2})",numline)
+        if not nm: continue
+        xmin,xmax=(40,155) if left else (450,585)
+        # Join all fragments from the identity column around the horse-number baseline.
+        fr=[x for x in cl if xmin<=x["bbox"][0]<xmax and abs((x["bbox"][1]+x["bbox"][3])/2-row["y"])<=4.5]
+        fr.sort(key=lambda x:(x["bbox"][0],x["bbox"][1]))
+        identity=norm("".join(x["text"] for x in fr))
+        im=re.search(rf"(.+?)(牡|牝|せん|セン)(\d)({coat})",identity)
+        if not im:
+            errors.append(f"R{h['no']} horse {nm.group(2)} identity={identity!r}")
             continue
-
-        horse_info = next(
-            (
-                clean(line["text"])
-                for line in row_lines
-                if (25 if left_column else 455)
-                <= line["bbox"][0]
-                < (155 if left_column else 585)
-            ),
-            "",
-        )
-        info_match = re.match(
-            rf"^(.*?)((?:牡|牝|せん|セン)?)(\d)({coat_pattern})(\d{{2}})$",
-            horse_info,
-        )
-        if not info_match:
-            validation_errors.append(
-                f"race {header['raceNumber']}: horse {number_match.group(2)} "
-                f"horse-info parse failed: {horse_info!r}"
-            )
-            continue
-
-        horse_number = int(number_match.group(2))
-        horses.append({
-            "finishOrder": len(horses) + 1,
-            "frameNumber": int(number_match.group(1)),
-            "horseNumber": horse_number,
-            "horseName": info_match.group(1),
-            "sex": info_match.group(2) or None,
-            "age": int(info_match.group(3)),
-            "coatColor": info_match.group(4),
-            "carriedWeightKg": int(info_match.group(5)),
-            "status": "excluded" if horse_number in excluded_numbers else "finished_or_ran",
-            "sourcePage": page_number,
-            "sourceY": round(cluster["centerY"], 2),
-        })
-
-    horse_numbers = [horse["horseNumber"] for horse in horses]
-    duplicate_numbers = sorted({
-        number for number in horse_numbers if horse_numbers.count(number) > 1
-    })
-    active_count = sum(horse["status"] != "excluded" for horse in horses)
-    if duplicate_numbers:
-        validation_errors.append(
-            f"race {header['raceNumber']}: duplicate horse numbers {duplicate_numbers}"
-        )
-    if active_count != headcount:
-        validation_errors.append(
-            f"race {header['raceNumber']}: parsed active runners {active_count} "
-            f"!= declared count {headcount} (all parsed rows={len(horses)}, "
-            f"excluded={len(excluded_numbers)})"
-        )
-
-    header_text = clean(header["text"])
-    date_match = re.search(r"(\d{4})年(\d+)月(\d+)日", header_text)
-    venue_match = re.search(r"\d{4}年\d+([^）]+)", header_text)
-    distance_match = re.search(r"(\d)[，,](\d{3})", header_text)
-    surface_match = re.search(r"（(芝|ダート|障害)[^）]*）", header_text)
-    parsed_races.append({
-        "raceNumber": header["raceNumber"],
-        "date": (
-            f"{int(date_match.group(1)):04d}-{int(date_match.group(2)):02d}-"
-            f"{int(date_match.group(3)):02d}"
-            if date_match else None
-        ),
-        "venue": venue_match.group(1) if venue_match else None,
-        "distanceMeters": (
-            int(distance_match.group(1) + distance_match.group(2))
-            if distance_match else None
-        ),
-        "surface": surface_match.group(1) if surface_match else None,
-        "declaredRunnerCount": headcount,
-        "parsedRowCountIncludingExclusions": len(horses),
-        "excludedRunnerCount": len(excluded_numbers),
-        "validatedActiveRunnerCount": active_count,
-        "horses": horses,
-    })
-
-summary = {
-    "source": PDF_URL,
-    "httpContentType": content_type,
-    "pdfBytes": len(pdf_bytes),
-    "pageCount": len(document),
-    "pageCharacters": [item["characters"] for item in pages],
-    "totalExtractedCharacters": len(combined),
-    "layoutBlockCount": len(layout_blocks),
-    "layoutLineCount": len(layout_lines),
-    "raceCount": len(headers),
-    "parsedRaceCount": len(parsed_races),
-    "parsedHorseRows": sum(len(race["horses"]) for race in parsed_races),
-    "validationErrorCount": len(validation_errors),
-    "validationErrors": validation_errors,
-    "textExtractionSucceeded": bool(combined.strip()),
-}
-(OUT / "parsed-races.json").write_text(
-    json.dumps(parsed_races, ensure_ascii=False, indent=2), encoding="utf-8"
-)
-(OUT / "summary.json").write_text(
-    json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
-)
-print(json.dumps(summary, ensure_ascii=False))
-
-if len(document) == 0 or len(combined.strip()) < 1000:
-    raise RuntimeError("PDF text extraction did not produce enough usable text")
-if len(parsed_races) != 12 or validation_errors:
-    raise RuntimeError(
-        f"Structured extraction validation failed: {len(validation_errors)} errors"
-    )
+        horses.append({"frameNumber":int(nm.group(1)),"horseNumber":int(nm.group(2)),"horseName":im.group(1),"sex":im.group(2),"age":int(im.group(3)),"coatColor":im.group(4),"sourcePage":h["page"],"sourceY":round(row["y"],2)})
+    nums=[x["horseNumber"] for x in horses]
+    if len(nums)!=declared: errors.append(f"R{h['no']}: rows {len(nums)} != declared {declared}")
+    if sorted(nums)!=list(range(1,declared+1)): errors.append(f"R{h['no']}: horse numbers {sorted(nums)}")
+    ht=norm(h["text"])
+    dm=re.search(r"(\d{4})年(\d+)月(\d+)日",ht)
+    dist=re.search(r"(\d)[，,](\d{3})",ht)
+    surf=re.search(r"（(芝|ダート|障害)[^）]*）",ht)
+    vm=re.search(r"\d{4}年\d+([^）]+)",ht)
+    races.append({"raceNumber":h["no"],"date":f"{int(dm.group(1)):04d}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else None,"venue":vm.group(1) if vm else None,"distanceMeters":int(dist.group(1)+dist.group(2)) if dist else None,"surface":surf.group(1) if surf else None,"declaredRunnerCount":declared,"parsedRunnerCount":len(horses),"horses":horses})
+summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),"pageCharacters":[p["characters"] for p in pages],"layoutBlockCount":len(blocks),"layoutLineCount":len(lines),"raceCount":len(headers),"parsedRaceCount":len(races),"parsedHorseRows":sum(len(r["horses"]) for r in races),"validationErrorCount":len(errors),"validationErrors":errors}
+(OUT/"parsed-races.json").write_text(json.dumps(races,ensure_ascii=False,indent=2),encoding="utf-8")
+(OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
+print(json.dumps(summary,ensure_ascii=False))
+if len(doc)==0 or len(combined)<1000 or len(headers)!=12 or errors: raise RuntimeError(f"Structured validation failed: {len(errors)} errors")
