@@ -707,26 +707,39 @@ async function fetchG1PreRatings(
 ): Promise<JraRatingMap> {
   const result = createJraRatingMap();
   const yearListUrl = "https://www.jra.go.jp/datafile/ranking/g1/" + year + ".html";
-  result.diagnostics.sourceUrl = yearListUrl;
+  const normalizedRaceName = raceName ? normalizeRaceNameForMatch(raceName) : "";
+  const knownSlug = G1_RATING_SLUGS[normalizedRaceName];
 
-  let yearPage: Awaited<ReturnType<typeof fetchHtml>>;
-  try {
-    yearPage = await fetchHtml(yearListUrl, 21600, forceRefresh);
-  } catch (error) {
-    result.diagnostics.error = error instanceof Error ? error.message : "年度別G1一覧の取得に失敗しました";
-    return result;
-  }
-  result.diagnostics.httpStatus = yearPage.status;
-  if (!yearPage.ok) {
-    result.diagnostics.error = "年度別G1一覧のHTTP取得に失敗しました";
-    return result;
-  }
+  // 公式詳細URLの存在を確認できているG1は、年度別一覧のHTML解析に依存せず直接取得する。
+  // 取得後にレース名・開催日・競馬場を照合するため、別レースを誤採用しない。
+  let targetUrl = knownSlug
+    ? new URL(
+        "datafile/ranking/g1/" + year + "/" + knownSlug + ".html",
+        "https://www.jra.go.jp/"
+      ).toString()
+    : null;
 
-  const targetUrl = findG1RaceUrl(yearPage.html, raceName, targetDate, venue, yearListUrl);
   if (!targetUrl) {
-    result.diagnostics.error =
-      "年度別G1一覧に開催日・レース名が一致するリンクが見つかりませんでした";
-    return result;
+    result.diagnostics.sourceUrl = yearListUrl;
+    let yearPage: Awaited<ReturnType<typeof fetchHtml>>;
+    try {
+      yearPage = await fetchHtml(yearListUrl, 21600, forceRefresh);
+    } catch (error) {
+      result.diagnostics.error = error instanceof Error ? error.message : "年度別G1一覧の取得に失敗しました";
+      return result;
+    }
+    result.diagnostics.httpStatus = yearPage.status;
+    if (!yearPage.ok) {
+      result.diagnostics.error = "年度別G1一覧のHTTP取得に失敗しました";
+      return result;
+    }
+
+    targetUrl = findG1RaceUrl(yearPage.html, raceName, targetDate, venue, yearListUrl);
+    if (!targetUrl) {
+      result.diagnostics.error =
+        "年度別G1一覧に開催日・レース名が一致するリンクが見つかりませんでした";
+      return result;
+    }
   }
   result.diagnostics.sourceUrl = targetUrl;
 
