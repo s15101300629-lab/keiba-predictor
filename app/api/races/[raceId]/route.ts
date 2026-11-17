@@ -420,6 +420,77 @@ function extractPerformances(tables: string[][][]) {
   };
 }
 
+
+type PerformanceStats = {
+  parsedStarts: number; wins: number; top3: number; averageFinish: number | null;
+  gradedStarts: number; gradedWins: number;
+  sameVenueStarts: number; sameVenueTop3: number;
+  similarDistanceStarts: number; similarDistanceTop3: number;
+  sameGoingStarts: number; sameGoingTop3: number;
+};
+
+function summarizePerformances(rows: { values: Record<string, string> }[], conditions: RaceConditions): PerformanceStats {
+  const stats: PerformanceStats = {
+    parsedStarts: 0, wins: 0, top3: 0, averageFinish: null,
+    gradedStarts: 0, gradedWins: 0, sameVenueStarts: 0, sameVenueTop3: 0,
+    similarDistanceStarts: 0, similarDistanceTop3: 0, sameGoingStarts: 0, sameGoingTop3: 0,
+  };
+  const venueNames = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
+  const finishes: number[] = [];
+  for (const row of rows) {
+    const values = row.values;
+    const findValue = (patterns: RegExp[]): string => {
+      const entry = Object.entries(values).find(([key]) => {
+        const normalized = key.replace(/\s+/g, "");
+        return patterns.some((pattern) => pattern.test(normalized));
+      });
+      return entry?.[1] ?? "";
+    };
+    const finishText = findValue([/^着順$/]);
+    const finishMatch = finishText.match(/^\s*(\d{1,2})/);
+    const finish = finishMatch ? Number(finishMatch[1]) : null;
+    if (finish !== null && finish > 0) {
+      finishes.push(finish);
+      if (finish === 1) stats.wins++;
+      if (finish <= 3) stats.top3++;
+    }
+    const raceTitle = findValue([/^レース名$/]);
+    if (/G[1-3]|Ｇ[１２３]|GⅠ|GⅡ|GⅢ|重賞/i.test(raceTitle)) {
+      stats.gradedStarts++;
+      if (finish === 1) stats.gradedWins++;
+    }
+    const venueText = findValue([/^開催$/]);
+    const pastVenue = venueNames.find((name) => venueText.includes(name));
+    if (conditions.venue && pastVenue === conditions.venue && finish !== null) {
+      stats.sameVenueStarts++;
+      if (finish <= 3) stats.sameVenueTop3++;
+    }
+    const distanceText = findValue([/^距離$/]);
+    const distanceMatch = distanceText.match(/(芝|ダート|ダ|障害|障)?\s*(\d{3,4})\s*m?/i);
+    if (distanceMatch && conditions.distanceMeters !== null) {
+      const pastSurface = distanceMatch[1] === "ダ" || distanceMatch[1] === "ダート" ? "ダート"
+        : distanceMatch[1] === "障" || distanceMatch[1] === "障害" ? "障害"
+        : distanceMatch[1] === "芝" ? "芝" : null;
+      const pastDistance = Number(distanceMatch[2]);
+      const surfaceMatches = !conditions.surface || !pastSurface || conditions.surface === pastSurface;
+      if (surfaceMatches && Math.abs(pastDistance - conditions.distanceMeters) <= 200 && finish !== null) {
+        stats.similarDistanceStarts++;
+        if (finish <= 3) stats.similarDistanceTop3++;
+      }
+    }
+    const goingText = findValue([/^馬場$/, /^馬場状態$/, /^状態$/]);
+    if (conditions.going && goingText && goingText.includes(conditions.going) && finish !== null) {
+      stats.sameGoingStarts++;
+      if (finish <= 3) stats.sameGoingTop3++;
+    }
+  }
+  stats.parsedStarts = finishes.length;
+  stats.averageFinish = finishes.length
+    ? Math.round((finishes.reduce((sum, value) => sum + value, 0) / finishes.length) * 10) / 10
+    : null;
+  return stats;
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ raceId: string }> }
@@ -502,6 +573,8 @@ export async function GET(
           const tables = extractTables(page.html);
           const profile = extractProfile(tables);
           const performance = extractPerformances(tables);
+          const performanceRows = performance?.rows ?? [];
+          const performanceStats = summarizePerformances(performanceRows, raceConditions);
 
           results[index] = {
             horseId: horse.horseId,
@@ -514,7 +587,8 @@ export async function GET(
             performanceCountOnPage: performance?.countOnPage ?? null,
             performanceHeaders: performance?.headers ?? [],
             performances: performance?.rows ?? [],
-            historyReturned: performance?.rows.length ?? 0,
+            historyReturned: performanceRows.length,
+            performanceStats,
           };
         } catch (error) {
           results[index] = {
