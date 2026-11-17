@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type RaceItem = {
@@ -19,24 +18,27 @@ type RaceItem = {
 
 type RaceListResponse = {
   ok: boolean;
-  startDate?: string;
-  endDate?: string;
-  raceCount?: number;
+  month?: string;
+  year?: number;
+  raceDates?: string[];
   races?: RaceItem[];
   error?: string;
 };
 
 const VENUE_ORDER = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
 
-function formatDate(date: string) {
+function formatTabDate(date: string) {
   if (!/^\d{8}$/.test(date)) return date;
-  return `${Number(date.slice(4, 6))}月${Number(date.slice(6, 8))}日`;
+  const value = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(4, 6)) - 1, Number(date.slice(6, 8))));
+  const weekday = ["日", "月", "火", "水", "木", "金", "土"][value.getUTCDay()];
+  return `${Number(date.slice(4, 6))}/${Number(date.slice(6, 8))}（${weekday}）`;
 }
 
 export default function Home() {
   const [races, setRaces] = useState<RaceItem[]>([]);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [raceDates, setRaceDates] = useState<string[]>([]);
+  const [month, setMonth] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -52,9 +54,11 @@ export default function Home() {
           throw new Error(data.error || `開催情報の取得に失敗しました（HTTP ${response.status}）`);
         }
         if (active) {
+          const dates = data.raceDates ?? [];
           setRaces(data.races ?? []);
-          setStartDate(data.startDate ?? "");
-          setEndDate(data.endDate ?? "");
+          setRaceDates(dates);
+          setMonth(data.month ?? "");
+          setSelectedDate(dates[0] ?? "");
         }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "開催情報の取得に失敗しました。");
@@ -67,19 +71,16 @@ export default function Home() {
   }, []);
 
   const grouped = useMemo(() => {
-    const groups = new Map<string, RaceItem[]>();
-    for (const venue of VENUE_ORDER) {
-      const venueRaces = races
-        .filter((race) => race.venue === venue)
-        .sort((a, b) => a.raceDate.localeCompare(b.raceDate) || a.raceNumber - b.raceNumber);
-      if (venueRaces.length) groups.set(venue, venueRaces);
-    }
-    return Array.from(groups.entries());
-  }, [races]);
-
-  const periodLabel = startDate && endDate
-    ? `${formatDate(startDate)}〜${formatDate(endDate)}`
-    : "開催期間を取得中";
+    const selectedRaces = races.filter((race) => race.raceDate === selectedDate);
+    return VENUE_ORDER
+      .map((venue) => ({
+        venue,
+        races: selectedRaces
+          .filter((race) => race.venue === venue)
+          .sort((a, b) => a.raceNumber - b.raceNumber),
+      }))
+      .filter((group) => group.races.length > 0);
+  }, [races, selectedDate]);
 
   return (
     <main className="shell">
@@ -90,21 +91,15 @@ export default function Home() {
 
       <section className="hero">
         <p className="eyebrow">UPCOMING RACE CENTER</p>
-        <h1>今後7日間の注目レースを、<br /><span>競馬場ごとに。</span></h1>
-        <p className="hero-copy">日本時間の今週（月曜〜日曜）に開催されるJRAレースを取得し、各競馬場のメインレースと重賞だけを表示します。平場のレースは表示しません。</p>
-        <div className="hero-stats">
-          <div><small>対象</small><b>JRA</b></div>
-          <div><small>表示対象</small><b>メイン・重賞</b></div>
-          <div><small>対象期間</small><b>{periodLabel}</b></div>
-        </div>
+        <h1>開催レースを、<br /><span>日程ごとに。</span></h1>
       </section>
 
       <section className="section-head">
-        <div><p className="eyebrow">FEATURED RACES</p><h2>期間内のメイン・重賞</h2></div>
-        <span className="date-chip">{periodLabel}</span>
+        <div><p className="eyebrow">FEATURED RACES</p><h2>注目レース</h2></div>
+        <span className="date-chip">{month ? `${Number(month)}月` : "取得中"}</span>
       </section>
 
-      {loading && <div className="state-panel">今週のJRA開催情報を取得しています…</div>}
+      {loading && <div className="state-panel">当月の開催情報を取得しています…</div>}
       {!loading && error && (
         <div className="state-panel error-panel">
           <b>開催情報を取得できませんでした</b>
@@ -112,40 +107,59 @@ export default function Home() {
           <button className="retry-button" onClick={() => window.location.reload()}>再読み込み</button>
         </div>
       )}
-      {!loading && !error && grouped.length === 0 && (
+      {!loading && !error && raceDates.length === 0 && (
         <div className="state-panel">
-          <b>表示対象レースはありません</b>
-          <p>今週にJRA開催がないか、開催一覧からメイン・重賞を取得できなかった場合に表示されます。</p>
+          <b>開催予定はありません</b>
+          <p>当月のこれからの開催日から、表示対象レースを取得できませんでした。</p>
         </div>
       )}
 
-      <div className="venue-list">
-        {grouped.map(([venue, venueRaces]) => (
-          <section className="venue-section" key={venue}>
-            <div className="venue-heading"><h3>{venue}競馬場</h3><span>{venueRaces.length}レース</span></div>
-            <div className="race-list">
-              {venueRaces.map((race) => (
-                <article className="race-card" key={race.raceId}>
-                  <div className="race-time">{race.startTime ?? "--:--"}<span>{race.raceNumber}R</span></div>
-                  <div className="race-info">
-                    <div className="race-title">{race.raceTitle}</div>
-                    <p>{formatDate(race.raceDate)} ・ {[race.course, race.runners !== null ? `${race.runners}頭` : null].filter(Boolean).join(" ・ ") || "詳細情報は未取得"}</p>
-                    <div className="race-labels">
-                      {race.isMain && <span className="race-label main-label">メイン</span>}
-                      {race.grade && <span className="race-label grade-label">重賞 {race.grade}</span>}
-                    </div>
+      {!loading && !error && raceDates.length > 0 && (
+        <>
+          <div className="date-tabs" role="tablist" aria-label="開催日">
+            {raceDates.map((date) => (
+              <button
+                key={date}
+                type="button"
+                role="tab"
+                aria-selected={selectedDate === date}
+                className={selectedDate === date ? "date-tab active" : "date-tab"}
+                onClick={() => setSelectedDate(date)}
+              >
+                {formatTabDate(date)}
+              </button>
+            ))}
+          </div>
+
+          {grouped.length === 0 ? (
+            <div className="state-panel">この日の表示対象レースはありません。</div>
+          ) : (
+            <div className="venue-list">
+              {grouped.map(({ venue, races: venueRaces }) => (
+                <section className="venue-section" key={venue}>
+                  <div className="venue-heading"><h3>{venue}競馬場</h3><span>{venueRaces.length}レース</span></div>
+                  <div className="race-list">
+                    {venueRaces.map((race) => (
+                      <article className="race-card" key={race.raceId}>
+                        <div className="race-time">{race.startTime ?? "--:--"}<span>{race.raceNumber}R</span></div>
+                        <div className="race-info">
+                          <div className="race-title">{race.raceTitle}</div>
+                          <p>{[race.course, race.runners !== null ? `${race.runners}頭` : null].filter(Boolean).join(" ・ ") || "詳細情報は未取得"}</p>
+                          <div className="race-labels">
+                            {race.isMain && <span className="race-label main-label">メイン</span>}
+                            {race.grade && <span className="race-label grade-label">重賞 {race.grade}</span>}
+                          </div>
+                        </div>
+                        <span className="race-number">{race.raceNumber}R</span>
+                      </article>
+                    ))}
                   </div>
-                  <span className="race-number">{race.raceNumber}R</span>
-                </article>
+                </section>
               ))}
             </div>
-          </section>
-        ))}
-      </div>
-
-      <section className="section-head lower"><div><p className="eyebrow">DATA TOOLS</p><h2>データ取り込み</h2></div></section>
-      <Link href="/import" className="import-link">出馬表・血統・過去戦績の取り込みを開く →</Link>
-      <footer>KEIBA PREDICTOR <span>個人利用向け・開発中</span></footer>
+          )}
+        </>
+      )}
     </main>
   );
 }
