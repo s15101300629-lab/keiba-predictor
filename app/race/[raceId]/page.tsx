@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 type Conditions = {
@@ -35,29 +35,36 @@ export default function RaceDetailPage() {
   const [data, setData] = useState<ResponseData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async (forceRefresh: boolean) => {
+    try {
+      if (!forceRefresh) setLoading(true);
+      else setRefreshing(true);
+      setError("");
+      const refreshQuery = forceRefresh ? "?refresh=1" : "";
+      const response = await fetch("/api/races/" + raceId + refreshQuery, { cache: "no-store" });
+      const result = (await response.json()) as ResponseData;
+      if (!response.ok || !result.raceConditions || !Array.isArray(result.results)) {
+        throw new Error(result.error || "レース情報の取得に失敗しました（HTTP " + response.status + "）");
+      }
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "レース情報の取得に失敗しました。");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [raceId]);
 
   useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        setLoading(true);
-        setError("");
-        const response = await fetch("/api/races/" + raceId, { cache: "no-store" });
-        const result = (await response.json()) as ResponseData;
-        if (!response.ok || !result.raceConditions || !Array.isArray(result.results)) {
-          throw new Error(result.error || "レース情報の取得に失敗しました（HTTP " + response.status + "）");
-        }
-        if (active) setData(result);
-      } catch (err) {
-        if (active) setError(err instanceof Error ? err.message : "レース情報の取得に失敗しました。");
-      } finally {
-        if (active) setLoading(false);
-      }
+    if (/^\d{12}$/.test(raceId)) {
+      void load(false);
+    } else {
+      setError("レースIDが正しくありません。");
+      setLoading(false);
     }
-    if (/^\d{12}$/.test(raceId)) load();
-    else { setError("レースIDが正しくありません。"); setLoading(false); }
-    return () => { active = false; };
-  }, [raceId]);
+  }, [raceId, load]);
 
   const conditions = data?.raceConditions;
   const horses = data?.results ?? [];
@@ -77,6 +84,15 @@ export default function RaceDetailPage() {
               <br />{display(conditions.startTime)} 発走
             </p>
           </header>
+          <button
+            type="button"
+            className="refresh-button"
+            onClick={() => void load(true)}
+            disabled={refreshing || loading}
+          >
+            {refreshing ? "最新情報を取得中…" : "最新情報に更新"}
+          </button>
+          <p className="detail-meta">通常はレース情報1時間・馬のプロフィールと過去成績7日間キャッシュします。更新ボタンで外部ページを再取得します。</p>
           <section className="detail-section">
             <h2>レース条件</h2>
             <div className="condition-grid">
