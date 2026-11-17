@@ -21,7 +21,7 @@ def center_y(item):
 
 doc = pymupdf.open(stream=raw, filetype="pdf")
 doc[0].get_pixmap(matrix=pymupdf.Matrix(1.5,1.5), alpha=False).save(str(OUT/"page-1-preview.png"))
-pages, blocks, lines, spans = [], [], [], []
+pages, blocks, lines, spans, chars = [], [], [], [], []
 popularity_maps = {}
 for pn, page in enumerate(doc, 1):
     for xref, ext, typ, basefont, resource_name, encoding, referencer in page.get_fonts(full=True):
@@ -58,10 +58,16 @@ for pn, page in enumerate(doc, 1):
                 # Keep control characters: some are the circled popularity glyphs.
                 if sp["text"]:
                     spans.append({"page":pn,"bbox":list(sp["bbox"]),"text":sp["text"],"font":sp["font"]})
+    for b in page.get_text("rawdict")["blocks"]:
+        if b.get("type") != 0: continue
+        for ln in b["lines"]:
+            for sp in ln["spans"]:
+                for ch in sp.get("chars", []):
+                    chars.append({"page":pn,"bbox":list(ch["bbox"]),"text":ch["c"],"font":sp["font"]})
 
 combined="\n\n".join(f"===== PAGE {p['page']} =====\n{p['text']}" for p in pages)
 (OUT/"sample-extracted.txt").write_text(combined,encoding="utf-8")
-for name,data in [("layout-blocks.json",blocks),("layout-lines.json",lines),("layout-spans.json",spans)]:
+for name,data in [("layout-blocks.json",blocks),("layout-lines.json",lines),("layout-spans.json",spans),("layout-chars.json",chars)]:
     (OUT/name).write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding="utf-8")
 
 headers=[]
@@ -176,10 +182,14 @@ for h in headers:
             glyph_code=ord(glyph_span["text"])
             popularity=popularity_maps.get(f"{h['page']}:{glyph_span['font']}",{}).get(glyph_code)
 
-        jockey_x=(150,192.0) if left else (560,604.0)
-        jockey_parts=[x for x in cs if jockey_x[0]<=x["bbox"][0]<jockey_x[1] and abs(center_y(x)-ny)<=2.5]
+        jockey_x=(150,192.1) if left else (560,603.0)
+        jockey_parts=[x for x in chars if x["page"]==h["page"] and jockey_x[0]<=x["bbox"][0]<jockey_x[1] and abs(center_y(x)-ny)<=2.5]
         jockey_parts.sort(key=lambda x:x["bbox"][0])
         jockey_raw=norm("".join(x["text"] for x in jockey_parts)) or None
+        mark_match=re.match(r"^([△▲☆★◇▽◆]+)",jockey_raw or "")
+        jockey_mark=mark_match.group(1) if mark_match else None
+        jockey_name=(jockey_raw[len(jockey_mark):] if jockey_mark else jockey_raw) or None
+        if jockey_name: jockey_name=jockey_name.replace("．",".")
 
         horses.append({"frameNumber":frame_no,"horseNumber":horse_no,
                        "horseName":im.group(1),"sex":im.group(2),"age":int(im.group(3)),
@@ -187,7 +197,7 @@ for h in headers:
                        "bodyWeightKg":body_weight,"bodyWeightChangeKg":body_change,
                        "finishTime":finish_time,"marginText":margin_text,
                        "winOdds":win_odds,"popularity":popularity,
-                       "jockeyColumnRaw":jockey_raw,"identitySource":source,
+                       "jockeyColumnRaw":jockey_raw,"jockeyAllowanceMark":jockey_mark,"jockeyName":jockey_name,"identitySource":source,
                        "sourcePage":h["page"],"sourceY":round(ny,2)})
 
     horses.sort(key=lambda x:x["sourceY"])
@@ -233,7 +243,7 @@ for race in races:
 
 summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),
          "pageCharacters":[p["characters"] for p in pages],"layoutBlockCount":len(blocks),
-         "layoutLineCount":len(lines),"layoutSpanCount":len(spans),
+         "layoutLineCount":len(lines),"layoutSpanCount":len(spans),"layoutCharCount":len(chars),
          "popularityFontMapCount":len(popularity_maps),
          "raceCount":len(headers),"parsedRaceCount":len(races),
          "parsedHorseRows":sum(len(r["horses"]) for r in races),"validationErrorCount":len(errors),
