@@ -38,6 +38,7 @@ for b in blocks:
     if m: headers.append({"page":b["page"],"x":b["bbox"][0],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
 races, errors=[],[]
 coat=r"黒鹿|青鹿|青毛|鹿毛|栃栗|鹿|栗|芦|白毛|白|青"
+identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン)?(\d)({coat})")
 for h in headers:
     left=h["x"]<420
     col=lambda x: x["page"]==h["page"] and ((x["bbox"][0]<420)==left)
@@ -50,42 +51,43 @@ for h in headers:
     if declared is None:
         errors.append(f"R{h['no']}: headcount missing"); continue
 
-    # Official JRA sample: the first field is frame number, the second is
-    # horse number. Finish order is the vertical order of result rows.
     number_x=(18,42) if left else (429,452)
-    identity_x=(45,155) if left else (455,560)
+    identity_x=(45,145) if left else (455,555)
     number_lines=[x for x in cl if number_x[0]<=x["bbox"][0]<=number_x[1]
                   and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
     horses=[]
     for nl in number_lines:
-        number_text=norm(nl["text"])
-        nm=re.match(r"^([1-8])\s*(\d{1,2})",number_text)
+        raw_number_line=norm(nl["text"])
+        nm=re.match(r"^([1-8])(\d{1,2})(.*)$",raw_number_line)
         if not nm: continue
         frame_no,horse_no=int(nm.group(1)),int(nm.group(2))
         ny=(nl["bbox"][1]+nl["bbox"][3])/2
-        id_candidates=[x for x in cl if identity_x[0]<=x["bbox"][0]<identity_x[1]
-                       and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
-        if not id_candidates:
-            errors.append(f"R{h['no']} horse {horse_no}: no identity-column text")
-            continue
-        nearest=min(id_candidates,key=lambda x:abs((x["bbox"][1]+x["bbox"][3])/2-ny))
-        iy=(nearest["bbox"][1]+nearest["bbox"][3])/2
-        if abs(iy-ny)>8:
-            errors.append(f"R{h['no']} horse {horse_no}: identity baseline mismatch {iy-ny:.2f}")
-            continue
-        identity=norm(nearest["text"])
-        im=re.search(rf"(.+?)(牡|牝|せん|セン)?(\d)({coat})",identity)
-        if not im:
+        # Horse identity fragments are located immediately to the right of
+        # the frame/horse number. Jockey begins at x≈157/568 and is excluded.
+        fragments=[x for x in cl if identity_x[0]<=x["bbox"][0]<identity_x[1]
+                   and abs((x["bbox"][1]+x["bbox"][3])/2-ny)<=2.0]
+        fragments.sort(key=lambda x:x["bbox"][0])
+        identity=norm("".join(x["text"] for x in fragments))
+        match=identity_re.search(identity)
+        source="identity_column"
+        if not match:
+            # Some PDF rows combine frame, horse number and horse name in one
+            # text line. Use the remainder of that exact row as fallback.
+            fallback=nm.group(3)
+            match=identity_re.search(fallback)
+            if match:
+                identity=fallback
+                source="number_line_remainder"
+        if not match:
             errors.append(f"R{h['no']} horse {horse_no}: identity parse failed {identity!r}")
             continue
         horses.append({"frameNumber":frame_no,"horseNumber":horse_no,
-                       "horseName":im.group(1),"sex":im.group(2),
-                       "age":int(im.group(3)),"coatColor":im.group(4),
-                       "sourcePage":h["page"],"sourceY":round(ny,2)})
+                       "horseName":match.group(1),"sex":match.group(2),
+                       "age":int(match.group(3)),"coatColor":match.group(4),
+                       "identitySource":source,"sourcePage":h["page"],"sourceY":round(ny,2)})
 
     horses.sort(key=lambda x:x["sourceY"])
-    for order,horse in enumerate(horses,1):
-        horse["finishOrder"]=order
+    for order,horse in enumerate(horses,1): horse["finishOrder"]=order
     nums=[x["horseNumber"] for x in horses]
     if len(nums)!=declared: errors.append(f"R{h['no']}: rows {len(nums)} != declared {declared}")
     if len(set(nums))!=len(nums): errors.append(f"R{h['no']}: duplicate horse numbers {nums}")
