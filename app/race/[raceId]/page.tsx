@@ -21,16 +21,21 @@ type PerformanceStats = {
   sameVenueSurfaceStarts: number; sameVenueSurfaceTop3: number;
   similarDistanceStarts: number; similarDistanceTop3: number;
   sameGoingStarts: number; sameGoingTop3: number;
-  sameJockeyStarts: number; sameJockeyTop3: number;
-  sameFrameStarts: number; sameFrameTop3: number;
   positionStarts: number; positionGainTotal: number;
   positionForwardStarts: number; positionForwardTop3: number;
 };
+type RaceHistoryMetric = { starts: number; wins: number; top3: number; winRate: number; placeRate: number };
+type RaceHistoryForHorse = {
+  frame: RaceHistoryMetric | null;
+  jockey: RaceHistoryMetric | null;
+  sourceYears: number[];
+} | null;
 type Horse = {
   horseId: string; name: string; status: string; raceEntry: Entry | null;
   profile: { label: string; value: string }[] | null;
   performances: { values: Record<string, string> }[]; historyReturned: number;
   performanceStats?: PerformanceStats;
+  raceHistory?: RaceHistoryForHorse;
 };
 type ResponseData = {
   ok: boolean; raceId: string; raceConditions: Conditions; horseCount: number;
@@ -91,20 +96,20 @@ function formatSavedAt(timestamp: number | null) {
 
 function buildFactorScores(horses: Horse[]): Map<string, FactorScore[]> {
   const factors = [
-    { label: "全体成績", get: (s: PerformanceStats) => ({ starts: s.parsedStarts, rate: s.parsedStarts ? s.top3 / s.parsedStarts : 0 }) },
-    { label: "重賞実績", get: (s: PerformanceStats) => ({ starts: s.gradedStarts, rate: s.gradedStarts ? s.gradedWins / s.gradedStarts : 0 }) },
-    { label: "競馬場・馬場適性", get: (s: PerformanceStats) => ({ starts: s.sameVenueSurfaceStarts, rate: s.sameVenueSurfaceStarts ? s.sameVenueSurfaceTop3 / s.sameVenueSurfaceStarts : 0 }) },
-    { label: "距離適性", get: (s: PerformanceStats) => ({ starts: s.similarDistanceStarts, rate: s.similarDistanceStarts ? s.similarDistanceTop3 / s.similarDistanceStarts : 0 }) },
-    { label: "馬場適性", get: (s: PerformanceStats) => ({ starts: s.sameGoingStarts, rate: s.sameGoingStarts ? s.sameGoingTop3 / s.sameGoingStarts : 0 }) },
-    { label: "騎手相性", get: (s: PerformanceStats) => ({ starts: s.sameJockeyStarts, rate: s.sameJockeyStarts ? s.sameJockeyTop3 / s.sameJockeyStarts : 0 }) },
-    { label: "枠順実績", get: (s: PerformanceStats) => ({ starts: s.sameFrameStarts, rate: s.sameFrameStarts ? s.sameFrameTop3 / s.sameFrameStarts : 0 }) },
+    { label: "全体成績", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.parsedStarts ?? 0, rate: s?.parsedStarts ? s.top3 / s.parsedStarts : 0 }; } },
+    { label: "重賞実績", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.gradedStarts ?? 0, rate: s?.gradedStarts ? s.gradedWins / s.gradedStarts : 0 }; } },
+    { label: "競馬場・馬場適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.sameVenueSurfaceStarts ?? 0, rate: s?.sameVenueSurfaceStarts ? s.sameVenueSurfaceTop3 / s.sameVenueSurfaceStarts : 0 }; } },
+    { label: "距離適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.similarDistanceStarts ?? 0, rate: s?.similarDistanceStarts ? s.similarDistanceTop3 / s.similarDistanceStarts : 0 }; } },
+    { label: "馬場適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.sameGoingStarts ?? 0, rate: s?.sameGoingStarts ? s.sameGoingTop3 / s.sameGoingStarts : 0 }; } },
+    { label: "騎手相性", get: (horse: Horse) => { const m = horse.raceHistory?.jockey; return { starts: m?.starts ?? 0, rate: m?.placeRate ?? 0 }; } },
+    { label: "枠順実績", get: (horse: Horse) => { const m = horse.raceHistory?.frame; return { starts: m?.starts ?? 0, rate: m?.placeRate ?? 0 }; } },
   ];
   const result = new Map<string, FactorScore[]>();
   for (const factor of factors) {
-    const values = horses.map((horse) => {
-      const stats = horse.performanceStats;
-      return { horseId: horse.horseId, ...(stats ? factor.get(stats) : { starts: 0, rate: 0 }) };
-    }).filter((item) => item.starts > 0);
+    const values = horses.map((horse) => ({
+      horseId: horse.horseId,
+      ...factor.get(horse),
+    })).filter((item) => item.starts > 0);
     if (!values.length) continue;
     const mean = values.reduce((sum, item) => sum + item.rate, 0) / values.length;
     const variance = values.reduce((sum, item) => sum + Math.pow(item.rate - mean, 2), 0) / values.length;
@@ -132,7 +137,6 @@ function buildFactorScores(horses: Horse[]): Map<string, FactorScore[]> {
   }
   return result;
 }
-
 function buildOverallScores(horses: Horse[], factorScores: Map<string, FactorScore[]>): Map<string, OverallScore> {
   const raw = horses.map((horse) => {
     const values = factorScores.get(horse.horseId) ?? [];
@@ -160,7 +164,7 @@ function buildCategoryRanks(
   distanceMeters: number | null
 ): Map<string, CategoryRank[]> {
   const result = new Map<string, CategoryRank[]>();
-  const categories = ["騎手", "調教", "血統", "距離適性", "コース適性", "馬場適性", "枠順", "種牡馬", "前走距離", "ポジション"];
+  const categories = ["騎手", "調教", "血統", "距離適性", "コース適性", "馬場適性", "枠順", "種牡馬", "ポジション"];
   for (const horse of horses) {
     result.set(horse.horseId, categories.map((label) => ({
       label, rank: null, total: 0, detail: "評価に必要なデータが未取得",
@@ -180,7 +184,7 @@ function buildCategoryRanks(
     if (row) {
       row.rank = distanceRank;
       row.total = distanceValues.length;
-      row.detail = `近似距離 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`;
+      row.detail = `今回の距離±200mの全過去走 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`;
     }
   });
   const assignFactorRank = (factorLabel: string, categoryLabel: string, detailBuilder: (value: FactorScore) => string) => {
@@ -199,6 +203,16 @@ function buildCategoryRanks(
         row.rank = rank;
         row.total = values.length;
         row.detail = detailBuilder(value.factor);
+        if (categoryLabel === "騎手" || categoryLabel === "枠順") {
+          const source = horses.find((horse) => horse.horseId === value.horseId)?.raceHistory;
+          const metric = categoryLabel === "騎手" ? source?.jockey : source?.frame;
+          if (metric) {
+            const percent = (rate: number) => Math.round(rate * 100) + "%";
+            row.detail = categoryLabel === "騎手"
+              ? `エリザベス女王杯の過去10年・今回の騎手 ${metric.starts}騎乗／勝率 ${percent(metric.winRate)}／複勝率 ${percent(metric.placeRate)}`
+              : `エリザベス女王杯の過去10年・今回の枠番 ${metric.starts}回／勝率 ${percent(metric.winRate)}／複勝率 ${percent(metric.placeRate)}`;
+          }
+        }
       }
     });
   };
@@ -252,27 +266,7 @@ function buildCategoryRanks(
     }
   }
 
-  if (distanceMeters !== null) {
-    const lastDistances = horses.map((horse) => {
-      const first = horse.performances?.[0]?.values ?? {};
-      const entry = Object.entries(first).find(([key]) => /距離/.test(key.replace(/\s+/g, "")));
-      const match = entry?.[1]?.match(/(\d{3,4})\s*m?/i);
-      return match ? { horseId: horse.horseId, distance: Number(match[1]), gap: Math.abs(Number(match[1]) - distanceMeters) } : null;
-    }).filter((value): value is { horseId: string; distance: number; gap: number } => value !== null)
-      .sort((a, b) => a.gap - b.gap);
-    let previousGap: number | null = null;
-    let previousRank = 0;
-    lastDistances.forEach((value, index) => {
-      if (previousGap === null || previousGap !== value.gap) previousRank = index + 1;
-      previousGap = value.gap;
-      const row = result.get(value.horseId)?.find((item) => item.label === "前走距離");
-      if (row) {
-        row.rank = previousRank;
-        row.total = lastDistances.length;
-        row.detail = `前走 ${value.distance}m・今回との差 ${value.gap}m`;
-      }
-    });
-  }
+
   return result;
 }
 
@@ -323,44 +317,13 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
 }
 
 const CATEGORY_GROUPS = [
-  { title: "成績・距離", labels: ["全体成績", "重賞実績", "前走距離"] },
-  { title: "コース・馬場適性", labels: ["コース適性", "距離適性", "馬場適性", "枠順"] },
+  { title: "成績・距離", labels: ["全体成績", "重賞実績", "距離適性"] },
+  { title: "コース・馬場適性", labels: ["コース適性", "馬場適性", "枠順"] },
   { title: "騎手・位置取り", labels: ["騎手", "ポジション"] },
   { title: "血統・調教", labels: ["血統", "種牡馬", "調教"] },
 ];
 
-function OverallScoreChart({ horses, overallScores }: {
-  horses: Horse[];
-  overallScores: Map<string, OverallScore>;
-}) {
-  const rows = horses.map((horse) => ({
-    horse,
-    overall: overallScores.get(horse.horseId) ?? { score: null, rank: null, rankedCount: 0 },
-  })).filter((item) => item.overall.score !== null)
-    .sort((a, b) => (a.overall.rank ?? Number.MAX_SAFE_INTEGER) - (b.overall.rank ?? Number.MAX_SAFE_INTEGER));
-
-  return <section className="overall-chart-section">
-    <div className="result-section-heading">
-      <h3>総合スコアランキング</h3>
-      <p>各馬の評価スコアを高い順に比較しています。</p>
-    </div>
-    {rows.length > 0 ? <div className="overall-score-chart">
-      {rows.map(({ horse, overall }) => <div className="overall-chart-row" key={horse.horseId}>
-        <div className="overall-chart-label">
-          <span className="overall-chart-rank">{overall.rank}位</span>
-          <b>{horse.name}</b>
-          <strong>{overall.score?.toFixed(1)}</strong>
-        </div>
-        <div className="overall-chart-track" role="img" aria-label={horse.name + " 総合スコア " + overall.score?.toFixed(1)}>
-          <div className="overall-chart-fill" style={{ width: Math.max(0, Math.min(100, overall.score ?? 0)) + "%" }} />
-        </div>
-      </div>)}
-    </div> : <p className="prediction-no-data">総合スコアを算出できる馬がいません。</p>}
-    {horses.length > rows.length && <p className="chart-unranked-note">評価に必要な過去成績が不足している馬はランキング対象外です。</p>}
-  </section>;
-}
-
-function OverallHorseCard({ horse, overall, categories, factors }: {
+remove ranking chart componentfunction OverallHorseCard({ horse, overall, categories, factors }: {
   horse: Horse; overall: OverallScore; categories: CategoryRank[]; factors: FactorScore[];
 }) {
   const entry = horse.raceEntry;
@@ -381,8 +344,12 @@ function OverallHorseCard({ horse, overall, categories, factors }: {
         <b>{horse.name}</b>
         <small>{[entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
       </span>
-      <span className="horse-result-rank">{overall.rank === null ? "順位なし" : overall.rank + "位"}</span>
-      <span className="horse-result-score">{overall.score === null ? "算出不可" : overall.score.toFixed(1)}</span>
+      <span className="horse-inline-score">
+        <strong>{overall.score === null ? "算出不可" : overall.score.toFixed(1)}</strong>
+        <span className="horse-inline-score-track" role="img" aria-label={horse.name + " 総合スコア " + (overall.score === null ? "算出不可" : overall.score.toFixed(1))}>
+          <span className="horse-inline-score-fill" style={{ width: (overall.score === null ? 0 : Math.max(0, Math.min(100, overall.score))) + "%" }} />
+        </span>
+      </span>
       <span className="horse-expand">＋</span>
     </summary>
 
@@ -534,19 +501,14 @@ export default function RaceDetailPage() {
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         <div className="prediction-intro">
           <h2>AI予測結果</h2>
-          <p>総合スコアは、取得できた評価項目のスコアを平均した相対評価です。全馬の比較グラフを確認し、各馬の名前をタップすると項目別の集計結果を確認できます。調教データは未取得のため、総合スコアには含めていません。</p>
+          <p>総合スコアは取得できた評価項目の平均による相対評価です。各馬の右側に総合スコアとグラフを表示しています。馬番順のまま、馬名をタップすると項目別の集計結果を確認できます。調教データは未取得のため、総合スコアには含めていません。</p>
         </div>
-        <OverallScoreChart horses={horses} overallScores={overallScores} />
         <section className="horse-results-section">
           <div className="result-section-heading">
             <h3>各馬の評価結果</h3>
-            <p>総合順位順に表示しています。馬名をタップすると詳細が開きます。</p>
+            <p>出馬表の枠番・馬番順で表示しています。馬名をタップすると詳細が開きます。</p>
           </div>
-          {[...horses].sort((a, b) => {
-            const rankA = overallScores.get(a.horseId)?.rank ?? Number.MAX_SAFE_INTEGER;
-            const rankB = overallScores.get(b.horseId)?.rank ?? Number.MAX_SAFE_INTEGER;
-            return rankA - rankB || (a.raceEntry?.horseNumber ?? 99) - (b.raceEntry?.horseNumber ?? 99);
-          }).map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
+          {horses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
             overall={overallScores.get(horse.horseId) ?? { score: null, rank: null, rankedCount: 0 }}
             categories={categoryRanks.get(horse.horseId) ?? []}
             factors={factorScores.get(horse.horseId) ?? []} />)}
