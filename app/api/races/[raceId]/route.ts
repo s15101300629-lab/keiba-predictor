@@ -10,6 +10,31 @@ type HorseEntry = {
   name: string;
 };
 
+type RaceEntry = {
+  horseId: string;
+  horseName: string;
+  frameNumber: number | null;
+  horseNumber: number | null;
+  sexAge: string | null;
+  carriedWeight: number | null;
+  jockey: string | null;
+  trainer: string | null;
+  bodyWeight: number | null;
+  bodyWeightChange: number | null;
+  odds: number | null;
+  popularity: number | null;
+  fieldStatus: {
+    frameNumber: string;
+    horseNumber: string;
+    sexAge: string;
+    carriedWeight: string;
+    jockey: string;
+    bodyWeight: string;
+    odds: string;
+    popularity: string;
+  };
+};
+
 function decodeEntities(value: string) {
   return value
     .replace(/&nbsp;/gi, " ")
@@ -34,19 +59,16 @@ function cleanText(value: string) {
 function extractTables(html: string) {
   const tables: string[][][] = [];
   const tableRegex = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
-
   let tableMatch: RegExpExecArray | null;
 
   while ((tableMatch = tableRegex.exec(html)) !== null) {
     const rows: string[][] = [];
     const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-
     let rowMatch: RegExpExecArray | null;
 
     while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
       const cells: string[] = [];
       const cellRegex = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
-
       let cellMatch: RegExpExecArray | null;
 
       while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
@@ -83,7 +105,6 @@ function extractHorses(html: string): HorseEntry[] {
   const horses: HorseEntry[] = [];
   const seen = new Set<string>();
   const anchorRegex = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
-
   let anchorMatch: RegExpExecArray | null;
 
   while ((anchorMatch = anchorRegex.exec(html)) !== null) {
@@ -91,22 +112,148 @@ function extractHorses(html: string): HorseEntry[] {
     if (!hrefMatch) continue;
 
     const href = decodeEntities(hrefMatch[2]);
-    if (!href.includes("/modal/horse.html")) continue;
-
-    const idMatch = href.match(/horse_id=(\d+)/i);
+    const idMatch =
+      href.match(/horse_id=(\d+)/i) || href.match(/\/horse\/(\d+)/i);
     if (!idMatch) continue;
 
     const horseId = idMatch[1];
     if (seen.has(horseId)) continue;
 
+    const name = cleanText(anchorMatch[2]);
+    if (!name) continue;
+
     seen.add(horseId);
-    horses.push({
-      horseId,
-      name: cleanText(anchorMatch[2]),
-    });
+    horses.push({ horseId, name });
   }
 
   return horses;
+}
+
+function parseNumber(value: string | undefined): number | null {
+  if (!value) return null;
+  const normalized = value.replace(/,/g, "").trim();
+  if (!/^\d+(\.\d+)?$/.test(normalized)) return null;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function extractRaceEntries(html: string): RaceEntry[] {
+  const tableRegex = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
+  const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+  const cellRegex = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
+  let tableMatch: RegExpExecArray | null;
+
+  while ((tableMatch = tableRegex.exec(html)) !== null) {
+    const rawRows: string[][] = [];
+    let rowMatch: RegExpExecArray | null;
+    rowRegex.lastIndex = 0;
+
+    while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
+      const cells: string[] = [];
+      let cellMatch: RegExpExecArray | null;
+      cellRegex.lastIndex = 0;
+
+      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
+        cells.push(cellMatch[1]);
+      }
+      if (cells.length) rawRows.push(cells);
+    }
+
+    const headerIndex = rawRows.findIndex((cells) => {
+      const text = cells.map(cleanText).join(" ");
+      return text.includes("馬名") && text.includes("性齢") &&
+        text.includes("斤量") && text.includes("騎手");
+    });
+    if (headerIndex < 0) continue;
+
+    const headers = rawRows[headerIndex].map(cleanText);
+    const indexOf = (label: string) =>
+      headers.findIndex((header) => header.includes(label));
+
+    const indexes = {
+      frame: indexOf("枠"),
+      number: indexOf("馬番"),
+      name: indexOf("馬名"),
+      sexAge: indexOf("性齢"),
+      carriedWeight: indexOf("斤量"),
+      jockey: indexOf("騎手"),
+      trainer: indexOf("厩舎"),
+      bodyWeight: indexOf("馬体重"),
+      odds: indexOf("単勝オッズ"),
+      popularity: indexOf("人気"),
+    };
+
+    const entries: RaceEntry[] = [];
+
+    for (const rawCells of rawRows.slice(headerIndex + 1)) {
+      const rowHtml = rawCells.join(" ");
+      const horseIdMatch =
+        rowHtml.match(/\/horse\/(\d+)/i) ||
+        rowHtml.match(/horse_id=(\d+)/i);
+      if (!horseIdMatch) continue;
+
+      const values = rawCells.map(cleanText);
+      const get = (index: number) =>
+        index >= 0 ? values[index] ?? "" : "";
+
+      const horseCell = indexes.name >= 0 ? rawCells[indexes.name] : "";
+      const horseAnchor = horseCell.match(/<a\b[^>]*>([\s\S]*?)<\/a>/i);
+      const horseName = horseAnchor
+        ? cleanText(horseAnchor[1])
+        : get(indexes.name);
+
+      const frameText = get(indexes.frame);
+      const numberText = get(indexes.number);
+      const sexAgeText = get(indexes.sexAge);
+      const carriedText = get(indexes.carriedWeight);
+      const jockeyText = get(indexes.jockey);
+      const bodyText = get(indexes.bodyWeight);
+      const oddsText = get(indexes.odds);
+      const popularityText = get(indexes.popularity);
+
+      const bodyMatch = bodyText.match(/(\d{3})\s*\(([+-]?\d+)\)/);
+      const bodyOnlyMatch = bodyText.match(/^\s*(\d{3})\s*$/);
+      const sexAge = /^[牡牝セ]\s*\d+$/.test(sexAgeText)
+        ? sexAgeText.replace(/\s+/g, "")
+        : null;
+      const jockey = jockeyText && !/^(○○|--|-)$/u.test(jockeyText)
+        ? jockeyText
+        : null;
+
+      entries.push({
+        horseId: horseIdMatch[1],
+        horseName,
+        frameNumber: parseNumber(frameText),
+        horseNumber: parseNumber(numberText),
+        sexAge,
+        carriedWeight: parseNumber(carriedText),
+        jockey,
+        trainer: get(indexes.trainer) || null,
+        bodyWeight: bodyMatch
+          ? Number(bodyMatch[1])
+          : bodyOnlyMatch
+            ? Number(bodyOnlyMatch[1])
+            : null,
+        bodyWeightChange: bodyMatch ? Number(bodyMatch[2]) : null,
+        odds: parseNumber(oddsText),
+        popularity: parseNumber(popularityText),
+        fieldStatus: {
+          frameNumber: parseNumber(frameText) === null ? "not_published" : "available",
+          horseNumber: parseNumber(numberText) === null ? "not_published" : "available",
+          sexAge: sexAge ? "available" : "unavailable",
+          carriedWeight: parseNumber(carriedText) === null ? "unavailable" : "available",
+          jockey: jockey ? "available" : "not_confirmed",
+          bodyWeight: bodyMatch || bodyOnlyMatch ? "available" : "not_published",
+          odds: parseNumber(oddsText) === null ? "not_published" : "available",
+          popularity: parseNumber(popularityText) === null ? "not_published" : "available",
+        },
+      });
+    }
+
+    if (entries.length > 0) return entries;
+  }
+
+  return [];
 }
 
 function extractProfile(tables: string[][][]) {
@@ -166,7 +313,7 @@ export async function GET(
 
   try {
     const raceUrl =
-      `https://race.sp.netkeiba.com/race/shutuba.html?race_id=${raceId}`;
+      `https://race.netkeiba.com/race/shutuba.html?race_id=${raceId}`;
     const race = await fetchHtml(raceUrl);
 
     if (!race.ok) {
@@ -182,6 +329,7 @@ export async function GET(
     }
 
     const horses = extractHorses(race.html);
+    const raceEntries = extractRaceEntries(race.html);
 
     if (horses.length === 0) {
       return NextResponse.json(
@@ -196,6 +344,9 @@ export async function GET(
       );
     }
 
+    const entryByHorseId = new Map(
+      raceEntries.map((entry) => [entry.horseId, entry])
+    );
     const results: Record<string, unknown>[] = new Array(horses.length);
     let nextIndex = 0;
 
@@ -214,6 +365,7 @@ export async function GET(
             results[index] = {
               horseId: horse.horseId,
               name: horse.name,
+              raceEntry: entryByHorseId.get(horse.horseId) ?? null,
               status: "fetch_failed",
               httpStatus: page.status,
             };
@@ -227,6 +379,7 @@ export async function GET(
           results[index] = {
             horseId: horse.horseId,
             name: horse.name,
+            raceEntry: entryByHorseId.get(horse.horseId) ?? null,
             status: profile && performance ? "complete" : "partial",
             sourceStatus: page.status,
             responseBytes: page.bytes,
@@ -240,6 +393,7 @@ export async function GET(
           results[index] = {
             horseId: horse.horseId,
             name: horse.name,
+            raceEntry: entryByHorseId.get(horse.horseId) ?? null,
             status: "fetch_failed",
             error: error instanceof Error ? error.message : "Unknown error",
           };
@@ -248,32 +402,33 @@ export async function GET(
     }
 
     const workerCount = Math.min(CONCURRENCY, horses.length);
-
     await Promise.all(
       Array.from({ length: workerCount }, () => worker())
     );
 
     const completeCount = results.filter(
-      (item) =>
-        (item as { status?: string })?.status === "complete"
+      (item) => (item as { status?: string })?.status === "complete"
     ).length;
-
     const partialCount = results.filter(
-      (item) =>
-        (item as { status?: string })?.status === "partial"
+      (item) => (item as { status?: string })?.status === "partial"
+    ).length;
+    const failedCount = results.filter(
+      (item) => (item as { status?: string })?.status === "fetch_failed"
     ).length;
 
-    const failedCount = results.filter(
-      (item) =>
-        (item as { status?: string })?.status === "fetch_failed"
+    const matchedEntryCount = horses.filter((horse) =>
+      entryByHorseId.has(horse.horseId)
     ).length;
 
     return NextResponse.json(
       {
-        ok: failedCount === 0 && partialCount === 0,
+        ok: failedCount === 0 && partialCount === 0 && matchedEntryCount === horses.length,
         raceId,
         racePageStatus: race.status,
+        racePageBytes: race.bytes,
         horseCount: horses.length,
+        raceEntryCount: raceEntries.length,
+        matchedEntryCount,
         concurrency: CONCURRENCY,
         historyLimit: MAX_HISTORY,
         completeCount,
@@ -282,10 +437,10 @@ export async function GET(
         results,
         elapsedMs: Date.now() - startedAt,
         notes: {
-          bodyWeight: "Not collected by this endpoint yet.",
-          odds: "Not collected by this endpoint yet.",
-          raceCardNumbersAndJockeys:
-            "Not collected by this endpoint yet.",
+          frameAndHorseNumber: "Not published until the draw is announced; null is expected before then.",
+          bodyWeight: "Usually published on race day; null before publication is expected.",
+          odds: "Null means no numeric odds were present in the fetched page at request time.",
+          jockey: "A provisional placeholder is reported as not_confirmed.",
         },
       },
       {
