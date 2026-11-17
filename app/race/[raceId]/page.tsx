@@ -44,7 +44,7 @@ export default function RaceDetailPage() {
         setError("");
         const response = await fetch("/api/races/" + raceId, { cache: "no-store" });
         const result = (await response.json()) as ResponseData;
-        if (!response.ok || !result.ok) {
+        if (!response.ok || !result.raceConditions || !Array.isArray(result.results)) {
           throw new Error(result.error || "レース情報の取得に失敗しました（HTTP " + response.status + "）");
         }
         if (active) setData(result);
