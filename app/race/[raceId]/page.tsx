@@ -13,7 +13,7 @@ type Conditions = {
 type Entry = {
   frameNumber: number | null; horseNumber: number | null; sexAge: string | null;
   carriedWeight: number | null; jockey: string | null; trainer: string | null;
-  bodyWeight: number | null; odds: number | null; popularity: number | null;
+  bodyWeight: number | null; popularity: number | null;
 };
 type Horse = {
   horseId: string; name: string; status: string; raceEntry: Entry | null;
@@ -112,7 +112,6 @@ export default function RaceDetailPage() {
                     <div className="horse-facts">
                       <div className="horse-fact"><span>枠番：</span>{display(entry?.frameNumber)}</div>
                       <div className="horse-fact"><span>馬体重：</span>{entry?.bodyWeight ? String(entry.bodyWeight) + "kg" : "未発表"}</div>
-                      <div className="horse-fact"><span>オッズ：</span>{display(entry?.odds)}</div>
                       <div className="horse-fact"><span>人気：</span>{display(entry?.popularity)}</div>
                       <div className="horse-fact"><span>調教師：</span>{display(entry?.trainer)}</div>
                       <div className="horse-fact"><span>父：</span>{display(profileValue("父"))}</div>
