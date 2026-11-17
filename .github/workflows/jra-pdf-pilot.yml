@@ -66,3 +66,30 @@ jobs:
           name: jra-pdf-index-manifest
           path: jra-pdf-index/
           if-no-files-found: error
+
+
+  bulk-ingest-2026-smoke:
+    name: bulk-ingest-2026-official-pdfs
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install PDF parser
+        run: python -m pip install --disable-pip-version-check pymupdf
+      - name: Discover official annual PDF manifest
+        run: python scripts/jra_pdf_index.py
+      - name: Parse and validate all 2026 JRA PDFs
+        env:
+          JRA_YEAR: "2026"
+          JRA_WORKERS: "8"
+        run: python scripts/jra_pdf_batch.py
+      - name: Upload annual dataset and validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jra-data-2026-smoke
+          path: jra-pdf-data/
+          if-no-files-found: error
