@@ -115,7 +115,8 @@ for h in headers:
     previous_time=None
     previous_margin=None
     for nl in number_lines:
-        nm=re.match(r"^([1-8])(\d{1,2})(.*)$",norm(nl["text"]))
+        raw_number_line_source=nl["text"]
+        nm=re.match(r"^([1-8])(\d{1,2})(.*)$",norm(raw_number_line_source))
         if not nm: continue
         frame_no,horse_no=int(nm.group(1)),int(nm.group(2))
         ny=center_y(nl)
@@ -127,9 +128,13 @@ for h in headers:
         im=identity_re.search(identity)
         source="identity_column"
         if not im:
-            fallback=nm.group(3)
+            fallback_raw=re.sub(r"^\s*[1-8]\s*\d{1,2}", "", raw_number_line_source)
+            fallback=norm(fallback_raw)
             im=identity_re.search(fallback)
-            if im: identity=fallback; identity_raw=fallback; source="number_line_remainder"
+            if im:
+                identity=fallback
+                identity_raw=fallback_raw
+                source="number_line_remainder"
         if not im:
             errors.append(f"R{h['no']} horse {horse_no}: identity parse failed {identity!r}")
             continue
