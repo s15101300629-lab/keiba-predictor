@@ -164,8 +164,27 @@ async function fetchRaceList(date: string): Promise<string> {
 
 export async function GET() {
   try {
-    // 日本時間の今日から7日間（今日を含む）を対象に、開催日ごとの一覧を取得する。
-    const dates = Array.from({ length: 7 }, (_, offset) => getJstDate(offset));
+    // 日本時間の今週（月曜〜日曜）を対象に、開催日ごとの一覧を取得する。
+    const todayParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const year = Number(todayParts.find((part) => part.type === "year")?.value);
+    const month = Number(todayParts.find((part) => part.type === "month")?.value);
+    const day = Number(todayParts.find((part) => part.type === "day")?.value);
+    const today = new Date(Date.UTC(year, month - 1, day));
+    const mondayOffset = (today.getUTCDay() + 6) % 7;
+    const monday = new Date(today);
+    monday.setUTCDate(monday.getUTCDate() - mondayOffset);
+    const dates = Array.from({ length: 7 }, (_, offset) => {
+      const date = new Date(monday);
+      date.setUTCDate(date.getUTCDate() + offset);
+      return String(date.getUTCFullYear()) +
+        String(date.getUTCMonth() + 1).padStart(2, "0") +
+        String(date.getUTCDate()).padStart(2, "0");
+    });
     const htmlByDate = await Promise.all(dates.map(async (date) => ({
       date,
       html: await fetchRaceList(date),
@@ -183,7 +202,7 @@ export async function GET() {
         raceCount: races.length,
         venues,
         races,
-        filter: "今日から7日間に開催される各競馬場の11R（メイン）および重賞のみ。平場は除外。",
+        filter: "今週（月曜〜日曜）に開催される各競馬場の11R（メイン）および重賞のみ。平場は除外。",
       },
       {
         headers: {
