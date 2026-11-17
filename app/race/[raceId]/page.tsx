@@ -62,7 +62,7 @@ function saveCachedRace(raceId: string, data: ResponseData, savedAt: number) {
 }
 
 function display(value: string | number | null | undefined) {
-  return value === null || value === undefined || value === "" ? "未発表・未取得" : String(value);
+  return value === null || value === undefined || value === "" ? "" : String(value);
 }
 
 function formatSavedAt(timestamp: number | null) {
@@ -78,37 +78,46 @@ function HorseCard({ horse }: { horse: Horse }) {
   const profile = horse.profile ?? [];
   const profileValue = (label: string) => profile.find((item) => item.label.includes(label))?.value;
   const histories = horse.performances ?? [];
+  const facts: [string, string][] = [
+    ["枠番", entry?.frameNumber == null ? "" : String(entry.frameNumber)],
+    ["馬体重", entry?.bodyWeight == null ? "" : String(entry.bodyWeight) + "kg"],
+    ["人気", entry?.popularity == null ? "" : String(entry.popularity)],
+    ["調教師", entry?.trainer ?? ""],
+    ["父", profileValue("父") ?? ""],
+    ["母", profileValue("母") ?? ""],
+    ["母父", profileValue("母父") ?? ""],
+  ].filter(([, value]) => value !== "");
 
   return (
     <details className="horse-detail" onToggle={(event) => setExpanded(event.currentTarget.open)}>
       <summary className="horse-summary">
-        <span className="horse-number-badge">{display(entry?.horseNumber)}番</span>
+        {entry?.horseNumber != null && <span className="horse-number-badge">{entry.horseNumber}番</span>}
         <span className="horse-main">
           <b>{horse.name}</b>
-          <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ") || "出走情報の一部は未発表"}</small>
+          {[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).length > 0 && (
+            <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
+          )}
         </span>
         <span className="horse-expand">{expanded ? "－" : "＋"}</span>
       </summary>
       {expanded && (
         <div className="horse-body">
-          <div className="horse-facts">
-            <div className="horse-fact"><span>枠番：</span>{display(entry?.frameNumber)}</div>
-            <div className="horse-fact"><span>馬体重：</span>{entry?.bodyWeight ? String(entry.bodyWeight) + "kg" : "未発表"}</div>
-            <div className="horse-fact"><span>人気：</span>{display(entry?.popularity)}</div>
-            <div className="horse-fact"><span>調教師：</span>{display(entry?.trainer)}</div>
-            <div className="horse-fact"><span>父：</span>{display(profileValue("父"))}</div>
-            <div className="horse-fact"><span>母：</span>{display(profileValue("母"))}</div>
-            <div className="horse-fact"><span>母父：</span>{display(profileValue("母父"))}</div>
-          </div>
-          {histories.length > 0 ? (
+          {facts.length > 0 && (
+            <div className="horse-facts">
+              {facts.map(([label, value]) => (
+                <div className="horse-fact" key={label}><span>{label}：</span>{value}</div>
+              ))}
+            </div>
+          )}
+          {histories.length > 0 && (
             <div className="history-table-wrap">
-              <b style={{ fontSize: 12 }}>過去の戦績（取得分 {histories.length}走）</b>
+              <b style={{ fontSize: 12 }}>過去の戦績（{histories.length}走）</b>
               <table className="history-table">
                 <thead><tr>{Object.keys(histories[0].values).map((key) => <th key={key}>{key}</th>)}</tr></thead>
-                <tbody>{histories.map((history, index) => <tr key={index}>{Object.keys(histories[0].values).map((key) => <td key={key}>{display(history.values[key])}</td>)}</tr>)}</tbody>
+                <tbody>{histories.map((history, index) => <tr key={index}>{Object.keys(histories[0].values).map((key) => <td key={key}>{history.values[key] ?? ""}</td>)}</tr>)}</tbody>
               </table>
             </div>
-          ) : <p className="detail-meta">過去の戦績は取得できませんでした。</p>}
+          )}
         </div>
       )}
     </details>
@@ -182,7 +191,12 @@ export default function RaceDetailPage() {
   return (
     <main className="race-detail-shell">
       <Link href="/" className="back-link">← 開催レース一覧へ戻る</Link>
-      {loading && cacheChecked && !data && <div className="state-panel">初回データを取得しています…</div>}
+      {loading && cacheChecked && !data && (
+        <div className="state-panel loading-panel">
+          <span className="loading-spinner" aria-hidden="true" />
+          <span>初回データを取得しています…</span>
+        </div>
+      )}
       {!data && !loading && error && <div className="state-panel error-panel"><b>レース情報を取得できませんでした</b><p>{error}</p></div>}
       {data && conditions && (
         <>
@@ -200,29 +214,29 @@ export default function RaceDetailPage() {
             onClick={() => void load(true, false)}
             disabled={refreshing || loading}
           >
-            {refreshing ? "最新情報を取得中…" : "最新情報に更新"}
+            {refreshing && <span className="loading-spinner" aria-hidden="true" />}
+          {refreshing ? "最新情報を取得中…" : "最新情報に更新"}
           </button>
           <p className="detail-meta">
             {formatSavedAt(cachedAt)}
-            {refreshing ? " ・ バックグラウンドで最新情報を確認中" : " ・ 保存データは5分ごとに自動確認"}
+            {refreshing && " ・ バックグラウンドで最新情報を確認中"}
           </p>
           {error && <p className="detail-meta" role="status">{error}</p>}
           <section className="detail-section">
             <h2>レース条件</h2>
             <div className="condition-grid">
-              {[
+              {([
                 ["コース", [conditions.surface, conditions.distanceMeters ? String(conditions.distanceMeters) + "m" : null].filter(Boolean).join(" ")],
                 ["回り・コース", [conditions.direction, conditions.courseLayout, conditions.courseLetter].filter(Boolean).join(" ")],
-                ["天候", conditions.weather],
-                ["馬場状態", conditions.going],
-              ].map(([label, value]) => (
-                <div className="condition-item" key={label}><small>{label}</small><b>{display(value)}</b></div>
+                ["天候", conditions.weather ?? ""],
+                ["馬場状態", conditions.going ?? ""],
+              ] as [string, string][]).filter(([, value]) => value !== "").map(([label, value]) => (
+                <div className="condition-item" key={label}><small>{label}</small><b>{value}</b></div>
               ))}
             </div>
           </section>
           <section className="detail-section">
             <h2>出走馬 <span style={{ color: "var(--muted)", fontSize: 12 }}>（{data.horseCount}頭）</span></h2>
-            <p className="detail-meta">取得完了 {data.completeCount}頭 ・ 一部取得 {data.partialCount}頭 ・ 取得失敗 {data.failedCount}頭</p>
             {horses.map((horse) => <HorseCard key={horse.horseId} horse={horse} />)}
           </section>
         </>
