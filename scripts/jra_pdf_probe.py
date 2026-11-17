@@ -122,7 +122,8 @@ for h in headers:
         identity_parts=[x for x in cl if identity_x[0]<=x["bbox"][0]<identity_x[1]
                         and abs(center_y(x)-ny)<=2.0]
         identity_parts.sort(key=lambda x:x["bbox"][0])
-        identity=norm("".join(x["text"] for x in identity_parts))
+        identity_raw="".join(x["text"] for x in identity_parts)
+        identity=norm(identity_raw)
         im=identity_re.search(identity)
         source="identity_column"
         if not im:
@@ -214,8 +215,10 @@ for h in headers:
 
         horse_name=im.group(1)
         horse_sex=im.group(2)
+        if horse_sex is None and re.search(r"[\x01-\x1f]",identity_raw):
+            horse_sex="せん"
         horse_age=int(im.group(3))
-        birth_year=URL_YEAR-horse_age+2 if URL_YEAR else None
+        birth_year=URL_YEAR-horse_age if URL_YEAR else None
         horse_key=f"{norm(horse_name)}|{horse_sex or '不明'}|{birth_year or '不明'}"
         horses.append({"frameNumber":frame_no,"horseNumber":horse_no,
                        "horseName":horse_name,"sex":horse_sex,"age":horse_age,
@@ -258,6 +261,7 @@ for h in headers:
     if any(x["carriedWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing carried weight")
     if any(x["bodyWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing body weight")
     if any(x["jockeyName"] is None for x in horses): errors.append(f"R{h['no']}: missing jockey name")
+    if any(x["sex"] is None for x in horses): errors.append(f"R{h['no']}: missing sex")
     if any(x["finishTime"] is None and x["resultStatus"] is None for x in horses): errors.append(f"R{h['no']}: runner has neither finish time nor result status")
 
     nearby=[b["text"] for b in cb if h["y0"]-20<=b["bbox"][1]<=h["y1"]+60]
