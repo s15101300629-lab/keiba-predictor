@@ -549,16 +549,16 @@ function extractMonthlyJraRatings(
 
     const raceName = row[2] ?? "";
     for (const cell of row.slice(3, 7)) {
-      const ratingMatch = cell.match(/^(.+?)(\d{2,3})(?:\s*[SMILE](?:\s*,\s*[SMILE])*)?\s*$/i);
-      if (!ratingMatch) continue;
+      const ratingMatches = cell.matchAll(/([^\d]+?)(\d{2,3})(?:\s*[SMILE](?:\s*,\s*[SMILE])*)?(?=\s|$)/gi);
+      for (const ratingMatch of ratingMatches) {
+        const horseName = normalizeHorseName(ratingMatch[1]);
+        const value = Number(ratingMatch[2]);
+        if (!horseName || value < 50 || value > 150) continue;
 
-      const horseName = normalizeHorseName(ratingMatch[1]);
-      const value = Number(ratingMatch[2]);
-      if (!horseName || value < 50 || value > 150) continue;
-
-      const existing = ratings.get(horseName);
-      if (!existing || raceDate > existing.raceDate) {
-        ratings.set(horseName, { value, raceDate, raceName, source: sourceUrl });
+        const existing = ratings.get(horseName);
+        if (!existing || raceDate > existing.raceDate) {
+          ratings.set(horseName, { value, raceDate, raceName, source: sourceUrl });
+        }
       }
     }
   }
