@@ -31,6 +31,10 @@ type Horse = {
 type ResponseData = {
   ok: boolean; raceId: string; raceConditions: Conditions; horseCount: number;
   completeCount: number; partialCount: number; failedCount: number;
+  ratingDiagnostics?: {
+    sourceUrl: string | null; httpStatus: number | null; publishedDate: string | null;
+    parsedRowCount: number; matchedHorseCount: number; ratingCount: number; error: string | null;
+  };
   results: Horse[]; error?: string;
 };
 type CachedRace = { savedAt: number; data: ResponseData };
@@ -449,6 +453,15 @@ export default function RaceDetailPage() {
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         <div className="prediction-intro"><h2>AI予測ロジックの判定材料</h2>
           <p>現在取得できている過去成績を使い、全体成績・重賞実績・競馬場適性・距離適性・馬場適性を比較しています。</p>
+        </div>
+        <div className="prediction-intro" role="status">
+          <h3>JRAレーティング取得状況</h3>
+          <p>取得件数：{data.ratingDiagnostics?.ratingCount ?? horses.filter((horse) => horse.rating).length}頭 / {data.horseCount}頭</p>
+          <p>JRAページ：{data.ratingDiagnostics?.httpStatus == null ? "未確認" : "HTTP " + data.ratingDiagnostics.httpStatus}</p>
+          <p>公開日：{data.ratingDiagnostics?.publishedDate ?? "取得できず"}</p>
+          <p>解析行数：{data.ratingDiagnostics?.parsedRowCount ?? "未確認"} ・ 馬名照合：{data.ratingDiagnostics?.matchedHorseCount ?? "未確認"}頭</p>
+          {data.ratingDiagnostics?.error && <p>{data.ratingDiagnostics.error}</p>}
+          {data.ratingDiagnostics?.sourceUrl && <p><a href={data.ratingDiagnostics.sourceUrl} target="_blank" rel="noreferrer">JRA公式プレレーティングを開く</a></p>}
         </div>
         {horses.map((horse) => <PredictionHorseCard key={horse.horseId} horse={horse}
           scores={factorScores.get(horse.horseId) ?? []} />)}
