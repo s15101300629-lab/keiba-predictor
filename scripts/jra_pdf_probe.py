@@ -132,10 +132,10 @@ for h in headers:
         def nearest_span(xmin,xmax):
             found=[x for x in cs if xmin<=x["bbox"][0]<xmax and abs(center_y(x)-ny)<=3.0]
             return min(found,key=lambda x:abs(center_y(x)-ny)) if found else None
-        body_span=nearest_span(300,321) if left else nearest_span(710,731.4)
-        change_span=nearest_span(321,334.5) if left else nearest_span(731.4,745)
-        time_span=nearest_span(334.5,355.5) if left else nearest_span(745,765.9)
-        margin_span=nearest_span(355.5,380) if left else nearest_span(765.9,790)
+        body_span=nearest_span(300,320.9) if left else nearest_span(710,731.3)
+        change_span=nearest_span(320.9,334.4) if left else nearest_span(731.3,744.9)
+        time_span=nearest_span(334.4,355.4) if left else nearest_span(744.9,765.8)
+        margin_span=nearest_span(355.4,380) if left else nearest_span(765.8,790)
         odds_span=nearest_span(380,403) if left else nearest_span(790,814)
         glyph_span=nearest_span(402.9,411) if left else nearest_span(813.3,821)
 
@@ -172,7 +172,7 @@ for h in headers:
             glyph_code=ord(glyph_span["text"])
             popularity=popularity_maps.get(f"{h['page']}:{glyph_span['font']}",{}).get(glyph_code)
 
-        jockey_x=(150,213) if left else (560,623)
+        jockey_x=(145,213) if left else (555,623)
         jockey_parts=[x for x in cl if jockey_x[0]<=x["bbox"][0]<jockey_x[1] and abs(center_y(x)-ny)<=2.5]
         jockey_parts.sort(key=lambda x:x["bbox"][0])
         jockey_raw="".join(x["text"] for x in jockey_parts).strip() or None
