@@ -91,7 +91,18 @@ for b in blocks:
     m=re.search(r"第\s*(\d+)\s*競走",b["text"])
     normalized_header=norm(b["text"])
     year_or_venue=bool(re.search(r"\d{4}年",normalized_header) or re.search(r"[（(]\d{2}(?:札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\d+[）)]",normalized_header))
-    if m and re.match(r"^\d{5}",normalized_header) and year_or_venue: headers.append({"page":b["page"],"x":b["bbox"][0],"y0":b["bbox"][1],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
+    if m and re.match(r"^\d{5}",normalized_header) and year_or_venue:
+        race_no=int(m.group(1))
+        header_line=next((ln for ln in lines
+                          if ln["page"]==b["page"]
+                          and ((ln["bbox"][0]<420)==(b["bbox"][0]<420))
+                          and re.search(rf"第\s*{race_no}\s*競走",ln["text"])),None)
+        if header_line:
+            headers.append({"page":b["page"],"x":b["bbox"][0],
+                            "y0":header_line["bbox"][1],"y1":header_line["bbox"][3],
+                            "no":race_no,"text":b["text"]})
+        else:
+            errors.append(f"R{race_no}: race header line missing on page {b['page']}")
 races,errors=[],[]
 coat=r"黒鹿|青鹿|青毛|鹿毛|栃栗|鹿|栗|芦|白毛|白|青"
 identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン|[\x01-\x1f])(\d)({coat})")
