@@ -616,6 +616,10 @@ function extractMonthlyJraRatings(
   return ratings;
 }
 
+const G1_RATING_SLUGS: Record<string, string> = {
+  "マイルチャンピオンシップ": "mile",
+};
+
 function findG1RaceUrl(
   html: string,
   raceName: string | null,
@@ -624,8 +628,10 @@ function findG1RaceUrl(
   baseUrl: string
 ) {
   const wantedName = raceName ? normalizeRaceNameForMatch(raceName) : "";
+  if (!wantedName) return null;
+
   const rows = [...html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
-  const dateVenueCandidates: { href: string; rowText: string; linkCount: number }[] = [];
+  const candidates: string[] = [];
 
   for (const row of rows) {
     const rowHtml = row[1];
@@ -642,14 +648,14 @@ function findG1RaceUrl(
 
     const normalizedVenue = venue ? normalizeHorseName(venue) : "";
     const venueMatches = normalizedVenue
-      ? cells.some((cell) => {
-          const cellVenue = normalizeHorseName(cell);
-          return cellVenue === normalizedVenue ||
-            cellVenue.includes(normalizedVenue) ||
-            normalizedVenue.includes(cellVenue);
-        })
+      ? cells.some((cell) => normalizeHorseName(cell) === normalizedVenue)
       : false;
     if (normalizedVenue && !venueMatches) continue;
+
+    const raceNameMatches = cells.some((cell) =>
+      normalizeRaceNameForMatch(cell) === wantedName
+    );
+    if (!raceNameMatches) continue;
 
     const anchors = [...rowHtml.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)];
     const links = anchors
@@ -664,34 +670,32 @@ function findG1RaceUrl(
       })
       .filter((link): link is { href: string; label: string } => link !== null);
 
-    if (links.length === 0) continue;
+    const nameMatchedLink = links.find((link) =>
+      normalizeRaceNameForMatch(link.label) === wantedName
+    );
+    if (nameMatchedLink) {
+      candidates.push(nameMatchedLink.href);
+      continue;
+    }
 
-    const nameMatchedLink = wantedName
-      ? links.find((link) => {
-          const label = normalizeRaceNameForMatch(link.label);
-          return label === wantedName ||
-            label.includes(wantedName) ||
-            wantedName.includes(label);
-        })
-      : undefined;
-    if (nameMatchedLink) return nameMatchedLink.href;
+    if (links.length === 1) {
+      candidates.push(links[0].href);
+      continue;
+    }
 
-    dateVenueCandidates.push({
-      href: links.length === 1 ? links[0].href : "",
-      rowText,
-      linkCount: links.length,
-    });
+    // JRAの年度別一覧で、開催前のレース行にリンクがない場合の確認済みURL。
+    const slug = G1_RATING_SLUGS[wantedName];
+    if (links.length === 0 && slug) {
+      candidates.push(
+        new URL(
+          "datafile/ranking/g1/" + targetDate.slice(0, 4) + "/" + slug + ".html",
+          "https://www.jra.go.jp/"
+        ).toString()
+      );
+    }
   }
 
-  // 略称でも開催日・競馬場が一致する行が一意で、リンクも1つだけなら採用する。
-  // 同日同競馬場に複数リンクがある場合は誤ったレースを選ばない。
-  if (
-    dateVenueCandidates.length === 1 &&
-    dateVenueCandidates[0].linkCount === 1
-  ) {
-    return dateVenueCandidates[0].href;
-  }
-  return null;
+  return candidates.length === 1 ? candidates[0] : null;
 }
 async function fetchG1PreRatings(
   horses: HorseEntry[],
@@ -740,6 +744,19 @@ async function fetchG1PreRatings(
   }
 
   const pageText = cleanText(detail.html);
+  const [targetYearText, targetMonthText, targetDayText] = targetDate.split("-");
+  const targetMonthDay = Number(targetMonthText) + "月" + Number(targetDayText) + "日";
+  const expectedRaceName = raceName ? normalizeRaceNameForMatch(raceName) : "";
+  const pageRaceName = normalizeRaceName(pageText);
+  const raceNameConfirmed = Boolean(expectedRaceName && pageRaceName.includes(expectedRaceName));
+  const raceDateConfirmed = pageText.includes(targetMonthDay);
+  const venueConfirmed = !venue || pageText.includes(venue + "競馬");
+  if (!raceNameConfirmed || !raceDateConfirmed || !venueConfirmed) {
+    result.diagnostics.error =
+      "取得したJRA詳細ページが対象レースと一致しませんでした（レース名・開催日・競馬場を照合）";
+    return result;
+  }
+
   const publishedMatch = pageText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
   const publishedDate = publishedMatch
     ? publishedMatch[1] + "-" + publishedMatch[2].padStart(2, "0") + "-" + publishedMatch[3].padStart(2, "0")
