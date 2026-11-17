@@ -164,9 +164,11 @@ for h in headers:
         time_parts=[x for x in cs if (334.4<=x["bbox"][0]<355.4 if left else 744.9<=x["bbox"][0]<765.8) and abs(center_y(x)-ny)<=3.0]
         time_parts.sort(key=lambda x:x["bbox"][0])
         time_raw=norm("".join(x["text"] for x in time_parts))
-        time_match=re.search(r"(\d{1,2})[:：](\d{2})[．.](\d)",time_raw)
+        time_match=re.fullmatch(r"(?:(\d{1,2})[:：])?(\d{1,2})[．.](\d)",time_raw)
         if time_match:
-            finish_time=f"{int(time_match.group(1))}:{time_match.group(2)}.{time_match.group(3)}"
+            minutes=int(time_match.group(1) or 0)
+            seconds=int(time_match.group(2))
+            finish_time=f"{minutes}:{seconds:02d}.{time_match.group(3)}" if minutes else f"{seconds}.{time_match.group(3)}"
         elif time_raw=="〃":
             finish_time=previous_time
         else:
@@ -299,9 +301,9 @@ for race in races:
         if winner is None or winner["finishTime"] is None:
             errors.append(f"R{race['raceNumber']}: winner finish time missing")
         if winner and winner["finishTime"] and race["lapTimes"]:
-            tm=re.fullmatch(r"(\d+):(\d+\.\d)",winner["finishTime"])
+            tm=re.fullmatch(r"(?:(\d+):)?(\d{1,2})\.(\d)",winner["finishTime"])
             if tm:
-                winner_seconds=int(tm.group(1))*60+float(tm.group(2))
+                winner_seconds=int(tm.group(1) or 0)*60+float(tm.group(2)+"."+tm.group(3))
                 if abs(sum(race["lapTimes"])-winner_seconds)>0.11:
                     errors.append(f"R{race['raceNumber']}: lap sum {sum(race['lapTimes']):.1f} != winner time {winner_seconds:.1f}")
         if len(race["lapTimes"])>=4 and race["last4F"] is not None:
