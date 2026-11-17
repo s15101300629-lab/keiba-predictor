@@ -1,0 +1,20 @@
+{
+  "year": 2025,
+  "sourceIndex": "https://www.jra.go.jp/datafile/seiseki/index.html",
+  "expectedPdfCount": 288,
+  "successPdfCount": 288,
+  "failurePdfCount": 0,
+  "raceCount": 3455,
+  "horseCount": 47715,
+  "uniqueRaceKeyCount": 3455,
+  "duplicateRaceKeyCount": 0,
+  "missingBodyWeightCount": 0,
+  "missingSexCount": 0,
+  "missingMarginCount": 12223,
+  "sourcePdfSha256Count": 288,
+  "totalSourcePdfBytes": 203022654,
+  "outputFile": "jra-pdf-data/jra-results-2025.jsonl.gz",
+  "outputBytes": 3311502,
+  "elapsedSeconds": 1074.88,
+  "parallelWorkers": 8
+}
