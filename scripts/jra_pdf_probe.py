@@ -3,6 +3,8 @@ import json, os, re, urllib.request
 from pathlib import Path
 
 URL = os.environ.get("JRA_PDF_URL", "https://jra.jp/datafile/seiseki/report/2025/2025-1kyoto1.pdf")
+URL_YEAR_MATCH = re.search(r"/report/(\d{4})/", URL)
+URL_YEAR = int(URL_YEAR_MATCH.group(1)) if URL_YEAR_MATCH else None
 OUT = Path("jra-pdf-probe")
 OUT.mkdir(exist_ok=True)
 req = urllib.request.Request(URL, headers={"User-Agent":"Mozilla/5.0","Accept":"application/pdf"})
@@ -73,7 +75,9 @@ for name,data in [("layout-blocks.json",blocks),("layout-lines.json",lines),("la
 headers=[]
 for b in blocks:
     m=re.search(r"第\s*(\d+)\s*競走",b["text"])
-    if m and re.match(r"^\d{5}",norm(b["text"])) and re.search(r"\d{4}年.*第\d+競走",norm(b["text"])): headers.append({"page":b["page"],"x":b["bbox"][0],"y0":b["bbox"][1],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
+    normalized_header=norm(b["text"])
+    year_or_venue=bool(re.search(r"\d{4}年",normalized_header) or re.search(r"[（(]\d{2}(?:札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\d+[）)]",normalized_header))
+    if m and re.match(r"^\d{5}",normalized_header) and year_or_venue: headers.append({"page":b["page"],"x":b["bbox"][0],"y0":b["bbox"][1],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
 races,errors=[],[]
 coat=r"黒鹿|青鹿|青毛|鹿毛|栃栗|鹿|栗|芦|白毛|白|青"
 identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン)?(\d)({coat})")
@@ -235,7 +239,8 @@ for h in headers:
     card_text="\n".join([h["text"],*nearby])
     year_match=re.search(r"(\d{4})年",card_text)
     day_match=re.search(r"(\d+)月(\d+)日",card_text)
-    date=f"{int(year_match.group(1)):04d}-{int(day_match.group(1)):02d}-{int(day_match.group(2)):02d}" if year_match and day_match else None
+    date_year=int(year_match.group(1)) if year_match else URL_YEAR
+    date=f"{date_year:04d}-{int(day_match.group(1)):02d}-{int(day_match.group(2)):02d}" if date_year and day_match else None
     distance_match=re.search(r"(\d)[，,](\d{3})",h["text"])
     index_match=re.match(r"(\d{5})",norm(h["text"]))
     start_match=re.search(r"発走(\d+)時(\d+)分",card_text)
@@ -243,6 +248,10 @@ for h in headers:
     layout_match=re.search(r"（(?:芝|ダート|障害)[^）]*(内|外)",card_text)
     surface_match=re.search(r"（(芝|ダート|障害)[^）]*）",card_text)
     venue_match=re.search(r"\d{4}年\d+([^）]+)",card_text)
+    venue_name=venue_match.group(1) if venue_match else None
+    if venue_name is None:
+        legacy_venue=re.search(r"[（(]\d{2}(札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\d+[）)]",card_text)
+        venue_name=legacy_venue.group(1) if legacy_venue else None
     weather_match=re.search(r"\d+月\d+日(晴|曇|雨|小雨|雪)",card_text)
     going_match=re.search(r"\d+月\d+日(?:晴|曇|雨|小雨|雪)?\s*(良|稍重|重|不良)",card_text)
     lower_blocks=[b for b in cb if b["bbox"][1]>300]
@@ -261,7 +270,7 @@ for h in headers:
     last4f=float(last_match.group(1).replace("．",".")) if last_match else None
     last3f=float(last_match.group(2).replace("．",".")) if last_match else None
     races.append({"raceNumber":h["no"],"jraIndexNumber":index_match.group(1) if index_match else None,"date":date,
-                  "venue":venue_match.group(1) if venue_match else None,
+                  "venue":venue_name,
                   "distanceMeters":int(distance_match.group(1)+distance_match.group(2)) if distance_match else None,
                   "surface":surface_match.group(1) if surface_match else None,
                   "direction":direction_match.group(1) if direction_match else None,
