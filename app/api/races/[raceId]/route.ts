@@ -133,7 +133,7 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
   const conditionText = raceDataText || pageText;
 
   const raceNameMatch =
-    headingText.match(/([ぁ-んァ-ヶ一-龠A-Za-zＡ-Ｚａ-ｚ0-9０-９ー・]+(?:（(?:春|秋)）|\((?:春|秋)\)|チャンピオンシップ|ステークス|記念|賞|杯|オークス|マイル|[ＣC]?[ＳS]|[ＦF][ＳS]|[ＪJ][ＦF]|[ＣC]))/) ||
+    headingText.match(/(([ぁ-んァ-ヶ一-龠A-Za-zＡ-Ｚａ-ｚ0-9０-９ー・]*)(?:（(?:春|秋)）|\((?:春|秋)\)|チャンピオンシップ|ステークス|フューチュリティ|フィリーズ|記念|賞|杯|優駿牝馬|オークス|エリ女杯?|春天|秋天|有馬|宝塚|日本ダービー|東京優駿|ヴィクトリアマイル|ヴィクトリア[ＭM]|マイル|スプリント|クラシック|グランドジャンプ|大障害|[ＣC]?[ＳS]|[ＦF][ＳS]|[ＪJ][ＦF]|[ＣC]))/) ||
     titleText.match(/^(.+?)(?:\(|（| 出馬表| レース情報)/);
   const dateMatch = pageText.match(/(20\d{2})年\s*(\d{1,2})月\s*(\d{1,2})日/);
   const meetingMatch = pageText.match(/(\d+)回\s*([^\s　]+)\s*(\d+)日目/);
