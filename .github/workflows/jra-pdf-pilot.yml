@@ -1,9 +1,6 @@
 name: JRA PDF extraction pilot
 
 on:
-  push:
-    branches:
-      - feature/jra-pdf-ingestion-pilot
   workflow_dispatch:
 
 permissions:
