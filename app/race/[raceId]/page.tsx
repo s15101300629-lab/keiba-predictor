@@ -153,6 +153,7 @@ function buildCategoryRanks(
   distanceMeters: number | null
 ): Map<string, CategoryRank[]> {
   const result = new Map<string, CategoryRank[]>();
+  const categories = ["騎手", "調教", "血統", "距離適性", "コース適性", "馬場適性", "枠順", "種牡馬", "前走距離", "ポジション"];
   for (const horse of horses) {
     result.set(horse.horseId, categories.map((label) => ({
       label, rank: null, total: 0, detail: "評価に必要なデータが未取得",
