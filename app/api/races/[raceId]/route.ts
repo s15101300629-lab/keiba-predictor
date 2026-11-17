@@ -744,7 +744,7 @@ async function fetchG1PreRatings(
   }
 
   const pageText = cleanText(detail.html);
-  const [targetYearText, targetMonthText, targetDayText] = targetDate.split("-");
+  const [, targetMonthText, targetDayText] = targetDate.split("-");
   const targetMonthDay = Number(targetMonthText) + "月" + Number(targetDayText) + "日";
   const expectedRaceName = raceName ? normalizeRaceNameForMatch(raceName) : "";
   const pageRaceName = normalizeRaceName(pageText);
