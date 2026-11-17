@@ -127,3 +127,6 @@ footer span { letter-spacing:0; }
 .history-table th,.history-table td { padding: 8px 9px; border-bottom: 1px solid var(--line); text-align: left; }
 .history-table th { color: var(--accent); font-weight: 700; }
 @media (min-width: 640px) { .condition-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .horse-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.refresh-button { display:inline-flex; align-items:center; justify-content:center; margin-top:8px; padding:10px 14px; border:1px solid var(--accent); border-radius:9px; background:#193b3b; color:var(--accent); font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.refresh-button:disabled { opacity:.55; cursor:wait; }
