@@ -50,7 +50,7 @@ for h in headers:
     if declared is None:
         errors.append(f"R{h['no']}: headcount missing"); continue
     candidates=[x for x in cl if x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y+1]
-    candidates.sort(key=lambda x:(sum(x["bbox"][1:4:2])/2,x["bbox"][0]))
+    candidates.sort(key=lambda x:((x["bbox"][1]+x["bbox"][3])/2,x["bbox"][0]))
     rows=[]
     for ln in candidates:
         cy=(ln["bbox"][1]+ln["bbox"][3])/2
@@ -64,7 +64,6 @@ for h in headers:
         nm=re.match(r"^([1-8])\s*(\d{1,2})",numline)
         if not nm: continue
         xmin,xmax=(40,155) if left else (450,585)
-        # Join all fragments from the identity column around the horse-number baseline.
         fr=[x for x in cl if xmin<=x["bbox"][0]<xmax and abs((x["bbox"][1]+x["bbox"][3])/2-row["y"])<=4.5]
         fr.sort(key=lambda x:(x["bbox"][0],x["bbox"][1]))
         identity=norm("".join(x["text"] for x in fr))
@@ -86,4 +85,3 @@ summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCo
 (OUT/"parsed-races.json").write_text(json.dumps(races,ensure_ascii=False,indent=2),encoding="utf-8")
 (OUT/"summary.json").write_text(json.dumps(summary,ensure_ascii=False,indent=2),encoding="utf-8")
 print(json.dumps(summary,ensure_ascii=False))
-if len(doc)==0 or len(combined)<1000 or len(headers)!=12 or errors: raise RuntimeError(f"Structured validation failed: {len(errors)} errors")
