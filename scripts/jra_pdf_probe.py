@@ -22,53 +22,44 @@ def center_y(item):
 doc = pymupdf.open(stream=raw, filetype="pdf")
 doc[0].get_pixmap(matrix=pymupdf.Matrix(1.5,1.5), alpha=False).save(str(OUT/"page-1-preview.png"))
 pages, blocks, lines, spans = [], [], [], []
-font_xrefs = {}
-for page in doc:
-    for xref, ext, typ, basefont, resource_name, encoding, referencer in page.get_fonts(full=True):
-        font_xrefs[basefont.split("+")[-1]] = xref
-
-# The JRA PDF uses subset fonts for circled popularity digits. Decode each
-# subset's /Differences array rather than treating control characters as ranks.
 popularity_maps = {}
-for font_name, xref in font_xrefs.items():
-    font_obj = doc.xref_object(xref)
-    enc_match = re.search(r"/Encoding\s+(\d+)\s+0\s+R", font_obj)
-    if not enc_match:
-        continue
-    enc_obj = doc.xref_object(int(enc_match.group(1)))
-    diff_match = re.search(r"/Differences\s*\[(.*?)\]", enc_obj, re.S)
-    if not diff_match:
-        continue
-    current = None
-    mapping = {}
-    for token in re.findall(r"\d+|/[^\s\[\]]+", diff_match.group(1)):
-        if token.isdigit():
-            current = int(token)
-        elif current is not None:
-            glyph = token[1:]
-            glyph_match = re.fullmatch(r"c(\d{3})", glyph)
-            if glyph_match:
-                popularity = int(glyph_match.group(1)) - 32
-                if 1 <= popularity <= 18:
-                    mapping[current] = popularity
-            current += 1
-    if mapping:
-        popularity_maps[font_name] = mapping
-
 for pn, page in enumerate(doc, 1):
-    txt = page.get_text("text", sort=True)
+    for xref, ext, typ, basefont, resource_name, encoding, referencer in page.get_fonts(full=True):
+        font_name=basefont.split("+")[-1]
+        font_obj=doc.xref_object(xref)
+        enc_match=re.search(r"/Encoding\s+(\d+)\s+0\s+R",font_obj)
+        if not enc_match: continue
+        enc_obj=doc.xref_object(int(enc_match.group(1)))
+        diff_match=re.search(r"/Differences\s*\[(.*?)\]",enc_obj,re.S)
+        if not diff_match: continue
+        current=None
+        mapping={}
+        for token in re.findall(r"\d+|/[^\s\[\]]+",diff_match.group(1)):
+            if token.isdigit():
+                current=int(token)
+            elif current is not None:
+                gm=re.fullmatch(r"c(\d{3})",token[1:])
+                if gm:
+                    rank=int(gm.group(1))-32
+                    if 1<=rank<=18: mapping[current]=rank
+                current+=1
+        if mapping: popularity_maps[f"{pn}:{font_name}"]=mapping
+
+    txt=page.get_text("text",sort=True)
     pages.append({"page":pn,"characters":len(txt),"text":txt})
     for b in page.get_text("dict")["blocks"]:
-        if b.get("type") != 0: continue
-        bt = "\n".join("".join(s["text"] for s in ln["spans"]) for ln in b["lines"]).strip()
+        if b.get("type")!=0: continue
+        bt="\n".join("".join(s["text"] for s in ln["spans"]) for ln in b["lines"]).strip()
         if bt: blocks.append({"page":pn,"bbox":list(b["bbox"]),"text":bt})
         for ln in b["lines"]:
-            t = "".join(s["text"] for s in ln["spans"]).strip()
+            t="".join(s["text"] for s in ln["spans"]).strip()
             if t: lines.append({"page":pn,"bbox":list(ln["bbox"]),"text":t})
             for sp in ln["spans"]:
-                if sp["text"] :
+                # Keep control characters: some are the circled popularity glyphs.
+                if sp["text"]:
                     spans.append({"page":pn,"bbox":list(sp["bbox"]),"text":sp["text"],"font":sp["font"]})
-combined = "\n\n".join(f"===== PAGE {p['page']} =====\n{p['text']}" for p in pages)
+
+combined="\n\n".join(f"===== PAGE {p['page']} =====\n{p['text']}" for p in pages)
 (OUT/"sample-extracted.txt").write_text(combined,encoding="utf-8")
 for name,data in [("layout-blocks.json",blocks),("layout-lines.json",lines),("layout-spans.json",spans)]:
     (OUT/name).write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding="utf-8")
@@ -77,12 +68,12 @@ headers=[]
 for b in blocks:
     m=re.search(r"第\s*(\d+)\s*競走",b["text"])
     if m: headers.append({"page":b["page"],"x":b["bbox"][0],"y0":b["bbox"][1],"y1":b["bbox"][3],"no":int(m.group(1)),"text":b["text"]})
-races, errors=[],[]
+races,errors=[],[]
 coat=r"黒鹿|青鹿|青毛|鹿毛|栃栗|鹿|栗|芦|白毛|白|青"
 identity_re=re.compile(rf"(.+?)(牡|牝|せん|セン)?(\d)({coat})")
 for h in headers:
     left=h["x"]<420
-    col=lambda x: x["page"]==h["page"] and ((x["bbox"][0]<420)==left)
+    col=lambda x:x["page"]==h["page"] and ((x["bbox"][0]<420)==left)
     cb=[x for x in blocks if col(x)]
     cl=[x for x in lines if col(x)]
     cs=[x for x in spans if col(x)]
@@ -95,78 +86,91 @@ for h in headers:
             decl_y=count_line["bbox"][1] if count_line else b["bbox"][3]
             break
     if declared is None:
-        errors.append(f"R{h['no']}: headcount missing"); continue
+        errors.append(f"R{h['no']}: headcount missing")
+        continue
 
     number_x=(18,42) if left else (429,452)
     identity_x=(45,145) if left else (455,555)
     number_lines=[x for x in cl if number_x[0]<=x["bbox"][0]<=number_x[1]
                   and x["bbox"][1]>=h["y1"]+25 and x["bbox"][1]<decl_y]
     horses=[]
+    previous_time=None
+    previous_margin=None
     for nl in number_lines:
-        raw_number_line=norm(nl["text"])
-        nm=re.match(r"^([1-8])(\d{1,2})(.*)$",raw_number_line)
+        nm=re.match(r"^([1-8])(\d{1,2})(.*)$",norm(nl["text"]))
         if not nm: continue
         frame_no,horse_no=int(nm.group(1)),int(nm.group(2))
         ny=center_y(nl)
-        fragments=[x for x in cl if identity_x[0]<=x["bbox"][0]<identity_x[1]
-                   and abs(center_y(x)-ny)<=2.0]
-        fragments.sort(key=lambda x:x["bbox"][0])
-        identity=norm("".join(x["text"] for x in fragments))
-        match=identity_re.search(identity)
+        identity_parts=[x for x in cl if identity_x[0]<=x["bbox"][0]<identity_x[1]
+                        and abs(center_y(x)-ny)<=2.0]
+        identity_parts.sort(key=lambda x:x["bbox"][0])
+        identity=norm("".join(x["text"] for x in identity_parts))
+        im=identity_re.search(identity)
         source="identity_column"
-        if not match:
+        if not im:
             fallback=nm.group(3)
-            match=identity_re.search(fallback)
-            if match:
-                identity=fallback
-                source="number_line_remainder"
-        if not match:
+            im=identity_re.search(fallback)
+            if im: identity=fallback; source="number_line_remainder"
+        if not im:
             errors.append(f"R{h['no']} horse {horse_no}: identity parse failed {identity!r}")
             continue
 
-        # Weight may be embedded after coat color or printed as small adjusted
-        # weight digits on a separate baseline (e.g. 55 above 53).
-        weight_fragments=[x for x in cl if 130<=(x["bbox"][0] if left else x["bbox"][0]-410.8)<150
-                          and abs(center_y(x)-ny)<=4.0 and re.fullmatch(r"\d{2}",norm(x["text"]))]
+        # Weight adjustment is printed in a small, separate line when applicable.
+        weight_x=(130,150) if left else (540,560)
+        weight_parts=[x for x in cl if weight_x[0]<=x["bbox"][0]<weight_x[1]
+                      and abs(center_y(x)-ny)<=4.0 and re.fullmatch(r"\d{2}",norm(x["text"]))]
         carried_weight=None
-        if weight_fragments:
-            carried_weight=int(norm(max(weight_fragments,key=center_y)["text"]))
+        if weight_parts:
+            carried_weight=int(norm(max(weight_parts,key=center_y)["text"]))
         else:
-            weight_match=re.search(rf"(?:{coat})(\d{{2}})$",identity)
-            if weight_match: carried_weight=int(weight_match.group(1))
+            wm=re.search(rf"(?:{coat})(\d{{2}})$",identity)
+            if wm: carried_weight=int(wm.group(1))
 
-        # Extract official body weight, change, time, margin and odds from
-        # their fixed columns. Empty values remain null when JRA omits them.
-        body_x=(300,380) if left else (710,790)
-        odds_x=(380,420) if left else (790,830)
-        row_body=[x for x in cl if body_x[0]<=x["bbox"][0]<body_x[1] and abs(center_y(x)-ny)<=3.0]
-        body_text=min(row_body,key=lambda x:abs(center_y(x)-ny))["text"] if row_body else ""
-        body_match=re.search(r"(\d{3})\s*([＋+－−±])\s*(\d{1,2})",body_text)
+        # Use separate PDF text spans and their x-coordinates for the narrow
+        # official columns. This avoids confusing a two-digit weight change
+        # with the first digit of a race time.
+        def nearest_span(xmin,xmax):
+            found=[x for x in cs if xmin<=x["bbox"][0]<xmax and abs(center_y(x)-ny)<=3.0]
+            return min(found,key=lambda x:abs(center_y(x)-ny)) if found else None
+        body_span=nearest_span(300,322) if left else nearest_span(710,733)
+        change_span=nearest_span(321,338) if left else nearest_span(731,748)
+        time_span=nearest_span(334,357) if left else nearest_span(745,768)
+        margin_span=nearest_span(355,381) if left else nearest_span(765,791)
+        odds_span=nearest_span(380,403) if left else nearest_span(790,814)
+        glyph_span=nearest_span(403,411) if left else nearest_span(813,821)
+
+        body_text=norm(body_span["text"]) if body_span else ""
+        body_match=re.search(r"(\d{3})",body_text)
         body_weight=int(body_match.group(1)) if body_match else None
+        change_text=norm(change_span["text"]) if change_span else ""
+        change_match=re.search(r"([＋+－−±])(\d{1,2})",change_text)
         body_change=None
-        if body_match:
-            amount=int(body_match.group(3))
-            body_change=amount if body_match.group(2) in ("＋","+") else (-amount if body_match.group(2) in ("－","−") else 0)
-        time_match=re.search(r"(\d{1,2})[:：](\d{2})[．.](\d)",body_text)
-        finish_time=(f"{int(time_match.group(1))}:{time_match.group(2)}.{time_match.group(3)}" if time_match else None)
-        margin_text=None
-        if time_match:
-            suffix=norm(body_text[time_match.end():])
-            margin_text=suffix or None
+        if change_match:
+            n=int(change_match.group(2))
+            body_change=n if change_match.group(1) in ("＋","+") else (-n if change_match.group(1) in ("－","−") else 0)
 
-        odds_lines=[x for x in cl if odds_x[0]<=x["bbox"][0]<odds_x[1] and abs(center_y(x)-ny)<=3.0]
-        odds_text=min(odds_lines,key=lambda x:abs(center_y(x)-ny))["text"] if odds_lines else ""
-        odds_match=re.search(r"(\d+)[．.](\d)",odds_text)
+        time_raw=norm(time_span["text"]) if time_span else ""
+        time_match=re.search(r"(\d{1,2})[:：](\d{2})[．.](\d)",time_raw)
+        if time_match:
+            finish_time=f"{int(time_match.group(1))}:{time_match.group(2)}.{time_match.group(3)}"
+        elif time_raw=="〃":
+            finish_time=previous_time
+        else:
+            finish_time=None
+        if finish_time is not None: previous_time=finish_time
+
+        margin_raw=norm(margin_span["text"]) if margin_span else ""
+        margin_text=previous_margin if margin_raw=="〃" else (margin_raw or None)
+        if margin_text is not None: previous_margin=margin_text
+
+        odds_raw=norm(odds_span["text"]) if odds_span else ""
+        odds_match=re.search(r"(\d+)[．.](\d)",odds_raw)
         win_odds=float(odds_match.group(1)+"."+odds_match.group(2)) if odds_match else None
+
         popularity=None
-        glyph_x_min=402 if left else 813
-        popularity_spans=[x for x in cs if x["bbox"][0]>=glyph_x_min and abs(center_y(x)-ny)<=3.0
-                          and len(x["text"])==1 and ord(x["text"])<32]
-        if popularity_spans:
-            glyph=popularity_spans[0]
-            popularity=popularity_maps.get(glyph["font"],{}).get(ord(glyph["text"]))
-        if popularity is None:
-            errors.append(f"R{h['no']} horse {horse_no}: popularity glyph not decoded")
+        if glyph_span and len(glyph_span["text"])==1:
+            glyph_code=ord(glyph_span["text"])
+            popularity=popularity_maps.get(f"{h['page']}:{glyph_span['font']}",{}).get(glyph_code)
 
         jockey_x=(150,213) if left else (560,623)
         jockey_parts=[x for x in cl if jockey_x[0]<=x["bbox"][0]<jockey_x[1] and abs(center_y(x)-ny)<=2.5]
@@ -174,14 +178,13 @@ for h in headers:
         jockey_raw="".join(x["text"] for x in jockey_parts).strip() or None
 
         horses.append({"frameNumber":frame_no,"horseNumber":horse_no,
-                       "horseName":match.group(1),"sex":match.group(2),
-                       "age":int(match.group(3)),"coatColor":match.group(4),
-                       "carriedWeightKg":carried_weight,
+                       "horseName":im.group(1),"sex":im.group(2),"age":int(im.group(3)),
+                       "coatColor":im.group(4),"carriedWeightKg":carried_weight,
                        "bodyWeightKg":body_weight,"bodyWeightChangeKg":body_change,
                        "finishTime":finish_time,"marginText":margin_text,
                        "winOdds":win_odds,"popularity":popularity,
-                       "jockeyRaw":jockey_raw,
-                       "identitySource":source,"sourcePage":h["page"],"sourceY":round(ny,2)})
+                       "jockeyColumnRaw":jockey_raw,"identitySource":source,
+                       "sourcePage":h["page"],"sourceY":round(ny,2)})
 
     horses.sort(key=lambda x:x["sourceY"])
     for order,horse in enumerate(horses,1): horse["finishOrder"]=order
@@ -191,11 +194,15 @@ for h in headers:
     if len(set(nums))!=len(nums): errors.append(f"R{h['no']}: duplicate horse numbers {nums}")
     if any(n<1 or n>18 for n in nums): errors.append(f"R{h['no']}: horse number outside JRA range {nums}")
     if any(p is None or p<1 or p>declared for p in pops): errors.append(f"R{h['no']}: invalid popularity values {pops}")
-    if len(set(pops))!=len(pops): errors.append(f"R{h['no']}: duplicate popularity ranks {pops}")
+    ranked=sorted([x for x in horses if x["winOdds"] is not None and x["popularity"] is not None],key=lambda x:x["winOdds"])
+    for a,b in zip(ranked,ranked[1:]):
+        if a["popularity"]>b["popularity"]:
+            errors.append(f"R{h['no']}: popularity/odds order conflict {a['horseNumber']}:{a['winOdds']}/{a['popularity']} > {b['horseNumber']}:{b['winOdds']}/{b['popularity']}")
     if any(x["winOdds"] is None or x["winOdds"]<=0 for x in horses): errors.append(f"R{h['no']}: missing/invalid win odds")
     if any(x["carriedWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing carried weight")
+    if any(x["bodyWeightKg"] is None for x in horses): errors.append(f"R{h['no']}: missing body weight")
 
-    nearby=[b["text"] for b in cb if h["y0"]-20 <= b["bbox"][1] <= h["y1"]+60]
+    nearby=[b["text"] for b in cb if h["y0"]-20<=b["bbox"][1]<=h["y1"]+60]
     card_text="\n".join([h["text"],*nearby])
     year_match=re.search(r"(\d{4})年",card_text)
     day_match=re.search(r"(\d+)月(\d+)日",card_text)
@@ -223,7 +230,7 @@ for race in races:
 summary={"source":URL,"httpContentType":content_type,"pdfBytes":len(raw),"pageCount":len(doc),
          "pageCharacters":[p["characters"] for p in pages],"layoutBlockCount":len(blocks),
          "layoutLineCount":len(lines),"layoutSpanCount":len(spans),
-         "popularityFontMaps":popularity_maps,
+         "popularityFontMapCount":len(popularity_maps),
          "raceCount":len(headers),"parsedRaceCount":len(races),
          "parsedHorseRows":sum(len(r["horses"]) for r in races),"validationErrorCount":len(errors),
          "validationErrors":errors}
