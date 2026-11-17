@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type RaceItem = {
   raceId: string;
+  raceDate: string;
   venue: string;
   raceNumber: number;
   raceTitle: string;
@@ -18,7 +19,8 @@ type RaceItem = {
 
 type RaceListResponse = {
   ok: boolean;
-  date?: string;
+  startDate?: string;
+  endDate?: string;
   raceCount?: number;
   races?: RaceItem[];
   error?: string;
@@ -28,12 +30,13 @@ const VENUE_ORDER = ["札幌", "函館", "福島", "新潟", "東京", "中山",
 
 function formatDate(date: string) {
   if (!/^\d{8}$/.test(date)) return date;
-  return `${date.slice(0, 4)}年${Number(date.slice(4, 6))}月${Number(date.slice(6, 8))}日`;
+  return `${Number(date.slice(4, 6))}月${Number(date.slice(6, 8))}日`;
 }
 
 export default function Home() {
   const [races, setRaces] = useState<RaceItem[]>([]);
-  const [date, setDate] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -50,7 +53,8 @@ export default function Home() {
         }
         if (active) {
           setRaces(data.races ?? []);
-          setDate(data.date ?? "");
+          setStartDate(data.startDate ?? "");
+          setEndDate(data.endDate ?? "");
         }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "開催情報の取得に失敗しました。");
@@ -67,11 +71,15 @@ export default function Home() {
     for (const venue of VENUE_ORDER) {
       const venueRaces = races
         .filter((race) => race.venue === venue)
-        .sort((a, b) => a.raceNumber - b.raceNumber);
+        .sort((a, b) => a.raceDate.localeCompare(b.raceDate) || a.raceNumber - b.raceNumber);
       if (venueRaces.length) groups.set(venue, venueRaces);
     }
     return Array.from(groups.entries());
   }, [races]);
+
+  const periodLabel = startDate && endDate
+    ? `${formatDate(startDate)}〜${formatDate(endDate)}`
+    : "開催期間を取得中";
 
   return (
     <main className="shell">
@@ -82,21 +90,21 @@ export default function Home() {
 
       <section className="hero">
         <p className="eyebrow">UPCOMING RACE CENTER</p>
-        <h1>次回の注目レースを、<br /><span>競馬場ごとに。</span></h1>
-        <p className="hero-copy">画面を開いた日ではなく、今日以降で最初に開催が確認できたJRA開催日のメインレースと重賞を表示します。平場のレースは表示しません。</p>
+        <h1>今後7日間の注目レースを、<br /><span>競馬場ごとに。</span></h1>
+        <p className="hero-copy">日本時間の今日から7日間に開催されるJRAレースを取得し、各競馬場のメインレースと重賞だけを表示します。平場のレースは表示しません。</p>
         <div className="hero-stats">
           <div><small>対象</small><b>JRA</b></div>
           <div><small>表示対象</small><b>メイン・重賞</b></div>
-          <div><small>次回開催日</small><b>{date ? formatDate(date) : "取得中"}</b></div>
+          <div><small>対象期間</small><b>{periodLabel}</b></div>
         </div>
       </section>
 
       <section className="section-head">
-        <div><p className="eyebrow">FEATURED RACES</p><h2>次回開催日のメイン・重賞</h2></div>
-        <span className="date-chip">{date ? formatDate(date) : "開催日を検索中"}</span>
+        <div><p className="eyebrow">FEATURED RACES</p><h2>期間内のメイン・重賞</h2></div>
+        <span className="date-chip">{periodLabel}</span>
       </section>
 
-      {loading && <div className="state-panel">次回のJRA開催日を検索しています…</div>}
+      {loading && <div className="state-panel">今後7日間のJRA開催情報を取得しています…</div>}
       {!loading && error && (
         <div className="state-panel error-panel">
           <b>開催情報を取得できませんでした</b>
@@ -107,7 +115,7 @@ export default function Home() {
       {!loading && !error && grouped.length === 0 && (
         <div className="state-panel">
           <b>表示対象レースはありません</b>
-          <p>今後21日以内にJRAの開催日を確認できなかったか、開催一覧からメイン・重賞を取得できなかった場合に表示されます。</p>
+          <p>対象期間内にJRA開催がないか、開催一覧からメイン・重賞を取得できなかった場合に表示されます。</p>
         </div>
       )}
 
@@ -121,7 +129,7 @@ export default function Home() {
                   <div className="race-time">{race.startTime ?? "--:--"}<span>{race.raceNumber}R</span></div>
                   <div className="race-info">
                     <div className="race-title">{race.raceTitle}</div>
-                    <p>{[race.course, race.runners !== null ? `${race.runners}頭` : null].filter(Boolean).join(" ・ ") || "詳細情報は未取得"}</p>
+                    <p>{formatDate(race.raceDate)} ・ {[race.course, race.runners !== null ? `${race.runners}頭` : null].filter(Boolean).join(" ・ ") || "詳細情報は未取得"}</p>
                     <div className="race-labels">
                       {race.isMain && <span className="race-label main-label">メイン</span>}
                       {race.grade && <span className="race-label grade-label">重賞 {race.grade}</span>}
