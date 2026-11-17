@@ -647,37 +647,25 @@ async function fetchG1PreRatings(
     : null;
   if (!publishedDate || publishedDate > targetDate) return new Map<string, JraRating>();
 
-  const tables = extractTables(detail.html);
-  const table = tables.find((candidate) =>
-    candidate.some((row) => row.some((cell) => cell.includes("馬名"))) &&
-    candidate.some((row) => row.some((cell) =>
-      cell.includes("レーティング") || cell.includes("最高値")
-    ))
-  );
-  if (!table) return new Map<string, JraRating>();
-
-  const headerIndex = table.findIndex((row) => row.some((cell) => cell.includes("馬名")));
-  const header = table[headerIndex] ?? [];
-  const nameIndex = header.findIndex((cell) => cell.includes("馬名"));
-  const currentIndex = header.findIndex((cell) =>
-    cell.includes("最高値") || cell.includes("レーティング")
-  );
-  if (nameIndex < 0) return new Map<string, JraRating>();
-
   const wantedNames = new Set(horses.map((horse) => normalizeHorseName(horse.name)));
   const result = new Map<string, JraRating>();
 
-  for (const row of table.slice(headerIndex + 1)) {
-    const horseName = normalizeHorseName(row[nameIndex] ?? "");
-    if (!wantedNames.has(horseName)) continue;
+  // JRAのGⅠページは年度によってヘッダーが複数行に分かれるため、
+  // 見出し行の列番号に依存せず、各行の馬名セルと数値セルを直接照合する。
+  const rows = [...detail.html.matchAll(/<tr\\b[^>]*>([\\s\\S]*?)<\\/tr>/gi)];
+  for (const rowMatch of rows) {
+    const cells = [...rowMatch[1].matchAll(/<t[dh]\\b[^>]*>([\\s\\S]*?)<\\/t[dh]>/gi)]
+      .map((cell) => cleanText(cell[1]));
+    if (cells.length < 2) continue;
 
-    let value = currentIndex >= 0 ? parseRatingValue(row[currentIndex] ?? "") : null;
-    if (value === null) {
-      value = row
-        .filter((_cell, index) => index !== nameIndex)
-        .map((cell) => parseRatingValue(cell))
-        .find((candidate) => candidate !== null) ?? null;
-    }
+    const nameCell = cells.find((cell) => wantedNames.has(normalizeHorseName(cell)));
+    if (!nameCell) continue;
+
+    const horseName = normalizeHorseName(nameCell);
+    const value = cells
+      .filter((cell) => normalizeHorseName(cell) !== horseName)
+      .map((cell) => parseRatingValue(cell))
+      .find((candidate) => candidate !== null) ?? null;
     if (value === null) continue;
 
     result.set(horseName, {
