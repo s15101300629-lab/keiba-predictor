@@ -31,7 +31,7 @@ def parse_one(entry: dict) -> dict:
             "JRA_PDF_URL": entry["sourceUrl"],
             "JRA_OUTPUT_DIR": temp_dir,
             "JRA_DIAGNOSTICS": "0",
-            "JRA_EXPECTED_RACES": "0",
+            "JRA_EXPECTED_RACES": "12",
         })
         result = subprocess.run(
             [sys.executable, str(PARSER)],
