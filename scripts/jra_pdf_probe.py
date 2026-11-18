@@ -21,6 +21,10 @@ if DIAGNOSTICS:
 def norm(s):
     return re.sub(r"\s+", "", re.sub(r"[\x00-\x1f]", "", s))
 
+MARGIN_FRACTION_GLYPHS = {
+    3: "1/2", 4: "1/4", 5: "1/2", 6: "1/4", 7: "1/2",
+    8: "1/4", 9: "3/4", 10: "1/2", 11: "1/4", 12: "3/4", 13: "3/4",
+}
 JRA_JOCKEY_NAMES = set()
 jockey_names_path = os.environ.get("JRA_JOCKEY_NAMES_FILE")
 if jockey_names_path and Path(jockey_names_path).exists():
@@ -222,8 +226,14 @@ for h in headers:
 
         margin_parts=[x for x in cs if (355.4<=x["bbox"][0]<380 if left else 765.8<=x["bbox"][0]<790) and abs(center_y(x)-ny)<=3.0]
         margin_parts.sort(key=lambda x:x["bbox"][0])
-        margin_raw=norm("".join(x["text"] for x in margin_parts))
+        margin_raw_text="".join(x["text"] for x in margin_parts)
+        margin_raw=norm(margin_raw_text)
+        margin_glyph_codes=[ord(x["text"]) for x in margin_parts if 1<=ord(x["text"])<=31]
         margin_text=previous_margin if margin_raw=="〃" else (margin_raw or None)
+        if margin_text and margin_raw!="〃" and re.search(r"\d$",margin_raw):
+            fractions=[MARGIN_FRACTION_GLYPHS[code] for code in margin_glyph_codes if code in MARGIN_FRACTION_GLYPHS]
+            if fractions:
+                margin_text=f"{margin_raw} {fractions[0]}"
         if margin_text is not None: previous_margin=margin_text
         status_terms=("競走中止","中止","失格","降着","落馬","出走取消","競走除外","取消","除外")
         result_status=next((term for term in status_terms if term in time_raw or term in margin_raw),None)
@@ -291,7 +301,8 @@ for h in headers:
                        "coatColor":im.group(4),"carriedWeightKg":carried_weight,
                        "bodyWeightKg":body_weight,"bodyWeightChangeKg":body_change,
                        "finishTime":finish_time,"finishTimeSeconds":finish_time_seconds,
-                       "marginText":margin_text,"resultStatus":result_status,
+                       "marginText":margin_text,"marginRawWithGlyphs":margin_raw_text,
+                       "marginGlyphCodes":margin_glyph_codes,"resultStatus":result_status,
                        "winOdds":win_odds,"popularity":popularity,
                        "jockeyNameRaw":jockey_raw,"jockeyNameRawWithGlyphs":jockey_raw_text,
                        "jockeyGlyphCodes":jockey_glyph_codes,"jockeyAllowanceMark":jockey_mark,
