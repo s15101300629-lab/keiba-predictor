@@ -1,4 +1,12 @@
 import { NextResponse } from "next/server";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { addDisplayDeviation, formFromHistory, type FormDisplay } from "@/app/lib/form";
+import { addFormDeviation, jockeyStats, resolveJockey, runnerFeatures, type Store } from "@/app/lib/ml/features";
+import { predictProbability, type Model } from "@/app/lib/ml/model";
+import {
+  PEDIGREE_SOURCES, parseStallionSection, pedigreeAptitudes, type StallionRecord,
+} from "@/app/lib/pedigree";
 
 export const runtime = "nodejs";
 
@@ -773,49 +781,30 @@ async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: b
   };
 }
 
-type StallionConditionStats = {
-  stallionId: string;
-  role: "sire" | "damsire";
-  surface: string;
-  band: string; // netkeiba の距離区分（例: -2200(芝)）
-  starts: number; wins: number; top3: number;
-};
-
-// netkeiba の種牡馬ページ（距離別）から、今回の芝/ダート・距離区分の累計成績を読む。
-// ページには「種牡馬としての産駒成績」と「母父(BMS)としての成績」の2ブロックがある。
-function extractStallionConditionStats(
-  html: string, stallionId: string, role: "sire" | "damsire", conditions: RaceConditions
-): StallionConditionStats | null {
-  const surface = conditions.surface;
-  const distance = conditions.distanceMeters;
-  if ((surface !== "芝" && surface !== "ダート") || distance === null) return null;
-  const sireStart = html.indexOf("block=horse_sire_results");
-  const bmsStart = html.indexOf("block=horse_bms_results");
-  const section = role === "sire"
-    ? html.slice(sireStart >= 0 ? sireStart : 0, bmsStart > sireStart ? bmsStart : undefined)
-    : bmsStart >= 0 ? html.slice(bmsStart) : "";
-  for (const table of extractTables(section)) {
-    const header = table[0] ?? [];
-    if (!header.some((cell) => cell.includes(`(${surface})`))) continue;
-    const bands = header.slice(1);
-    const total = table.find((row) => row[0] === "累計");
-    if (!total) return null;
-    let index = bands.findIndex((band) => {
-      const upper = band.match(/^-(\d+)/);
-      return upper ? distance <= Number(upper[1]) : false;
-    });
-    if (index < 0) index = bands.findIndex((band) => /^\d+-/.test(band));
-    if (index < 0) return null;
-    const counts = total.slice(1 + index * 4, 5 + index * 4).map((value) => Number(value.replace(/,/g, "")) || 0);
-    if (counts.length < 4) return null;
-    const [first, second, third, other] = counts;
-    return {
-      stallionId, role, surface, band: bands[index],
-      starts: first + second + third + other, wins: first, top3: first + second + third,
-    };
-  }
-  return null;
+// 学習済みモデルと特徴量用データ（scripts/ml/train.py が data/ml に書き出す）
+let mlAssets: Promise<{ model: Model; store: Store; metrics: Record<string, unknown> } | null> | null = null;
+function loadMlAssets() {
+  mlAssets ??= (async () => {
+    try {
+      const dir = path.join(process.cwd(), "data", "ml");
+      const [model, store, metrics] = await Promise.all(
+        ["model.json", "store.json", "metrics.json"].map(async (name) => JSON.parse(await readFile(path.join(dir, name), "utf8")))
+      );
+      return { model, store, metrics };
+    } catch {
+      mlAssets = null; // 次のリクエストで再試行
+      return null;
+    }
+  })();
+  return mlAssets;
 }
+
+function extractFirstPrize(html: string): number | null {
+  const m = cleanText(html).match(/本賞金\s*[:：]\s*(\d+(?:\.\d+)?)/); // 「15000,6000,…万円」の先頭 = 1着
+  return m ? Number(m[1]) : null; // 万円
+}
+
+const GOING_CODE: Record<string, number> = { "良": 0, "稍重": 1, "重": 2, "不良": 3 };
 
 function getRaceHistoryForHorse(entry: RaceEntry | null, history: RaceHistoryStats | null): RaceHistoryForHorse {
   if (!entry || !history) return null;
@@ -983,27 +972,33 @@ export async function GET(
     );
 
     const results: Record<string, unknown>[] = new Array(horses.length);
-    // 同じ種牡馬・母父のページは1回だけ取得する
-    const stallionPages = new Map<string, Promise<string | null>>();
-    const fetchStallionPage = (stallionId: string) => {
-      let page = stallionPages.get(stallionId);
-      if (!page) {
-        page = fetchHtml(`https://db.netkeiba.com/horse/sire/${stallionId}/?syusai=10&mode=1&type=2`, 604800, forceRefresh)
-          .then((result) => (result.ok ? result.html : null))
-          .catch(() => null);
-        stallionPages.set(stallionId, page);
+    // 父・母父・母母父の産駒成績ページ（馬場別・距離別）。同じ馬は1回だけ取得する
+    const stallionRecords = new Map<string, Promise<StallionRecord | null>>();
+    const loadStallion = (stallionId: string, role: "sire" | "damsire", name: string | null) => {
+      const key = stallionId + ":" + role;
+      let record = stallionRecords.get(key);
+      if (!record) {
+        record = (async () => {
+          const url = (type: number) => `https://db.netkeiba.com/horse/sire/${stallionId}/?syusai=10&mode=1&type=${type}`;
+          const pages = await Promise.all([1, 2].map((type) => fetchHtml(url(type), 604800, forceRefresh).catch(() => null)));
+          const result: StallionRecord = { stallionId, name, role, going: {}, distance: {} };
+          pages.forEach((page, i) => {
+            if (!page?.ok) return;
+            const html = page.html;
+            const sireStart = html.indexOf("block=horse_sire_results");
+            const bmsStart = html.indexOf("block=horse_bms_results");
+            const section = role === "sire"
+              ? html.slice(Math.max(0, sireStart), bmsStart > sireStart ? bmsStart : undefined)
+              : bmsStart >= 0 ? html.slice(bmsStart) : "";
+            parseStallionSection(result, extractTables(section), i === 0 ? "going" : "distance");
+          });
+          return Object.keys(result.going).length || Object.keys(result.distance).length ? result : null;
+        })();
+        stallionRecords.set(key, record);
       }
-      return page;
+      return record;
     };
-    const fetchBloodlineStats = async (pedigree: ReturnType<typeof extractPedigree>) => {
-      const load = async (stallionId: string | null | undefined, role: "sire" | "damsire") => {
-        if (!stallionId) return null;
-        const html = await fetchStallionPage(stallionId);
-        return html ? extractStallionConditionStats(html, stallionId, role, raceConditions) : null;
-      };
-      const [sire, damsire] = await Promise.all([load(pedigree?.sireId, "sire"), load(pedigree?.damsireId, "damsire")]);
-      return { sire, damsire };
-    };
+    const pedigreeRecords: (StallionRecord | null)[][] = horses.map(() => []);
     let nextIndex = 0;
 
     async function worker() {
@@ -1023,13 +1018,16 @@ export async function GET(
             fetchHtml(pedigreeUrl, 2592000, forceRefresh).catch(() => null),
           ]);
           const pedigree = pedigreePage?.ok ? extractPedigree(pedigreePage.html) : null;
-          const bloodlineStats = await fetchBloodlineStats(pedigree);
+          pedigreeRecords[index] = await Promise.all(PEDIGREE_SOURCES.map((source) => {
+            const ancestor = pedigree?.ancestors.find((item) => item.position === source.position);
+            return ancestor?.horseId ? loadStallion(ancestor.horseId, source.role, ancestor.name) : Promise.resolve(null);
+          }));
           if (!profilePage.ok && !historyResult.performance) {
             results[index] = {
               horseId: horse.horseId, name: horse.name, raceEntry,
               raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
               status: "fetch_failed",
-              pedigree, bloodlineStats,
+              pedigree,
               profileHttpStatus: profilePage.status,
               historyFailedPages: historyResult.failedPages,
             };
@@ -1043,7 +1041,7 @@ export async function GET(
             horseId: horse.horseId, name: horse.name, raceEntry,
             raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
             status: profile && performance && pedigree && historyResult.failedPages.length === 0 ? "complete" : "partial",
-            pedigree, bloodlineStats,
+            pedigree,
             pedigreeHttpStatus: pedigreePage?.status ?? null,
             sourceStatus: profilePage.status,
             historyPagesFetched: historyResult.pagesFetched,
@@ -1071,6 +1069,69 @@ export async function GET(
       Array.from({ length: workerCount }, () => worker())
     );
 
+    // --- 血統適性・調子偏差値（表示用）・AI予測 ---
+    const surfaceName = raceConditions.surface === "芝" || raceConditions.surface === "ダート" ? raceConditions.surface : null;
+    const aptitudes = surfaceName
+      ? pedigreeAptitudes(pedigreeRecords, surfaceName, raceConditions.distanceMeters, raceConditions.going)
+      : horses.map(() => null);
+    const forms: FormDisplay[] = results.map((item) =>
+      formFromHistory((item as { performances?: { values: Record<string, string> }[] }).performances ?? [], raceConditions.date));
+    addDisplayDeviation(forms);
+
+    const ml = await loadMlAssets();
+    let mlSummary: Record<string, unknown> = { status: "unavailable" };
+    const predictions: (Record<string, unknown> | null)[] = horses.map(() => null);
+    if (ml && surfaceName && raceConditions.date) {
+      const goingAssumed = raceConditions.going === null;
+      const raceInput = {
+        date: raceConditions.date,
+        venue: Number(raceId.slice(4, 6)),
+        surface: surfaceName === "芝" ? 0 : 1,
+        distance: raceConditions.distanceMeters,
+        going: goingAssumed ? 0 : GOING_CODE[raceConditions.going!] ?? 0,
+        fieldSize: horses.length,
+        prize1stMan: extractFirstPrize(race.html),
+      };
+      const rows = horses.map((horse) => {
+        const entry = entryByHorseId.get(horse.horseId) ?? null;
+        const sexAge = entry?.sexAge?.match(/^([牡牝セ])(\d+)$/);
+        const jockeyKey = resolveJockey(entry?.jockey, ml.store, raceInput.date);
+        const features = runnerFeatures(ml.store, raceInput, {
+          horse: horse.name, jockeyKey,
+          waku: entry?.frameNumber ?? null, umaban: entry?.horseNumber ?? null,
+          weight: entry?.carriedWeight ?? null,
+          age: sexAge ? Number(sexAge[2]) : null, sex: sexAge?.[1] ?? null,
+          bodyWeight: entry?.bodyWeight ?? null, bodyWeightDiff: entry?.bodyWeightChange ?? null,
+        });
+        return { jockeyKey, features };
+      });
+      addFormDeviation(rows.map((row) => row.features));
+      const probs = rows.map((row) => predictProbability(ml.model, row.features));
+      const order = probs.map((p, i) => ({ p, i })).sort((a, b) => b.p - a.p);
+      order.forEach(({ i }, rank) => {
+        const f = rows[i].features;
+        const num = (v: number) => (Number.isNaN(v) ? null : v);
+        predictions[i] = {
+          probability: probs[i], rank: rank + 1,
+          modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior,
+          jockeyName: rows[i].jockeyKey,
+          jockey: jockeyStats(ml.store, raceInput, rows[i].jockeyKey),
+        };
+      });
+      mlSummary = {
+        status: "available", dataUntil: ml.store.lastDate, goingAssumed,
+        prize1stMan: raceInput.prize1stMan, metrics: {
+          auc: ml.metrics.auc, raceTop3Hit: ml.metrics.race_top3_hit, testYear: ml.metrics.test_year,
+        },
+      };
+    }
+    results.forEach((item, i) => {
+      if (!item) return;
+      item.prediction = predictions[i];
+      item.form = forms[i];
+      item.pedigreeAptitude = aptitudes[i];
+    });
+
     const completeCount = results.filter(
       (item) => (item as { status?: string })?.status === "complete"
     ).length;
@@ -1093,6 +1154,7 @@ export async function GET(
         racePageStatus: race.status,
         racePageBytes: race.bytes,
         raceHistoryStats,
+        ml: mlSummary,
         horseCount: horses.length,
         raceEntryCount: raceEntries.length,
         matchedEntryCount,
