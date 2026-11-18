@@ -4,6 +4,8 @@ import concurrent.futures
 import gzip
 import json
 import os
+import re
+import urllib.request
 import subprocess
 import sys
 import tempfile
@@ -23,6 +25,45 @@ entries = [item for item in manifest["pdfs"] if item["year"] == YEAR]
 if not entries:
     raise RuntimeError(f"No official JRA PDFs listed for {YEAR}")
 
+def fetch_official_cancelled_races(date: str, venue: str) -> tuple[list[int], str]:
+    year, month, day = (int(value) for value in date.split("-"))
+    calendar_url = (
+        f"https://www.jra.go.jp/keiba/calendar{year}/{year}/{month}/{month:02d}{day:02d}.html"
+    )
+    request = urllib.request.Request(
+        calendar_url,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; JRAResultResearch/1.0)"},
+    )
+    with urllib.request.urlopen(request, timeout=45) as response:
+        raw = response.read()
+        charset = response.headers.get_content_charset()
+    if not charset:
+        meta = re.search(rb"charset\s*=\s*['\"]?([A-Za-z0-9._-]+)", raw[:4096], re.I)
+        charset = meta.group(1).decode("ascii") if meta else "utf-8"
+    try:
+        html = raw.decode(charset)
+    except (LookupError, UnicodeDecodeError):
+        html = raw.decode("utf-8", errors="replace")
+    if "\ufffd" in html:
+        for fallback in ("cp932", "shift_jis"):
+            try:
+                candidate = raw.decode(fallback)
+            except (LookupError, UnicodeDecodeError):
+                continue
+            if "\ufffd" not in candidate and "競馬" in candidate:
+                html = candidate
+                break
+    text_only = re.sub(r"<[^>]+>", " ", html)
+    text_only = re.sub(r"\s+", "", text_only)
+    cancelled = [
+        int(match.group(1))
+        for match in re.finditer(
+            rf"{re.escape(venue)}競馬は第(\d+)レースを取りやめ", text_only
+        )
+    ]
+    return sorted(set(cancelled)), calendar_url
+
+
 def parse_one(entry: dict) -> dict:
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix=f"jra-{YEAR}-") as temp_dir:
@@ -31,7 +72,7 @@ def parse_one(entry: dict) -> dict:
             "JRA_PDF_URL": entry["sourceUrl"],
             "JRA_OUTPUT_DIR": temp_dir,
             "JRA_DIAGNOSTICS": "0",
-            "JRA_EXPECTED_RACES": "12",
+            "JRA_EXPECTED_RACES": "0",
         })
         result = subprocess.run(
             [sys.executable, str(PARSER)],
@@ -59,6 +100,22 @@ def parse_one(entry: dict) -> dict:
     if not races:
         raise RuntimeError(f"No race rows parsed: {entry['sourceUrl']}")
 
+    cancelled_races = []
+    race_numbers = sorted(race["raceNumber"] for race in races)
+    if len(races) == 12:
+        pass
+    elif len(races) == 11:
+        first = races[0]
+        missing = sorted(set(range(1, 13)) - set(race_numbers))
+        cancelled, calendar_url = fetch_official_cancelled_races(first["date"], first["venue"])
+        if missing != cancelled:
+            raise RuntimeError(
+                f"Race count is 11 but JRA official calendar does not confirm the missing race: "
+                f"missing={missing}, cancelled={cancelled}, calendar={calendar_url}"
+            )
+        cancelled_races = cancelled
+    else:
+        raise RuntimeError(f"Unexpected race count {len(races)} in {entry['sourceUrl']}")
     for race in races:
         if not race.get("raceKey"):
             raise RuntimeError(f"Race key missing: {entry['sourceUrl']} R{race['raceNumber']}")
@@ -91,6 +148,7 @@ def parse_one(entry: dict) -> dict:
         "pdfBytes": summary["pdfBytes"],
         "pageCount": summary["pageCount"],
         "raceCount": len(races),
+        "cancelledRaceNumbers": cancelled_races,
         "horseCount": sum(len(race["horses"]) for race in races),
         "missingBodyWeightCount": summary["missingBodyWeightCount"],
         "missingSexCount": summary["missingSexCount"],
@@ -157,6 +215,7 @@ report = {
     "outputBytes": year_file.stat().st_size,
     "elapsedSeconds": round(sum(item["elapsedSeconds"] for item in results), 2),
     "parallelWorkers": WORKERS,
+    "cancelledRaceCount": sum(len(item.get("cancelledRaceNumbers", [])) for item in results),
 }
 (OUT / f"validation-{YEAR}.json").write_text(
     json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
