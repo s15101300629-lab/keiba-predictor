@@ -53,10 +53,15 @@ jobs:
           if-no-files-found: error
       - name: Commit validated annual dataset to the feature branch
         run: |
+          mkdir -p /tmp/jra-validated-output
+          cp "jra-pdf-data/jra-results-${JRA_YEAR}.jsonl.gz" /tmp/jra-validated-output/
+          cp "jra-pdf-data/validation-${JRA_YEAR}.json" /tmp/jra-validated-output/
+          cp jra-pdf-data/jockey-names.json /tmp/jra-validated-output/
+          git fetch origin feature/jra-pdf-ingestion-pilot
+          git reset --hard FETCH_HEAD
+          cp /tmp/jra-validated-output/* jra-pdf-data/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "jra-pdf-data/jra-results-${JRA_YEAR}.jsonl.gz" "jra-pdf-data/validation-${JRA_YEAR}.json" jra-pdf-data/jockey-names.json
           git commit -m "Add validated JRA official results dataset for ${JRA_YEAR}"
-          git fetch origin feature/jra-pdf-ingestion-pilot
-          git rebase FETCH_HEAD
           git push origin HEAD:feature/jra-pdf-ingestion-pilot
