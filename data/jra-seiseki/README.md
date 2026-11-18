@@ -49,6 +49,7 @@
 | `margin` | 着差（`½` `1¼` `クビ` `ハナ` `アタマ` `大差` `同着` など、PDF表記のまま） |
 | `odds`, `popularity` | 単勝オッズ・単勝人気 |
 | `corner_positions` | 各コーナー通過順位（`races.csv` の `corners` の順に `-` 区切り） |
+| `horse_id`, `sire`, `dam`, `damsire` | 馬ID・父・母・母の父（`data/jra-pedigree` を取得済みの馬のみ。詳細は同ディレクトリの README） |
 
 ## races.csv の主な列
 

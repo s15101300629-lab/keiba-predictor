@@ -1,0 +1,68 @@
+name: JRA 血統データ取得
+
+on:
+  # 成績表の変換後に、新しく増えたレースの出走馬を取得する
+  workflow_run:
+    workflows: ["JRA 成績表 PDF 変換"]
+    types: [completed]
+  # 初回の大量取得（数万ページ）は1回では終わらないため、毎日続きから取得する
+  schedule:
+    - cron: "43 18 * * *"
+  workflow_dispatch:
+    inputs:
+      years:
+        description: "対象年（スペース区切り。空なら変換済みの全年）例: 2026 2025"
+        required: false
+        default: ""
+      max_minutes:
+        description: "この時間（分）で打ち切って途中結果をコミット"
+        required: false
+        default: "320"
+      refresh_horses:
+        description: "取得済みの馬も再取得する（抹消情報などの更新用）"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jra-seiseki
+  cancel-in-progress: false
+
+jobs:
+  pedigree:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch horse IDs and pedigrees
+        working-directory: scripts
+        env:
+          YEARS: ${{ github.event.inputs.years }}
+          MAX_MINUTES: ${{ github.event.inputs.max_minutes || '320' }}
+          REFRESH: ${{ github.event.inputs.refresh_horses }}
+        run: |
+          args=(--max-minutes "$MAX_MINUTES")
+          if [ -n "$YEARS" ]; then args+=(--year $YEARS); fi
+          if [ "$REFRESH" = "true" ]; then args+=(--refresh-horses); fi
+          python -m jra_seiseki pedigree "${args[@]}"
+
+      - name: Commit data
+        run: |
+          git add data/jra-pedigree data/jra-seiseki/csv
+          if git diff --cached --quiet; then
+            echo "no changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "data: update JRA pedigree ($(date -u +%Y-%m-%d))"
+          git pull --rebase
+          git push
