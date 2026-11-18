@@ -10,12 +10,12 @@
   "duplicateRaceKeyCount": 0,
   "missingBodyWeightCount": 0,
   "missingSexCount": 0,
-  "missingMarginCount": 12223,
+  "missingMarginCount": 12107,
   "sourcePdfSha256Count": 288,
   "totalSourcePdfBytes": 203022654,
   "outputFile": "jra-pdf-data/jra-results-2025.jsonl.gz",
-  "outputBytes": 3495678,
-  "elapsedSeconds": 784.56,
+  "outputBytes": 3621716,
+  "elapsedSeconds": 1165.64,
   "parallelWorkers": 8,
   "cancelledRaceCount": 1
 }
