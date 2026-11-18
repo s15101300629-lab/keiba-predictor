@@ -15,7 +15,7 @@
   "totalSourcePdfBytes": 203022654,
   "outputFile": "jra-pdf-data/jra-results-2025.jsonl.gz",
   "outputBytes": 3621716,
-  "elapsedSeconds": 1165.64,
+  "elapsedSeconds": 1088.51,
   "parallelWorkers": 8,
   "cancelledRaceCount": 1
 }
