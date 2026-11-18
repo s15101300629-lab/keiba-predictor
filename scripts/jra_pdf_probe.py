@@ -230,10 +230,12 @@ for h in headers:
         margin_raw=norm(margin_raw_text)
         margin_glyph_codes=[ord(x["text"]) for x in margin_parts if len(x["text"])==1 and 1<=ord(x["text"])<=31]
         margin_text=previous_margin if margin_raw=="〃" else (margin_raw or None)
-        if margin_text and margin_raw!="〃" and re.search(r"\d$",margin_raw):
+        if margin_raw!="〃":
             fractions=[MARGIN_FRACTION_GLYPHS[code] for code in margin_glyph_codes if code in MARGIN_FRACTION_GLYPHS]
-            if fractions:
+            if fractions and re.search(r"\d$",margin_raw):
                 margin_text=f"{margin_raw} {fractions[0]}"
+            elif fractions and not margin_raw:
+                margin_text=fractions[0]
         if margin_text is not None: previous_margin=margin_text
         status_terms=("競走中止","中止","失格","降着","落馬","出走取消","競走除外","取消","除外")
         result_status=next((term for term in status_terms if term in time_raw or term in margin_raw),None)
