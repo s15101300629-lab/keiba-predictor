@@ -31,8 +31,16 @@ type RaceHistoryForHorse = {
   frameYears: number[];
   jockeyYears: number[];
 } | null;
+type Pedigree = {
+  sire: string | null; sireId: string | null; sireLine: string | null;
+  dam: string | null; damId: string | null;
+  damsire: string | null; damsireId: string | null; damdam: string | null;
+  ancestors: { position: string; generation: number; name: string; horseId: string | null; country: string | null }[];
+  crosses: { name: string; percentage: number | null; generations: string }[];
+};
 type Horse = {
   horseId: string; name: string; status: string; raceEntry: Entry | null;
+  pedigree?: Pedigree | null;
   profile: { label: string; value: string }[] | null;
   performances: { values: Record<string, string> }[]; historyReturned: number;
   performanceStats?: PerformanceStats;
@@ -49,7 +57,7 @@ type OverallScore = { score: number | null; rank: number | null; rankedCount: nu
 type CategoryRank = { label: string; rank: number | null; total: number; detail: string };
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
-const cacheKey = (id: string) => "keiba-race-detail-v3:" + id;
+const cacheKey = (id: string) => "keiba-race-detail-v4:" + id;
 const marksCacheKey = (id: string) => "keiba-race-marks-v1:" + id;
 const MARK_OPTIONS = ["", "◎", "○", "▲", "△", "☆", "注", "消"];
 
@@ -256,9 +264,12 @@ function buildCategoryRanks(
   });
 
   for (const horse of horses) {
-    const sire = horse.profile?.find((item) => /^父$/.test(item.label.replace(/\s/g, "")))?.value ?? "";
-    const damsire = horse.profile?.find((item) => /母父/.test(item.label.replace(/\s/g, "")))?.value ?? "";
-    const bloodline = [sire ? `父：${sire}` : "", damsire ? `母父：${damsire}` : ""].filter(Boolean).join(" / ");
+    const sire = horse.pedigree?.sire ??
+      horse.profile?.find((item) => /^父$/.test(item.label.replace(/\s/g, "")))?.value ?? "";
+    const damsire = horse.pedigree?.damsire ??
+      horse.profile?.find((item) => /母父/.test(item.label.replace(/\s/g, "")))?.value ?? "";
+    const sireLine = horse.pedigree?.sireLine ? `（${horse.pedigree.sireLine}）` : "";
+    const bloodline = [sire ? `父：${sire}${sireLine}` : "", damsire ? `母父：${damsire}` : ""].filter(Boolean).join(" / ");
     const rows = result.get(horse.horseId) ?? [];
     const bloodlineRow = rows.find((item) => item.label === "血統");
     const sireRow = rows.find((item) => item.label === "種牡馬");
@@ -266,7 +277,7 @@ function buildCategoryRanks(
       bloodlineRow.detail = bloodline + "（血統情報取得済み・適性比較は未実装）";
     }
     if (sire && sireRow) {
-      sireRow.detail = `父：${sire}（種牡馬成績の比較は未実装）`;
+      sireRow.detail = `父：${sire}${sireLine}（種牡馬成績の比較は未実装）`;
     }
   }
 
@@ -282,13 +293,21 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
   const profile = horse.profile ?? [];
   const profileValue = (label: string) => profile.find((item) => item.label.includes(label))?.value;
   const histories = horse.performances ?? [];
+  const pedigree = horse.pedigree;
   const facts: [string, string][] = ([
     ["枠番", entry?.frameNumber == null ? "" : String(entry.frameNumber)],
     ["馬体重", entry?.bodyWeight == null ? "" : String(entry.bodyWeight) + "kg"],
     ["人気", entry?.popularity == null ? "" : String(entry.popularity)],
     ["調教師", entry?.trainer ?? ""],
-    ["父", profileValue("父") ?? ""], ["母", profileValue("母") ?? ""], ["母父", profileValue("母父") ?? ""],
+    ["父", pedigree?.sire ?? profileValue("父") ?? ""],
+    ["父系統", pedigree?.sireLine ?? ""],
+    ["母", pedigree?.dam ?? profileValue("母") ?? ""],
+    ["母父", pedigree?.damsire ?? profileValue("母父") ?? ""],
+    ["母母", pedigree?.damdam ?? ""],
+    ["クロス", (pedigree?.crosses ?? []).map((cross) =>
+      `${cross.name} ${cross.generations}${cross.percentage === null ? "" : `（${cross.percentage}%）`}`).join("、")],
   ] as [string, string][]).filter(([, value]) => value !== "");
+  const pedigreeRows = (pedigree?.ancestors ?? []).filter((ancestor) => ancestor.generation <= 3);
   return <details className="horse-detail" onToggle={(event) => setExpanded(event.currentTarget.open)}>
     <summary className="horse-summary">
       {entry?.horseNumber != null && <span className="horse-number-badge">{entry.horseNumber}番</span>}
@@ -306,6 +325,21 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
     {expanded && <div className="horse-body">
       {facts.length > 0 && <div className="horse-facts">
         {facts.map(([label, value]) => <div className="horse-fact" key={label}><span>{label}：</span>{value}</div>)}
+      </div>}
+      {pedigreeRows.length > 0 && <div className="history-table-wrap">
+        <b style={{ fontSize: 12 }}>血統（3代）</b>
+        <table className="history-table pedigree-table">
+          <tbody>{pedigreeRows.filter((ancestor) => ancestor.generation === 3).map((ancestor) => {
+            const parent = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 2));
+            const grand = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 1));
+            const first = ancestor.position.endsWith("F");
+            return <tr key={ancestor.position}>
+              {ancestor.position.slice(1) === "FF" && grand && <td rowSpan={4}><b>{grand.name}</b></td>}
+              {first && parent && <td rowSpan={2}>{parent.name}</td>}
+              <td>{ancestor.name}{ancestor.country ? `（${ancestor.country}）` : ""}</td>
+            </tr>;
+          })}</tbody>
+        </table>
       </div>}
       {histories.length > 0 && <div className="history-table-wrap">
         <b style={{ fontSize: 12 }}>過去の戦績（{histories.length}走）</b>
@@ -327,7 +361,7 @@ const CATEGORY_GROUPS = [
   { title: "血統・調教", labels: ["血統", "種牡馬", "調教"] },
 ];
 
-remove ranking chart componentfunction OverallHorseCard({ horse, overall, categories, factors }: {
+function OverallHorseCard({ horse, overall, categories, factors }: {
   horse: Horse; overall: OverallScore; categories: CategoryRank[]; factors: FactorScore[];
 }) {
   const entry = horse.raceEntry;

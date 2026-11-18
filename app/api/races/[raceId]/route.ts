@@ -81,11 +81,22 @@ function extractTables(html: string) {
   return tables;
 }
 
+function detectCharset(contentType: string | null, bytes: Uint8Array) {
+  const fromHeader = contentType?.match(/charset\s*=\s*["']?([\w-]+)/i)?.[1];
+  const head = new TextDecoder("latin1").decode(bytes.subarray(0, 4096));
+  const fromMeta = head.match(/<meta\b[^>]*charset\s*=\s*["']?([\w-]+)/i)?.[1];
+  const charset = (fromHeader || fromMeta || "").toLowerCase();
+  if (/^(euc-?jp|x-euc-jp)$/.test(charset)) return "euc-jp";
+  if (/^(shift[_-]?jis|sjis|windows-31j|cp932|x-sjis)$/.test(charset)) return "shift_jis";
+  if (/^utf-?8$/.test(charset)) return "utf-8";
+  return null;
+}
+
 async function fetchHtml(
   url: string,
   revalidateSeconds: number,
   forceRefresh: boolean,
-  encoding: "utf-8" | "euc-jp" = "utf-8"
+  fallbackEncoding: "utf-8" | "euc-jp" = "utf-8"
 ) {
   const response = await fetch(url, {
     ...(forceRefresh
@@ -94,12 +105,95 @@ async function fetchHtml(
     headers: { Accept: "text/html" },
     signal: AbortSignal.timeout(10000),
   });
-  const buffer = await response.arrayBuffer();
+  const buffer = new Uint8Array(await response.arrayBuffer());
+  // netkeiba のページは EUC-JP から UTF-8 に移行しているため、宣言された文字コードで読む
+  const encoding = detectCharset(response.headers.get("content-type"), buffer) ?? fallbackEncoding;
   return {
     status: response.status,
     ok: response.ok,
-    html: new TextDecoder(encoding).decode(new Uint8Array(buffer)),
+    html: new TextDecoder(encoding).decode(buffer),
     bytes: buffer.byteLength,
+  };
+}
+
+type PedigreeAncestor = {
+  position: string; // F=父, M=母 を世代順に連ねたもの（例: MF = 母の父）
+  generation: number;
+  name: string;
+  horseId: string | null;
+  country: string | null;
+  birthYear: number | null;
+  color: string | null;
+  line: string | null; // 系統（netkeiba が表示している場合のみ）
+};
+type PedigreeCross = { name: string; percentage: number | null; generations: string };
+type Pedigree = {
+  sire: string | null; sireId: string | null; sireLine: string | null;
+  dam: string | null; damId: string | null;
+  damsire: string | null; damsireId: string | null;
+  damdam: string | null;
+  ancestors: PedigreeAncestor[];
+  crosses: PedigreeCross[];
+};
+
+const PEDIGREE_GENERATION_BY_ROWSPAN: Record<string, number> = { "16": 1, "8": 2, "4": 3, "2": 4 };
+
+function extractPedigree(html: string): Pedigree | null {
+  const tableMatch = html.match(/<table\b[^>]*class=["'][^"']*\bblood_table\b[^"']*["'][^>]*>([\s\S]*?)<\/table>/i);
+  if (!tableMatch) return null;
+
+  const ancestors: PedigreeAncestor[] = [];
+  const pathByGeneration: string[] = [];
+  const childCount = new Map<string, number>();
+  const cellRegex = /<td\b([^>]*)>([\s\S]*?)<\/td>/gi;
+  let cellMatch: RegExpExecArray | null;
+  while ((cellMatch = cellRegex.exec(tableMatch[1])) !== null) {
+    const rowspan = cellMatch[1].match(/\browspan\s*=\s*["']?(\d+)/i)?.[1];
+    const generation = rowspan ? PEDIGREE_GENERATION_BY_ROWSPAN[rowspan] ?? 5 : 5;
+    // 血統表は「父→父の父→…」の前順でセルが並ぶので、親ごとの出現順で父(F)/母(M)を決める
+    const parentPath = generation === 1 ? "" : pathByGeneration[generation - 1] ?? "";
+    const seen = childCount.get(parentPath) ?? 0;
+    childCount.set(parentPath, seen + 1);
+    const position = parentPath + (seen === 0 ? "F" : "M");
+    pathByGeneration[generation] = position;
+
+    const body = cellMatch[2];
+    const anchor = body.match(/<a\b[^>]*href=["'][^"']*\/horse\/(?!ped\/|sire\/|mare\/)([0-9a-z]+)\/?["'][^>]*>([\s\S]*?)<\/a>/i);
+    const rawName = anchor ? cleanText(anchor[2]) : cleanText(body.split(/<br\s*\/?>/i)[0] ?? "");
+    if (!rawName) continue;
+    const countryMatch = rawName.match(/^(.*?)\s*[（(]([^）)]+)[）)]\s*$/);
+    const lines = body.split(/<br\s*\/?>/i).slice(1).map(cleanText).filter(Boolean);
+    const yearColor = lines.map((line) => line.match(/^(\d{4})\s*(\S+毛|芦|白|\S*)?/)).find(Boolean);
+    ancestors.push({
+      position,
+      generation,
+      name: countryMatch ? countryMatch[1].trim() : rawName,
+      horseId: anchor?.[1] ?? null,
+      country: countryMatch?.[2] ?? null,
+      birthYear: yearColor ? Number(yearColor[1]) : null,
+      color: yearColor?.[2] || null,
+      line: lines.map((line) => line.replace(/\s*\d+(?:-[a-z])?$/, "")).find((line) => /系$/.test(line)) ?? null,
+    });
+  }
+  if (!ancestors.length) return null;
+
+  const crosses: PedigreeCross[] = [];
+  const crossBlock = html.match(/<div\b[^>]*class=["']blood_cross["'][^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "";
+  for (const row of crossBlock.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const cells = [...row[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map((cell) => cleanText(cell[1]));
+    if (cells.length < 3 || !cells[0]) continue;
+    const percentage = Number(cells[1].replace(/%/, ""));
+    crosses.push({ name: cells[0], percentage: Number.isFinite(percentage) ? percentage : null, generations: cells[2] });
+  }
+
+  const at = (position: string) => ancestors.find((ancestor) => ancestor.position === position);
+  return {
+    sire: at("F")?.name ?? null, sireId: at("F")?.horseId ?? null, sireLine: at("F")?.line ?? null,
+    dam: at("M")?.name ?? null, damId: at("M")?.horseId ?? null,
+    damsire: at("MF")?.name ?? null, damsireId: at("MF")?.horseId ?? null,
+    damdam: at("MM")?.name ?? null,
+    ancestors,
+    crosses,
   };
 }
 
@@ -428,7 +522,7 @@ async function fetchAllPerformances(
   horseId: string,
   forceRefresh: boolean
 ): Promise<{ performance: ReturnType<typeof extractPerformances>; pagesFetched: number; failedPages: number[] }> {
-  const baseUrl = \`https://db.netkeiba.com/horse/result/\${horseId}/\`;
+  const baseUrl = `https://db.netkeiba.com/horse/result/${horseId}/`;
   const firstPage = await fetchHtml(baseUrl, 604800, forceRefresh, "euc-jp");
   if (!firstPage.ok) return { performance: null, pagesFetched: 0, failedPages: [1] };
 
@@ -453,7 +547,7 @@ async function fetchAllPerformances(
       : [];
 
   for (const pageNumber of pagesToFetch) {
-    const page = await fetchHtml(baseUrl + \`?page=\${pageNumber}\`, 604800, forceRefresh, "euc-jp");
+    const page = await fetchHtml(baseUrl + `?page=${pageNumber}`, 604800, forceRefresh, "euc-jp");
     if (!page.ok) {
       failedPages.push(pageNumber);
       if (!pageNumbers.size) break;
@@ -857,15 +951,19 @@ export async function GET(
         try {
           const raceEntry = entryByHorseId.get(horse.horseId) ?? null;
           const profileUrl = `https://db.sp.netkeiba.com/horse/${horse.horseId}/`;
-          const [profilePage, historyResult] = await Promise.all([
+          const pedigreeUrl = `https://db.netkeiba.com/horse/ped/${horse.horseId}/`;
+          const [profilePage, historyResult, pedigreePage] = await Promise.all([
             fetchHtml(profileUrl, 604800, forceRefresh),
             fetchAllPerformances(horse.horseId, forceRefresh),
+            fetchHtml(pedigreeUrl, 2592000, forceRefresh).catch(() => null),
           ]);
+          const pedigree = pedigreePage?.ok ? extractPedigree(pedigreePage.html) : null;
           if (!profilePage.ok && !historyResult.performance) {
             results[index] = {
               horseId: horse.horseId, name: horse.name, raceEntry,
               raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
               status: "fetch_failed",
+              pedigree,
               profileHttpStatus: profilePage.status,
               historyFailedPages: historyResult.failedPages,
             };
@@ -878,7 +976,9 @@ export async function GET(
           results[index] = {
             horseId: horse.horseId, name: horse.name, raceEntry,
             raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
-            status: profile && performance && historyResult.failedPages.length === 0 ? "complete" : "partial",
+            status: profile && performance && pedigree && historyResult.failedPages.length === 0 ? "complete" : "partial",
+            pedigree,
+            pedigreeHttpStatus: pedigreePage?.status ?? null,
             sourceStatus: profilePage.status,
             historyPagesFetched: historyResult.pagesFetched,
             historyFailedPages: historyResult.failedPages,
