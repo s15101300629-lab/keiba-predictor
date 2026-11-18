@@ -1,0 +1,2 @@
+pymupdf==2.1
+fonttools==4.68.0
