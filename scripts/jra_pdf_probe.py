@@ -228,7 +228,7 @@ for h in headers:
         margin_parts.sort(key=lambda x:x["bbox"][0])
         margin_raw_text="".join(x["text"] for x in margin_parts)
         margin_raw=norm(margin_raw_text)
-        margin_glyph_codes=[ord(x["text"]) for x in margin_parts if 1<=ord(x["text"])<=31]
+        margin_glyph_codes=[ord(x["text"]) for x in margin_parts if len(x["text"])==1 and 1<=ord(x["text"])<=31]
         margin_text=previous_margin if margin_raw=="〃" else (margin_raw or None)
         if margin_text and margin_raw!="〃" and re.search(r"\d$",margin_raw):
             fractions=[MARGIN_FRACTION_GLYPHS[code] for code in margin_glyph_codes if code in MARGIN_FRACTION_GLYPHS]
@@ -254,7 +254,7 @@ for h in headers:
         jockey_parts=[x for x in chars if x["page"]==h["page"] and jockey_x[0]<=x["bbox"][0]<jockey_x[1] and abs(center_y(x)-ny)<=2.5]
         jockey_parts.sort(key=lambda x:x["bbox"][0])
         jockey_raw_text="".join(x["text"] for x in jockey_parts)
-        jockey_glyph_codes=[ord(x["text"]) for x in jockey_parts if 1<=ord(x["text"])<=31]
+        jockey_glyph_codes=[ord(x["text"]) for x in jockey_parts if len(x["text"])==1 and 1<=ord(x["text"])<=31]
         jockey_raw=norm(jockey_raw_text) or None
         mark_match=re.match(r"^([△▲☆★◇▽◆]+)",jockey_raw or "")
         jockey_mark=mark_match.group(1) if mark_match else None
