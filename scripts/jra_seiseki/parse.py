@@ -61,6 +61,7 @@ STATUS_WORDS = {
     "競走除外": "除外",
     "競走中止": "中止",
     "失格": "失格",
+    "降着": "降着",
 }
 BET_TYPES = ["単勝", "複勝", "枠連", "馬連", "馬単", "ワイド", "3連複", "3連単", "5重勝"]
 
@@ -299,8 +300,8 @@ def parse_row(chars: list[Char]) -> dict:
     row["status"] = status
 
     body = norm(chars_text(cols["body"])).replace(" ", "")
-    if status in ("取消", "除外", "中止"):
-        body = re.sub(r"\(?(出走取消|競走除外|競走中止)\)?", "", body)
+    if status:
+        body = re.sub(r"\(?(出走取消|競走除外|競走中止|降着|失格)\)?", "", body)
     time_m = re.search(r"((?:\d:)?\d{2}\.\d|〃)$", body)
     time_s = None
     if time_m:
@@ -313,7 +314,9 @@ def parse_row(chars: list[Char]) -> dict:
     row["time_raw"] = time_s
 
     margin = norm(chars_text(cols["margin"])).replace(" ", "")
-    row["margin"] = None if status in ("取消", "除外", "中止") else (margin or None)
+    if status and re.search(r"[()]|取消|除外|中止|降着|失格", margin):
+        margin = ""  # the status text spills into the margin column
+    row["margin"] = margin or None
 
     row["odds"] = to_float(chars_text(cols["odds"]).replace(" ", ""))
     pop = "".join(c.t for c in cols["pop"])
@@ -367,7 +370,7 @@ def finalize_rows(rows: list[dict]) -> None:
         t = r.pop("time_raw")
         if t == "〃":
             t = prev_time
-        if r["status"] in ("取消", "除外", "中止"):
+        if r["status"] in ("取消", "除外", "中止", "失格"):
             r["time"] = None
             r["finish"] = None
             continue
@@ -602,6 +605,23 @@ def lower_lines(race: list[Segment]) -> list[tuple[str, str, Line, int]]:
     return out
 
 
+def fill_times_from_notes(rows: list[dict], notes: list[str]) -> None:
+    """降着 / 失格 rows print the status instead of a time; the footnote has it,
+    e.g. 〔降着〕 X号は，2位〔タイム1分57秒4，着差3馬身〕に入線したが…"""
+    for r in rows:
+        if r["status"] not in ("降着", "失格") or r.get("time"):
+            continue
+        for note in notes:
+            if not r["horse"] or r["horse"] + "号" not in note.replace(" ", ""):
+                continue
+            m = re.search(r"タイム(?:(\d+)分)?(\d+)秒(\d)", note)
+            if m:
+                mins = int(m.group(1) or 0)
+                r["time"] = f"{mins}:{int(m.group(2)):02d}.{m.group(3)}" if mins else f"{m.group(2)}.{m.group(3)}"
+                r["time_sec"] = time_to_seconds(r["time"])
+                break
+
+
 def parse_pdf(path: str | Path, source_url: str | None = None) -> dict:
     path = Path(path)
     doc = pymupdf.open(path)
@@ -625,6 +645,7 @@ def parse_pdf(path: str | Path, source_url: str | None = None) -> dict:
             info["surface"] = "障害"  # course stays e.g. "芝・ダート"
         finalize_rows(rows)
         lower = parse_lower(lower_lines(race))
+        fill_times_from_notes(rows, lower["notes"])
         corners = [corner_positions(c["order"]) for c in lower["corners"]]
         for r in rows:
             r["corner_positions"] = [c.get(r["umaban"]) for c in corners] or None
@@ -654,7 +675,7 @@ def validate(day: dict) -> list[str]:
         if sorted(n for n in nums if n) != list(range(1, len(nums) + 1)):
             warns.append(f"{rid}: horse numbers not 1..N: {nums}")
         for r in race["results"]:
-            if r["status"] is None and r["time_sec"] is None:
+            if r["status"] in (None, "降着") and r["time_sec"] is None:
                 warns.append(f"{rid}: no time for #{r['umaban']} {r['horse']}")
             if UNKNOWN in (r["horse"] + r["jockey"] + r["trainer"]):
                 warns.append(f"{rid}: unknown glyph in #{r['umaban']} {r['horse']}/{r['jockey']}/{r['trainer']}")
