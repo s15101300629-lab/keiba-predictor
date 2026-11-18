@@ -105,14 +105,15 @@ def parse_one(entry: dict) -> dict:
     race_numbers = sorted(race["raceNumber"] for race in races)
     if len(races) == 12:
         pass
-    elif len(races) == 11:
+    elif 1 <= len(races) < 12:
         first = races[0]
         missing = sorted(set(range(1, 13)) - set(race_numbers))
         cancelled, calendar_url = fetch_official_cancelled_races(first["date"], first["venue"])
         if missing != cancelled:
             raise RuntimeError(
-                f"Race count is 11 but JRA official calendar does not confirm the missing race: "
-                f"missing={missing}, cancelled={cancelled}, calendar={calendar_url}"
+                f"JRA official calendar does not confirm omitted races: "
+                f"parsed={len(races)}, missing={missing}, cancelled={cancelled}, "
+                f"calendar={calendar_url}"
             )
         cancelled_races = cancelled
     else:
