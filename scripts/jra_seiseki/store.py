@@ -18,7 +18,6 @@ RESULT_COLUMNS = [
     "weight", "weight_before_allowance", "jockey", "jockey_mark", "trainer", "owner",
     "region", "breeder", "equipment", "body_weight", "body_weight_diff", "time", "time_sec",
     "margin", "odds", "popularity", "corner_positions",
-    "horse_id", "sire", "dam", "damsire",
 ]
 PAYOUT_COLUMNS = ["race_id", "date", "type", "combo", "payout", "popularity", "votes", "note"]
 
@@ -45,31 +44,9 @@ def iter_days(root: Path, year: int):
         yield json.loads(p.read_text(encoding="utf-8"))
 
 
-def _pedigree_lookup(root: Path, year: int) -> dict[tuple[str, int], dict]:
-    """(race_id, umaban) -> {horse_id, sire, dam, damsire} from ../jra-pedigree, if fetched."""
-    ped = root.parent / "jra-pedigree"
-    rh = ped / "race_horses" / f"{year}.csv"
-    if not rh.exists():
-        return {}
-    horses = {}
-    if (ped / "horses.csv").exists():
-        with (ped / "horses.csv").open(encoding="utf-8", newline="") as f:
-            horses = {r["horse_id"]: r for r in csv.DictReader(f)}
-    out = {}
-    with rh.open(encoding="utf-8", newline="") as f:
-        for r in csv.DictReader(f):
-            h = horses.get(r["horse_id"], {})
-            out[(r["race_id"], int(r["umaban"]))] = {
-                "horse_id": r["horse_id"], "sire": h.get("sire", ""),
-                "dam": h.get("dam", ""), "damsire": h.get("damsire", ""),
-            }
-    return out
-
-
 def rebuild_csv(root: Path, year: int) -> None:
     out = root / "csv" / str(year)
     out.mkdir(parents=True, exist_ok=True)
-    pedigree = _pedigree_lookup(root, year)
     races, results, payouts = [], [], []
     for day in iter_days(root, year):
         for r in day["races"]:
@@ -96,7 +73,6 @@ def rebuild_csv(root: Path, year: int) -> None:
                     "race_no": r.get("race_no"), "surface": r.get("surface"),
                     "distance": r.get("distance"), "going": r.get("going"),
                     "corner_positions": _join(h.get("corner_positions")),
-                    **pedigree.get((rid, h.get("umaban")), {}),
                 })
             for p in r["payouts"]:
                 payouts.append({
