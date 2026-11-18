@@ -73,6 +73,7 @@ def parse_one(entry: dict) -> dict:
             "JRA_OUTPUT_DIR": temp_dir,
             "JRA_DIAGNOSTICS": "0",
             "JRA_EXPECTED_RACES": "0",
+            "JRA_JOCKEY_NAMES_FILE": str(OUT / "jockey-names.json"),
         })
         result = subprocess.run(
             [sys.executable, str(PARSER)],
