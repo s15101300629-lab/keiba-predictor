@@ -18,7 +18,7 @@ jobs:
   train:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -41,9 +41,22 @@ jobs:
       - name: Check Python/TypeScript feature parity
         run: node --experimental-strip-types scripts/ml/parity.ts
 
+      - run: npm install --no-audit --no-fund
+
+      # 2段目（AI確率 + 血統）: 新しい重賞の出走馬の血統を netkeiba から追加取得して学び直す
+      - name: Collect pedigrees of graded-race runners
+        run: npx tsx scripts/ml/collect_pedigree.ts
+
+      - name: Build pedigree features
+        run: npx tsx scripts/ml/pedigree_features.ts
+
+      - name: Train stacking model
+        working-directory: scripts/ml
+        run: python train_stack.py
+
       - name: Commit model
         run: |
-          git add data/ml
+          git add data/ml data/pedigree
           if git diff --cached --quiet; then
             echo "no changes"
             exit 0

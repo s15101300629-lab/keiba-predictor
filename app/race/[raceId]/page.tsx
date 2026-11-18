@@ -54,11 +54,12 @@ type FormRun = {
 };
 type JockeyYear = { n: number; top3: number; venueN: number; venueTop3: number; courseN: number; courseTop3: number };
 type Prediction = {
-  probability: number; rank: number; modelFormDeviation: number | null; priorRuns: number;
+  probability: number; baseProbability: number; pedigreeIncluded: boolean;
+  rank: number; modelFormDeviation: number | null; priorRuns: number;
   jockeyName: string | null; jockey: JockeyYear;
 };
 type MlSummary = {
-  status: "available" | "unavailable"; dataUntil?: string; goingAssumed?: boolean;
+  status: "available" | "unavailable"; dataUntil?: string; goingAssumed?: boolean; pedigreeIncluded?: boolean;
   metrics?: { auc: number; raceTop3Hit: number; testYear: string };
 };
 type Horse = {
@@ -448,7 +449,9 @@ function OverallHorseCard({ horse, total, categories, factors }: {
       <section className="horse-result-overall">
         <div className="result-section-heading">
           <h4>AI予測：3着以内に入る確率</h4>
-          <p>LightGBM（成績表データで学習）。血統適性は下の項目に別表示</p>
+          <p>{prediction?.pedigreeIncluded
+            ? `LightGBM（成績表で学習）の確率 ${(prediction.baseProbability * 100).toFixed(1)}% に、血統適性を加味（重賞データで学習した2段目モデル）`
+            : "LightGBM（成績表データで学習）。血統適性は下の項目に別表示"}</p>
         </div>
         <div className="horse-result-score-line">
           <strong>{probabilityText}</strong>
