@@ -57,4 +57,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "jra-pdf-data/jra-results-${JRA_YEAR}.jsonl.gz" "jra-pdf-data/validation-${JRA_YEAR}.json" jra-pdf-data/jockey-names.json
           git commit -m "Add validated JRA official results dataset for ${JRA_YEAR}"
+          git fetch origin feature/jra-pdf-ingestion-pilot
+          git rebase FETCH_HEAD
           git push origin HEAD:feature/jra-pdf-ingestion-pilot
