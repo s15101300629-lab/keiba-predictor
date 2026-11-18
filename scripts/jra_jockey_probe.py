@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import fitz
 import urllib.parse
 import urllib.request
 from html.parser import HTMLParser
@@ -112,7 +113,32 @@ result = {
     "retiredCandidateCount": len(retired_names),
     "retiredCandidates": sorted(retired_names),
     "combinedUniqueCount": len(active_names | retired_names),
+    "agentPdfs": {key: {"url": value["url"], "bytes": value["bytes"], "pageCount": len(value["pages"])} for key, value in agent_results.items()},
 }
+(OUT / "jockey-index.html").write_text(index_html, encoding="utf-8")
+(OUT / "jockey-retired.html").write_text(retired_html, encoding="utf-8")
+agent_results = {}
+for region in ("miho", "rittou"):
+    agent_url = f"https://jra.jp/datafile/meikan/pdf/agent_{region}.pdf"
+    req = urllib.request.Request(agent_url, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=45) as response:
+        pdf_bytes = response.read()
+    pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
+    page_data = []
+    for page_number, page in enumerate(pdf, start=1):
+        page_text = page.get_text("text", sort=True)
+        (OUT / f"agent_{region}.txt").write_text(page_text, encoding="utf-8")
+        page_data.append({
+            "page": page_number,
+            "width": page.rect.width,
+            "height": page.rect.height,
+            "words": [
+                {"x0": round(w[0], 1), "y0": round(w[1], 1), "x1": round(w[2], 1), "y1": round(w[3], 1), "text": w[4]}
+                for w in page.get_text("words")
+            ],
+        })
+    agent_results[region] = {"url": agent_url, "bytes": len(pdf_bytes), "pages": page_data}
+(OUT / "agent-layout.json").write_text(json.dumps(agent_results, ensure_ascii=False, indent=2), encoding="utf-8")
 (OUT / "jockey-dictionary-probe.json").write_text(
     json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
 )
