@@ -6,10 +6,18 @@ on:
       - feature/jra-pdf-ingestion-pilot
     paths:
       - .github/workflows/jra-pdf-ingest-all.yml
+      - scripts/jra_pdf_batch.py
+      - scripts/jra_pdf_probe.py
+      - scripts/jra_pdf_index.py
+      - scripts/jra_jockey_probe.py
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: jra-pdf-2022-2026-ingestion
+  cancel-in-progress: false
 
 jobs:
   ingest-selected-years:
