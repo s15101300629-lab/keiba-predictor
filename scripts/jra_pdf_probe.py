@@ -1,5 +1,6 @@
 from __future__ import annotations
-import hashlib, json, os, re, urllib.request
+import hashlib, json, os, re, time, urllib.request
+from urllib.error import URLError, HTTPError
 from pathlib import Path
 
 URL = os.environ.get("JRA_PDF_URL", "https://jra.jp/datafile/seiseki/report/2025/2025-1kyoto1.pdf")
@@ -9,9 +10,27 @@ OUT = Path(os.environ.get("JRA_OUTPUT_DIR", "jra-pdf-probe"))
 DIAGNOSTICS = os.environ.get("JRA_DIAGNOSTICS", "1") == "1"
 EXPECTED_RACES = int(os.environ.get("JRA_EXPECTED_RACES", "12"))
 OUT.mkdir(exist_ok=True)
-req = urllib.request.Request(URL, headers={"User-Agent":"Mozilla/5.0","Accept":"application/pdf"})
-with urllib.request.urlopen(req, timeout=45) as res:
-    raw, content_type = res.read(), res.headers.get("Content-Type", "")
+req = urllib.request.Request(URL, headers={
+    "User-Agent": "Mozilla/5.0 (compatible; JRAResultResearch/1.0)",
+    "Accept": "application/pdf",
+    "Connection": "close",
+})
+raw = None
+content_type = ""
+last_error = None
+for attempt in range(5):
+    try:
+        with urllib.request.urlopen(req, timeout=60) as res:
+            raw, content_type = res.read(), res.headers.get("Content-Type", "")
+        if raw:
+            break
+        last_error = RuntimeError("JRA returned an empty PDF response")
+    except (URLError, HTTPError, TimeoutError, OSError) as exc:
+        last_error = exc
+    if attempt < 4:
+        time.sleep(min(2 ** attempt, 16))
+if raw is None:
+    raise RuntimeError(f"JRA PDF download failed after 5 attempts: {URL}: {last_error}")
 if not raw.startswith(b"%PDF"):
     raise RuntimeError(f"Not a PDF: {content_type}, {len(raw)} bytes")
 import pymupdf
