@@ -1,4 +1,4 @@
-name: JRA all-years PDF ingestion
+name: JRA 2022-2026 PDF ingestion
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 jobs:
-  ingest-all-years:
+  ingest-selected-years:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
@@ -30,35 +30,38 @@ jobs:
         run: python scripts/jra_pdf_index.py
       - name: Build official jockey-name dictionary
         run: python scripts/jra_jockey_probe.py
-      - name: Parse and validate all official PDFs from 2017 through 2026
+      - name: Parse and validate official PDFs from 2022 through 2026
         run: |
           set -e
-          for year in 2017 2018 2019 2020 2021 2022 2023 2024 2025 2026; do
+          for year in 2022 2023 2024 2025 2026; do
             echo "===== JRA YEAR ${year} ====="
             JRA_YEAR="${year}" JRA_WORKERS="${JRA_WORKERS}" python scripts/jra_pdf_batch.py
           done
-      - name: Upload all validated annual datasets and partial diagnostics
+      - name: Upload validated annual datasets and diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jra-results-2017-2026
+          name: jra-results-2022-2026
           path: |
             jra-pdf-data/jra-results-*.jsonl.gz
             jra-pdf-data/validation-*.json
             jra-pdf-data/jockey-names.json
           if-no-files-found: warn
-      - name: Commit all validated datasets to the feature branch
+      - name: Commit validated 2022-2026 datasets to the feature branch
         if: success()
         run: |
-          mkdir -p /tmp/jra-validated-all-years
-          cp jra-pdf-data/jra-results-*.jsonl.gz /tmp/jra-validated-all-years/
-          cp jra-pdf-data/validation-*.json /tmp/jra-validated-all-years/
-          cp jra-pdf-data/jockey-names.json /tmp/jra-validated-all-years/
+          set -e
+          mkdir -p /tmp/jra-validated-selected-years
+          for year in 2022 2023 2024 2025 2026; do
+            cp "jra-pdf-data/jra-results-${year}.jsonl.gz" /tmp/jra-validated-selected-years/
+            cp "jra-pdf-data/validation-${year}.json" /tmp/jra-validated-selected-years/
+          done
+          cp jra-pdf-data/jockey-names.json /tmp/jra-validated-selected-years/
           git fetch origin feature/jra-pdf-ingestion-pilot
           git reset --hard FETCH_HEAD
-          cp /tmp/jra-validated-all-years/* jra-pdf-data/
+          cp /tmp/jra-validated-selected-years/* jra-pdf-data/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add jra-pdf-data/jra-results-*.jsonl.gz jra-pdf-data/validation-*.json jra-pdf-data/jockey-names.json
-          git commit -m "Add validated JRA official results datasets for 2017-2026"
+          git add jra-pdf-data/jra-results-2022.jsonl.gz jra-pdf-data/validation-2022.json jra-pdf-data/jra-results-2023.jsonl.gz jra-pdf-data/validation-2023.json jra-pdf-data/jra-results-2024.jsonl.gz jra-pdf-data/validation-2024.json jra-pdf-data/jra-results-2025.jsonl.gz jra-pdf-data/validation-2025.json jra-pdf-data/jra-results-2026.jsonl.gz jra-pdf-data/validation-2026.json jra-pdf-data/jockey-names.json
+          git commit -m "Add validated JRA official results datasets for 2022-2026"
           git push origin HEAD:feature/jra-pdf-ingestion-pilot
