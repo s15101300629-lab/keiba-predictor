@@ -255,7 +255,20 @@ for h in headers:
             if jockey_name in JRA_JOCKEY_NAMES:
                 jockey_name_resolution="exact_name_with_glyph_mark"
             else:
-                suffix_matches=sorted(name for name in JRA_JOCKEY_NAMES if name.endswith(jockey_name))
+                suffix_matches=[]
+                matched_suffix=None
+                # The JRA PDF occasionally places a neighboring column glyph at
+                # the end of the jockey cell. Test progressively shorter suffixes
+                # and accept only a unique exact match in the official registry.
+                for trim in range(0, min(4, len(jockey_name))):
+                    candidate=jockey_name[:-trim] if trim else jockey_name
+                    matches=sorted(name for name in JRA_JOCKEY_NAMES if name.endswith(candidate))
+                    if len(matches)==1:
+                        suffix_matches=matches
+                        matched_suffix=candidate
+                        break
+                    if len(matches)>1:
+                        suffix_matches=matches
                 if len(suffix_matches)==1:
                     jockey_name=suffix_matches[0]
                     jockey_name_resolution="unique_official_suffix"
@@ -263,7 +276,8 @@ for h in headers:
                     jockey_name_resolution="unresolved_glyph"
                     errors.append(
                         f"R{h['no']} H{horse_no}: unresolved jockey glyphs "
-                        f"{jockey_glyph_codes} with text {jockey_name!r}; matches={suffix_matches[:5]}"
+                        f"{jockey_glyph_codes} with text {jockey_name!r}; "
+                        f"matchedSuffix={matched_suffix!r}; matches={suffix_matches[:5]}"
                     )
 
         horse_name=im.group(1)
