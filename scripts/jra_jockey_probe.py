@@ -138,6 +138,52 @@ for region in ("miho", "rittou"):
         })
     agent_results[region] = {"url": agent_url, "bytes": len(pdf_bytes), "pages": page_data}
 (OUT / "agent-layout.json").write_text(json.dumps(agent_results, ensure_ascii=False, indent=2), encoding="utf-8")
+active_pdf_names = set()
+for region, data in agent_results.items():
+    for page in data["pages"]:
+        for word in page["words"]:
+            x = word["x0"]
+            y = word["y0"]
+            raw_name = word["text"]
+            if y < 135 or raw_name == "騎手名":
+                continue
+            if region == "miho":
+                is_jockey_column = (0 < x < 150) or (290 < x < 400)
+            else:
+                is_jockey_column = (0 < x < 180) or (380 < x < 510)
+            if not is_jockey_column:
+                continue
+            name = re.sub(r"\s+", "", raw_name.replace("★", "").replace("☆", "")).replace("．", ".")
+            if len(name) >= 2 and "若手騎手" not in name and re.search(r"[一-龯ぁ-んァ-ヶ]", name):
+                active_pdf_names.add(name)
+
+jockey_names = active_pdf_names | retired_names
+if len(active_pdf_names) < 100 or len(retired_names) < 100 or len(jockey_names) < 300:
+    raise RuntimeError(
+        f"Official JRA jockey dictionary unexpectedly small: active={len(active_pdf_names)}, "
+        f"retired={len(retired_names)}, combined={len(jockey_names)}"
+    )
+data_dir = Path("jra-pdf-data")
+data_dir.mkdir(exist_ok=True)
+dictionary = {
+    "schemaVersion": 1,
+    "source": "JRA official jockey agent PDFs and retired jockey index",
+    "sources": [
+        "https://jra.jp/datafile/meikan/pdf/agent_miho.pdf",
+        "https://jra.jp/datafile/meikan/pdf/agent_rittou.pdf",
+        retired_url,
+    ],
+    "activeNames": sorted(active_pdf_names),
+    "retiredNames": sorted(retired_names),
+    "names": sorted(jockey_names),
+}
+(data_dir / "jockey-names.json").write_text(
+    json.dumps(dictionary, ensure_ascii=False, indent=2), encoding="utf-8"
+)
+result["activeCandidateCount"] = len(active_pdf_names)
+result["activeCandidates"] = sorted(active_pdf_names)
+result["combinedUniqueCount"] = len(jockey_names)
+result["dictionaryPath"] = str(data_dir / "jockey-names.json")
 result["agentPdfs"] = {
     key: {"url": value["url"], "bytes": value["bytes"], "pageCount": len(value["pages"])}
     for key, value in agent_results.items()
