@@ -378,7 +378,7 @@ for h in headers:
     venue_match=re.search(r"\d{4}年\d+([^）]+)",card_text)
     venue_name=venue_match.group(1) if venue_match else None
     if venue_name is None:
-        legacy_venue=re.search(r"[（(]\d{2}(札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\d+[）)]",card_text)
+        legacy_venue=re.search(r"[（(]\d{1,2}(札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\d+[）)]",card_text)
         venue_name=legacy_venue.group(1) if legacy_venue else None
     weather_match=re.search(r"\d{1,2}月\d{1,2}日(晴|曇|雨|小雨|雪)",card_text)
     going_match=re.search(r"\d{1,2}月\d{1,2}日(?:晴|曇|小雨|小雪|雨|雪)?(?:\s*(?:（[^）]*）|\([^)]*\)))*\s*(良|稍重|重|不良)",card_text)
