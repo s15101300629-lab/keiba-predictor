@@ -21,6 +21,13 @@ if DIAGNOSTICS:
 def norm(s):
     return re.sub(r"\s+", "", re.sub(r"[\x00-\x1f]", "", s))
 
+JRA_JOCKEY_NAMES = set()
+jockey_names_path = os.environ.get("JRA_JOCKEY_NAMES_FILE")
+if jockey_names_path and Path(jockey_names_path).exists():
+    jockey_data = json.loads(Path(jockey_names_path).read_text(encoding="utf-8"))
+    JRA_JOCKEY_NAMES = set(jockey_data.get("names", []))
+
+
 def center_y(item):
     return (item["bbox"][1]+item["bbox"][3])/2
 
@@ -236,11 +243,28 @@ for h in headers:
         jockey_x=(150,192.1) if left else (560,602.8)
         jockey_parts=[x for x in chars if x["page"]==h["page"] and jockey_x[0]<=x["bbox"][0]<jockey_x[1] and abs(center_y(x)-ny)<=2.5]
         jockey_parts.sort(key=lambda x:x["bbox"][0])
-        jockey_raw=norm("".join(x["text"] for x in jockey_parts)) or None
+        jockey_raw_text="".join(x["text"] for x in jockey_parts)
+        jockey_glyph_codes=[ord(x["text"]) for x in jockey_parts if 1<=ord(x["text"])<=31]
+        jockey_raw=norm(jockey_raw_text) or None
         mark_match=re.match(r"^([△▲☆★◇▽◆]+)",jockey_raw or "")
         jockey_mark=mark_match.group(1) if mark_match else None
         jockey_name=(jockey_raw[len(jockey_mark):] if jockey_mark else jockey_raw) or None
         if jockey_name: jockey_name=jockey_name.replace("．",".")
+        jockey_name_resolution="text"
+        if jockey_glyph_codes and jockey_name:
+            if jockey_name in JRA_JOCKEY_NAMES:
+                jockey_name_resolution="exact_name_with_glyph_mark"
+            else:
+                suffix_matches=sorted(name for name in JRA_JOCKEY_NAMES if name.endswith(jockey_name))
+                if len(suffix_matches)==1:
+                    jockey_name=suffix_matches[0]
+                    jockey_name_resolution="unique_official_suffix"
+                else:
+                    jockey_name_resolution="unresolved_glyph"
+                    errors.append(
+                        f"R{h['no']} H{horse_no}: unresolved jockey glyphs "
+                        f"{jockey_glyph_codes} with text {jockey_name!r}; matches={suffix_matches[:5]}"
+                    )
 
         horse_name=im.group(1)
         horse_sex="せん" if 1<=ord(im.group(2))<=31 else im.group(2)
@@ -255,7 +279,9 @@ for h in headers:
                        "finishTime":finish_time,"finishTimeSeconds":finish_time_seconds,
                        "marginText":margin_text,"resultStatus":result_status,
                        "winOdds":win_odds,"popularity":popularity,
-                       "jockeyNameRaw":jockey_raw,"jockeyAllowanceMark":jockey_mark,"jockeyName":jockey_name,"identitySource":source,
+                       "jockeyNameRaw":jockey_raw,"jockeyNameRawWithGlyphs":jockey_raw_text,
+                       "jockeyGlyphCodes":jockey_glyph_codes,"jockeyAllowanceMark":jockey_mark,
+                       "jockeyName":jockey_name,"jockeyNameResolution":jockey_name_resolution,"identitySource":source,
                        "sourcePage":h["page"],"sourceY":round(ny,2)})
 
     horses.sort(key=lambda x:x["sourceY"])
