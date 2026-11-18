@@ -55,7 +55,9 @@
 `race_name`（特別レース名 or 条件）, `conditions`（出走条件）, `weight_rule`（負担重量）, `marks`（`(国際)(指定)(混合)(特指)[指定]` 等）,
 `surface`（芝/ダート/障害）, `course`（例 `芝・右・外`）, `distance`(m), `weather`, `going`（馬場状態）, `start_time`,
 `starters`（出走頭数）, `runners`（取消・除外を含む行数）, `prize_1st`（1着本賞）, `laps`（ハロンタイム、`-` 区切り秒）,
-`passing_times`（通過タイム）, `last_4f` / `last_3f`（レース上り）, `corners`（`3:8,9(7,14,16)… 4:…` 通過順位の原文）, `notes`（競走中止・騎手変更などの付記）。
+`passing_times`（通過タイム）, `last_4f` / `last_3f`（レース上り）, `corners`（`3:8,9(7,14,16)… 4:…` 通過順位の原文。
+PDF の「通過コーナー順」の表記どおりで、長距離戦の2周目などは `③` `④` のように丸数字のラベルになります）, `notes`（競走中止・騎手変更などの付記）。
+障害レースは `surface=障害`、`course` に走路（`芝` / `芝・ダート` など）が入ります。
 
 ## payouts.csv
 

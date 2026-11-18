@@ -339,6 +339,11 @@ def parse_table(race: list[Segment]) -> tuple[list[dict], dict]:
         if i == 0:
             hdr = next(ln for ln in seg.lines if _is_race_header(ln))
             start = hdr.y + 12
+            # Long weight rules wrap onto lines that start with digits; the table
+            # only begins below the prize / record lines.
+            for ln in seg.lines:
+                if hdr.y < ln.y < end and ln.x0 < 60 and re.search(r"本\s*賞|付加賞|負担重量", ln.text()):
+                    start = max(start, ln.y + 3)
         anchors = find_anchors(seg, start, end)
         if i == 0:
             top = anchors[0].oy - 6 if anchors else end
@@ -401,7 +406,70 @@ def _squash_bets(t: str) -> str:
     return t
 
 
-def parse_lower(pairs: list[tuple[str, str]]) -> dict:
+PAY_TOKEN_RE = re.compile(
+    r"(?P<type>単\s*勝|複\s*勝|枠\s*連|馬\s*連|馬\s*単|ワ\s*イ\s*ド|3\s*連\s*複|3\s*連\s*単|5\s*重\s*勝)"
+    r"|(?P<combo>[①-⑳〓]+)"
+    r"|\((?P<waku>\d+(?:-\d+)*)\)"
+    r"|(?P<amount>[\d,]+)円"
+    r"|(?P<none>発売なし|特払|不成立)"
+)
+
+
+def parse_payouts(pairs: list[tuple[str, str, Line, int]]) -> list[dict]:
+    """払戻金 block.  Entries are assigned to the bet label on their left in the same
+    band, because stacked entries (e.g. three 複勝) put lines out of reading order."""
+    labels, items = [], []
+    for _t, _c, line, si in pairs:
+        text, xs = "", []
+        prev = None
+        for c in line.chars:
+            if prev is not None and c.x0 - prev.x1 > 0.6 * max(c.size, prev.size):
+                text += " "
+                xs.append(c.x0)
+            text += c.t
+            xs.extend([c.x0] * len(c.t))
+            prev = c
+        text = norm(text)
+        for m in PAY_TOKEN_RE.finditer(text):
+            x = xs[m.start()]
+            if m.group("type"):
+                labels.append((si, line.y, x, re.sub(r"\s+", "", m.group("type"))))
+            else:
+                items.append((si, line.y, x, m))
+    if not labels:
+        return []
+    rows: list[list] = []  # [seg, y, [labels]]
+    for lab in sorted(labels, key=lambda l: (l[0], l[1])):
+        if rows and rows[-1][0] == lab[0] and abs(rows[-1][1] - lab[1]) < 3:
+            rows[-1][2].append(lab)
+        else:
+            rows.append([lab[0], lab[1], [lab]])
+    grouped: dict[tuple, list] = {}
+    for si, y, x, m in items:
+        cands = [r for r in rows if r[0] == si] or rows
+        row = min(cands, key=lambda r: abs(r[1] - y))
+        left = [l for l in row[2] if l[2] <= x + 1]
+        lab = max(left, key=lambda l: l[2]) if left else min(row[2], key=lambda l: l[2])
+        grouped.setdefault(lab, []).append((y, x, m))
+    out = []
+    for lab in sorted(grouped, key=lambda l: (l[0], l[1], l[2])):
+        combo = None
+        for _y, _x, m in sorted(grouped[lab], key=lambda t: (round(t[0]), t[1])):
+            if m.group("combo"):
+                combo = [CIRCLED.get(ch) for ch in m.group("combo")]
+            elif m.group("waku"):
+                combo = [int(v) for v in m.group("waku").split("-")]
+            elif m.group("amount"):
+                out.append({"type": lab[3], "combo": combo, "payout": to_int(m.group("amount"))})
+                combo = None
+            elif m.group("none"):
+                out.append({"type": lab[3], "combo": None, "payout": None, "note": m.group("none")})
+    order = {t: i for i, t in enumerate(BET_TYPES)}
+    out.sort(key=lambda p: order.get(p["type"], 99))  # stable within a type
+    return out
+
+
+def parse_lower(pairs: list[tuple[str, str, Line, int]]) -> dict:
     lines = [p[0] for p in pairs]
     clines = [p[1] for p in pairs]
     out: dict = {"sales": {}, "payouts": [], "laps": [], "passing_times": [], "corners": [], "notes": []}
@@ -409,8 +477,11 @@ def parse_lower(pairs: list[tuple[str, str]]) -> dict:
     def idx(pred) -> int | None:
         return next((i for i, t in enumerate(lines) if pred(t)), None)
 
-    pay_start = idx(lambda t: re.match(r"単勝\s*[①-⑳]|単勝\s*発売なし|単勝\s*特払", _squash_bets(t)))
     vote_start = idx(lambda t: "単勝票数" in t)
+    # The payout block starts after the 売得金 lines ("単勝: 36,741,400円" etc.).
+    pay_start = idx(lambda t: "円" in t and ":" not in t and "票数" not in t)
+    if pay_start is not None and vote_start is not None and pay_start > vote_start:
+        pay_start = None
     lap_start = idx(lambda t: "ハロンタイム" in t)
     pass_start = idx(lambda t: "通過タイム" in t)
     corner_start = idx(lambda t: t.startswith("コーナー") or "通過コーナー順" in t)
@@ -423,28 +494,7 @@ def parse_lower(pairs: list[tuple[str, str]]) -> dict:
 
     # 払戻金
     if pay_start is not None:
-        block = " ".join(_squash_bets(t) for t in lines[pay_start : vote_start or lap_start])
-        tok_re = re.compile(
-            r"(?P<type>単勝|複勝|枠連|馬連|馬単|ワイド|3連複|3連単|5重勝)"
-            r"|(?P<combo>[①-⑳〓]+)"
-            r"|\((?P<waku>\d+(?:-\d+)*)\)"
-            r"|(?P<amount>[\d,]+)円"
-            r"|(?P<none>発売なし|特払|不成立)"
-        )
-        btype = None
-        combo = None
-        for m in tok_re.finditer(block):
-            if m.group("type"):
-                btype, combo = m.group("type"), None
-            elif m.group("combo"):
-                combo = [CIRCLED.get(ch) for ch in m.group("combo")]
-            elif m.group("waku"):
-                combo = [int(x) for x in m.group("waku").split("-")]
-            elif m.group("amount") and btype:
-                out["payouts"].append({"type": btype, "combo": combo, "payout": to_int(m.group("amount"))})
-                combo = None
-            elif m.group("none") and btype:
-                out["payouts"].append({"type": btype, "combo": None, "payout": None, "note": m.group("none")})
+        out["payouts"] = parse_payouts(pairs[pay_start : vote_start or lap_start])
 
     # 票数 -> popularity of each winning combination
     if vote_start is not None:
@@ -538,17 +588,17 @@ def corner_text(line: Line) -> str:
     return norm("".join(out)).strip()
 
 
-def lower_lines(race: list[Segment]) -> list[tuple[str, str]]:
-    out: list[tuple[str, str]] = []
+def lower_lines(race: list[Segment]) -> list[tuple[str, str, Line, int]]:
+    out: list[tuple[str, str, Line, int]] = []
     started = False
-    for seg in race:
+    for si, seg in enumerate(race):
         for ln in seg.lines:
             t = ln.text()
             if not started:
                 if re.search(r"[（(]\d+頭[）)]", t):
                     started = True
                 continue
-            out.append((norm(t).strip(), corner_text(ln)))
+            out.append((norm(t).strip(), corner_text(ln), ln, si))
     return out
 
 
@@ -571,6 +621,8 @@ def parse_pdf(path: str | Path, source_url: str | None = None) -> dict:
     races = []
     for race in split_races(doc, resolver):
         rows, info = parse_table(race)
+        if "障害" in (info.get("race_name") or "") + (info.get("conditions") or ""):
+            info["surface"] = "障害"  # course stays e.g. "芝・ダート"
         finalize_rows(rows)
         lower = parse_lower(lower_lines(race))
         corners = [corner_positions(c["order"]) for c in lower["corners"]]
