@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/jra-pdf-debug.yml
       - scripts/jra_pdf_probe.py
+      - scripts/jra_pdf_index.py
       - scripts/jra_jockey_probe.py
   workflow_dispatch:
 
@@ -16,7 +17,7 @@ permissions:
 jobs:
   debug:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,21 +25,48 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m pip install --disable-pip-version-check pymupdf
+      - name: Install PDF parser
+        run: python -m pip install --disable-pip-version-check pymupdf
+      - name: Discover official JRA PDF links
+        run: python scripts/jra_pdf_index.py
       - name: Probe official JRA jockey name lists
         run: python scripts/jra_jockey_probe.py
+      - name: Select an exact 2022 URL from the official manifest
+        id: select_pdf
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+          manifest=json.loads(Path("jra-pdf-index/manifest.json").read_text(encoding="utf-8"))
+          entry=next((x for x in manifest["pdfs"] if x["year"]==2022),None)
+          if entry is None:
+              raise SystemExit("No 2022 PDF found in official manifest")
+          print("url="+entry["sourceUrl"])
+          print("filename="+entry["sourceUrl"].rsplit("/",1)[-1])
+          print("link_text="+entry["linkText"])
+          print("2022_pdf_count="+str(sum(x["year"]==2022 for x in manifest["pdfs"])))
+          PY
       - name: Inspect 2022 official PDF header layout
+        env:
+          JRA_PDF_URL: ${{ steps.select_pdf.outputs.url }}
+          JRA_OUTPUT_DIR: jra-debug/2022
+          JRA_DIAGNOSTICS: "1"
+          JRA_EXPECTED_RACES: "0"
+          JRA_JOCKEY_NAMES_FILE: jra-pdf-data/jockey-names.json
         run: |
           set +e
           mkdir -p jra-debug
-          JRA_PDF_URL="https://www.jra.go.jp/datafile/seiseki/report/2022/2022-1kyoto1.pdf" JRA_OUTPUT_DIR="jra-debug/2022-1kyoto1" JRA_DIAGNOSTICS=1 JRA_EXPECTED_RACES=0 JRA_JOCKEY_NAMES_FILE="jra-pdf-data/jockey-names.json" python scripts/jra_pdf_probe.py >"jra-debug/2022-1kyoto1.log" 2>&1
-          echo "parser exit=$?"
-          python - <<'PY'
-          import json,re
+          echo "Selected official PDF: $JRA_PDF_URL"
+          python scripts/jra_pdf_probe.py >jra-debug/parser.log 2>&1
+          parser_exit=$?
+          echo "parser exit=$parser_exit"
+          cat jra-debug/parser.log
+          if [ -f jra-debug/2022/layout-blocks.json ] && [ -f jra-debug/2022/layout-lines.json ] && [ -f jra-debug/2022/sample-extracted.txt ]; then
+            python - <<'PY'
+          import json
           from pathlib import Path
-          root=Path("jra-debug/2022-1kyoto1")
+          root=Path("jra-debug/2022")
           blocks=json.loads((root/"layout-blocks.json").read_text(encoding="utf-8"))
-          lines=json.loads((root/"layout-lines.json").read_text(encoding="utf-8"))
           print("=== BLOCKS CONTAINING RACE WORD ===")
           for b in blocks:
               if "競走" in b["text"] or "2022年" in b["text"]:
@@ -47,6 +75,9 @@ jobs:
           txt=(root/"sample-extracted.txt").read_text(encoding="utf-8")
           print(txt[:12000])
           PY
+          else
+            echo "PDF layout files were not created; inspect parser.log for download/parse failure."
+          fi
       - name: Upload parser debug materials
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,6 +85,7 @@ jobs:
           name: jra-pdf-2022-header-debug
           path: |
             jra-debug/
+            jra-pdf-index/
             jra-jockey-probe/
             jra-pdf-data/
-          if-no-files-found: error
+          if-no-files-found: warn
