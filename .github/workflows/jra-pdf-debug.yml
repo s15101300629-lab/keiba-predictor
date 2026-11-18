@@ -46,7 +46,7 @@ jobs:
             set -- $item
             name=$1
             url=$2
-            JRA_PDF_URL="$url" JRA_OUTPUT_DIR="jra-debug/$name" JRA_DIAGNOSTICS=1 JRA_EXPECTED_RACES=0 python scripts/jra_pdf_probe.py >"jra-debug/$name.log" 2>&1
+            JRA_PDF_URL="$url" JRA_OUTPUT_DIR="jra-debug/$name" JRA_DIAGNOSTICS=1 JRA_EXPECTED_RACES=0 JRA_JOCKEY_NAMES_FILE="jra-pdf-data/jockey-names.json" python scripts/jra_pdf_probe.py >"jra-debug/$name.log" 2>&1
             echo "$name exit=$?"
           done
       - name: Upload parser debug materials
@@ -57,4 +57,5 @@ jobs:
           path: |
             jra-debug/
             jra-jockey-probe/
+            jra-pdf-data/
           if-no-files-found: error
