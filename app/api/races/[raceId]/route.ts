@@ -773,6 +773,50 @@ async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: b
   };
 }
 
+type StallionConditionStats = {
+  stallionId: string;
+  role: "sire" | "damsire";
+  surface: string;
+  band: string; // netkeiba の距離区分（例: -2200(芝)）
+  starts: number; wins: number; top3: number;
+};
+
+// netkeiba の種牡馬ページ（距離別）から、今回の芝/ダート・距離区分の累計成績を読む。
+// ページには「種牡馬としての産駒成績」と「母父(BMS)としての成績」の2ブロックがある。
+function extractStallionConditionStats(
+  html: string, stallionId: string, role: "sire" | "damsire", conditions: RaceConditions
+): StallionConditionStats | null {
+  const surface = conditions.surface;
+  const distance = conditions.distanceMeters;
+  if ((surface !== "芝" && surface !== "ダート") || distance === null) return null;
+  const sireStart = html.indexOf("block=horse_sire_results");
+  const bmsStart = html.indexOf("block=horse_bms_results");
+  const section = role === "sire"
+    ? html.slice(sireStart >= 0 ? sireStart : 0, bmsStart > sireStart ? bmsStart : undefined)
+    : bmsStart >= 0 ? html.slice(bmsStart) : "";
+  for (const table of extractTables(section)) {
+    const header = table[0] ?? [];
+    if (!header.some((cell) => cell.includes(`(${surface})`))) continue;
+    const bands = header.slice(1);
+    const total = table.find((row) => row[0] === "累計");
+    if (!total) return null;
+    let index = bands.findIndex((band) => {
+      const upper = band.match(/^-(\d+)/);
+      return upper ? distance <= Number(upper[1]) : false;
+    });
+    if (index < 0) index = bands.findIndex((band) => /^\d+-/.test(band));
+    if (index < 0) return null;
+    const counts = total.slice(1 + index * 4, 5 + index * 4).map((value) => Number(value.replace(/,/g, "")) || 0);
+    if (counts.length < 4) return null;
+    const [first, second, third, other] = counts;
+    return {
+      stallionId, role, surface, band: bands[index],
+      starts: first + second + third + other, wins: first, top3: first + second + third,
+    };
+  }
+  return null;
+}
+
 function getRaceHistoryForHorse(entry: RaceEntry | null, history: RaceHistoryStats | null): RaceHistoryForHorse {
   if (!entry || !history) return null;
   return {
@@ -939,6 +983,27 @@ export async function GET(
     );
 
     const results: Record<string, unknown>[] = new Array(horses.length);
+    // 同じ種牡馬・母父のページは1回だけ取得する
+    const stallionPages = new Map<string, Promise<string | null>>();
+    const fetchStallionPage = (stallionId: string) => {
+      let page = stallionPages.get(stallionId);
+      if (!page) {
+        page = fetchHtml(`https://db.netkeiba.com/horse/sire/${stallionId}/?syusai=10&mode=1&type=2`, 604800, forceRefresh)
+          .then((result) => (result.ok ? result.html : null))
+          .catch(() => null);
+        stallionPages.set(stallionId, page);
+      }
+      return page;
+    };
+    const fetchBloodlineStats = async (pedigree: ReturnType<typeof extractPedigree>) => {
+      const load = async (stallionId: string | null | undefined, role: "sire" | "damsire") => {
+        if (!stallionId) return null;
+        const html = await fetchStallionPage(stallionId);
+        return html ? extractStallionConditionStats(html, stallionId, role, raceConditions) : null;
+      };
+      const [sire, damsire] = await Promise.all([load(pedigree?.sireId, "sire"), load(pedigree?.damsireId, "damsire")]);
+      return { sire, damsire };
+    };
     let nextIndex = 0;
 
     async function worker() {
@@ -958,12 +1023,13 @@ export async function GET(
             fetchHtml(pedigreeUrl, 2592000, forceRefresh).catch(() => null),
           ]);
           const pedigree = pedigreePage?.ok ? extractPedigree(pedigreePage.html) : null;
+          const bloodlineStats = await fetchBloodlineStats(pedigree);
           if (!profilePage.ok && !historyResult.performance) {
             results[index] = {
               horseId: horse.horseId, name: horse.name, raceEntry,
               raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
               status: "fetch_failed",
-              pedigree,
+              pedigree, bloodlineStats,
               profileHttpStatus: profilePage.status,
               historyFailedPages: historyResult.failedPages,
             };
@@ -977,7 +1043,7 @@ export async function GET(
             horseId: horse.horseId, name: horse.name, raceEntry,
             raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
             status: profile && performance && pedigree && historyResult.failedPages.length === 0 ? "complete" : "partial",
-            pedigree,
+            pedigree, bloodlineStats,
             pedigreeHttpStatus: pedigreePage?.status ?? null,
             sourceStatus: profilePage.status,
             historyPagesFetched: historyResult.pagesFetched,

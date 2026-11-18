@@ -38,9 +38,14 @@ type Pedigree = {
   ancestors: { position: string; generation: number; name: string; horseId: string | null; country: string | null }[];
   crosses: { name: string; percentage: number | null; generations: string }[];
 };
+type StallionStats = {
+  stallionId: string; role: "sire" | "damsire"; surface: string; band: string;
+  starts: number; wins: number; top3: number;
+};
 type Horse = {
   horseId: string; name: string; status: string; raceEntry: Entry | null;
   pedigree?: Pedigree | null;
+  bloodlineStats?: { sire: StallionStats | null; damsire: StallionStats | null } | null;
   profile: { label: string; value: string }[] | null;
   performances: { values: Record<string, string> }[]; historyReturned: number;
   performanceStats?: PerformanceStats;
@@ -57,7 +62,7 @@ type OverallScore = { score: number | null; rank: number | null; rankedCount: nu
 type CategoryRank = { label: string; rank: number | null; total: number; detail: string };
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
-const cacheKey = (id: string) => "keiba-race-detail-v4:" + id;
+const cacheKey = (id: string) => "keiba-race-detail-v5:" + id;
 const marksCacheKey = (id: string) => "keiba-race-marks-v1:" + id;
 const MARK_OPTIONS = ["", "◎", "○", "▲", "△", "☆", "注", "消"];
 
@@ -103,6 +108,22 @@ function formatSavedAt(timestamp: number | null) {
   });
 }
 
+// 産駒成績は頭数差が大きいので、出走数が少ないほど出走馬全体の平均複勝率に寄せる
+const STALLION_PRIOR_STARTS = 30;
+function stallionFactor(horses: Horse[], role: "sire" | "damsire") {
+  const stats = horses.map((horse) => horse.bloodlineStats?.[role]).filter((value): value is StallionStats => !!value && value.starts > 0);
+  const totalStarts = stats.reduce((sum, value) => sum + value.starts, 0);
+  const prior = totalStarts ? stats.reduce((sum, value) => sum + value.top3, 0) / totalStarts : 0;
+  return (horse: Horse) => {
+    const value = horse.bloodlineStats?.[role];
+    if (!value || value.starts === 0) return { starts: 0, rate: 0 };
+    return {
+      starts: value.starts,
+      rate: (value.top3 + STALLION_PRIOR_STARTS * prior) / (value.starts + STALLION_PRIOR_STARTS),
+    };
+  };
+}
+
 function buildFactorScores(horses: Horse[]): Map<string, FactorScore[]> {
   const factors = [
     { label: "全体成績", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.parsedStarts ?? 0, rate: s?.parsedStarts ? s.top3 / s.parsedStarts : 0 }; } },
@@ -112,6 +133,8 @@ function buildFactorScores(horses: Horse[]): Map<string, FactorScore[]> {
     { label: "馬場適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.sameGoingStarts ?? 0, rate: s?.sameGoingStarts ? s.sameGoingTop3 / s.sameGoingStarts : 0 }; } },
     { label: "騎手相性", get: (horse: Horse) => { const m = horse.raceHistory?.jockey; return { starts: m?.starts ?? 0, rate: m?.placeRate ?? 0 }; } },
     { label: "枠順実績", get: (horse: Horse) => { const m = horse.raceHistory?.frame; return { starts: m?.starts ?? 0, rate: m?.placeRate ?? 0 }; } },
+    { label: "種牡馬適性", get: stallionFactor(horses, "sire") },
+    { label: "母父適性", get: stallionFactor(horses, "damsire") },
   ];
   const result = new Map<string, FactorScore[]>();
   for (const factor of factors) {
@@ -236,6 +259,18 @@ function buildCategoryRanks(
     `今回の騎手との過去騎乗 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
   assignFactorRank("枠順実績", "枠順", (value) =>
     `今回と同じ枠番 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
+  const stallionDetail = (horseId: string, role: "sire" | "damsire") => {
+    const horse = horses.find((item) => item.horseId === horseId);
+    const stats = horse?.bloodlineStats?.[role];
+    const name = role === "sire" ? horse?.pedigree?.sire : horse?.pedigree?.damsire;
+    if (!stats) return "";
+    const line = role === "sire" && horse?.pedigree?.sireLine ? `（${horse.pedigree.sireLine}）` : "";
+    const band = stats.band.replace(/\((芝|ダート)\)$/, "").replace(/^-/, "〜").replace(/-$/, "〜");
+    return `${role === "sire" ? "父" : "母父"}：${name ?? ""}${line} ${role === "sire" ? "産駒" : "BMS産駒"}の${stats.surface}${band}m ` +
+      `${stats.starts}走・勝率 ${Math.round(stats.wins / stats.starts * 100)}%・3着以内率 ${Math.round(stats.top3 / stats.starts * 100)}%`;
+  };
+  assignFactorRank("種牡馬適性", "種牡馬", () => "");
+  assignFactorRank("母父適性", "血統", () => "");
 
   const positionValues = horses.map((horse) => {
     const stats = horse.performanceStats;
@@ -269,18 +304,18 @@ function buildCategoryRanks(
     const damsire = horse.pedigree?.damsire ??
       horse.profile?.find((item) => /母父/.test(item.label.replace(/\s/g, "")))?.value ?? "";
     const sireLine = horse.pedigree?.sireLine ? `（${horse.pedigree.sireLine}）` : "";
-    const bloodline = [sire ? `父：${sire}${sireLine}` : "", damsire ? `母父：${damsire}` : ""].filter(Boolean).join(" / ");
     const rows = result.get(horse.horseId) ?? [];
     const bloodlineRow = rows.find((item) => item.label === "血統");
     const sireRow = rows.find((item) => item.label === "種牡馬");
-    if (bloodline && bloodlineRow) {
-      bloodlineRow.detail = bloodline + "（血統情報取得済み・適性比較は未実装）";
+    if (sireRow) {
+      sireRow.detail = stallionDetail(horse.horseId, "sire") ||
+        (sire ? `父：${sire}${sireLine}（今回の条件での産駒成績なし）` : sireRow.detail);
     }
-    if (sire && sireRow) {
-      sireRow.detail = `父：${sire}${sireLine}（種牡馬成績の比較は未実装）`;
+    if (bloodlineRow) {
+      bloodlineRow.detail = stallionDetail(horse.horseId, "damsire") ||
+        (damsire ? `母父：${damsire}（今回の条件でのBMS産駒成績なし）` : bloodlineRow.detail);
     }
   }
-
 
   return result;
 }
@@ -369,6 +404,8 @@ function OverallHorseCard({ horse, overall, categories, factors }: {
     "コース適性": "競馬場・馬場適性",
     "騎手": "騎手相性",
     "枠順": "枠順実績",
+    "種牡馬": "種牡馬適性",
+    "血統": "母父適性",
   };
   const factorFor = (label: string) => {
     const factorLabel = factorByCategory[label] ?? label;
