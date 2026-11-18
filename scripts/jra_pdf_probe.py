@@ -120,7 +120,7 @@ headers=[]
 for b in blocks:
     m=re.search(r"第\s*(\d+)\s*競走",b["text"])
     normalized_header=norm(b["text"])
-    year_or_venue=bool(re.search(r"\d{4}年",normalized_header) or re.search(r"[（(]\d{2}(?:札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\d+[）)]",normalized_header))
+    year_or_venue=bool(re.search(r"\d{4}年",normalized_header) or re.search(r"[（(]\d{1,2}(?:札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\d+[）)]",normalized_header))
     if m and re.match(r"^\d{5}",normalized_header) and year_or_venue:
         race_no=int(m.group(1))
         header_line=next((ln for ln in lines
