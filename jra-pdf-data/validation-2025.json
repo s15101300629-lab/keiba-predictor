@@ -14,7 +14,8 @@
   "sourcePdfSha256Count": 288,
   "totalSourcePdfBytes": 203022654,
   "outputFile": "jra-pdf-data/jra-results-2025.jsonl.gz",
-  "outputBytes": 3311502,
-  "elapsedSeconds": 1074.88,
-  "parallelWorkers": 8
+  "outputBytes": 3495678,
+  "elapsedSeconds": 784.56,
+  "parallelWorkers": 8,
+  "cancelledRaceCount": 1
 }
