@@ -113,7 +113,6 @@ result = {
     "retiredCandidateCount": len(retired_names),
     "retiredCandidates": sorted(retired_names),
     "combinedUniqueCount": len(active_names | retired_names),
-    "agentPdfs": {key: {"url": value["url"], "bytes": value["bytes"], "pageCount": len(value["pages"])} for key, value in agent_results.items()},
 }
 (OUT / "jockey-index.html").write_text(index_html, encoding="utf-8")
 (OUT / "jockey-retired.html").write_text(retired_html, encoding="utf-8")
@@ -139,6 +138,10 @@ for region in ("miho", "rittou"):
         })
     agent_results[region] = {"url": agent_url, "bytes": len(pdf_bytes), "pages": page_data}
 (OUT / "agent-layout.json").write_text(json.dumps(agent_results, ensure_ascii=False, indent=2), encoding="utf-8")
+result["agentPdfs"] = {
+    key: {"url": value["url"], "bytes": value["bytes"], "pageCount": len(value["pages"])}
+    for key, value in agent_results.items()
+}
 (OUT / "jockey-dictionary-probe.json").write_text(
     json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
 )
