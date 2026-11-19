@@ -10,12 +10,36 @@ export type StallionRecord = {
   distance: Record<string, { label: string; upper: number | null; counts: Counts }[]>; // surface -> bands
 };
 
-// 血統表の位置ごとの重み（血の割合）。父系は父の産駒成績に含まれるので、母系だけ1段深く見る
-export const PEDIGREE_SOURCES = [
-  { position: "F", role: "sire" as const, weight: 0.5, label: "父" },
-  { position: "MF", role: "damsire" as const, weight: 0.25, label: "母父" },
-  { position: "MMF", role: "damsire" as const, weight: 0.125, label: "母母父" },
-];
+export type PedigreeSource = { position: string; role: StallionRole; weight: number; label: string };
+
+/** 血統表の位置（F=父, M=母 の並び）から、使う成績と重み（血の割合）を決める.
+ *  母方を真っすぐたどる位置（母父・母母父…）は BMS 成績、それ以外は産駒成績を使う. */
+export function pedigreeSource(position: string): PedigreeSource {
+  return {
+    position,
+    role: /^M+F$/.test(position) ? "damsire" : "sire",
+    weight: 0.5 ** position.length,
+    label: [...position].map((c) => (c === "F" ? "父" : "母")).join(""),
+  };
+}
+
+/** maxGeneration 代までの牡馬の祖先すべて. */
+export function allMaleSources(maxGeneration: number): PedigreeSource[] {
+  const out: PedigreeSource[] = [];
+  const walk = (prefix: string) => {
+    if (prefix.length >= maxGeneration) return;
+    for (const c of ["F", "M"]) {
+      const pos = prefix + c;
+      if (c === "F") out.push(pedigreeSource(pos));
+      walk(pos);
+    }
+  };
+  walk("");
+  return out.sort((a, b) => a.position.length - b.position.length || a.position.localeCompare(b.position));
+}
+
+// 現在の採用: 父・母父・母母父（父系は父の産駒成績に含まれるので、母系だけ1段深く見る）
+export const PEDIGREE_SOURCES: PedigreeSource[] = ["F", "MF", "MMF"].map(pedigreeSource);
 const SHRINK_STARTS = 30;
 // netkeiba の距離区分 → 距離タイプ
 const BAND_TYPE: Record<string, string> = { "-1400": "短距離", "-1800": "マイル", "-2200": "中距離", "-2600": "長距離", "2600-": "長距離" };
@@ -160,7 +184,8 @@ export type HorsePedigreeAptitude = {
 
 /** 出走馬全体の血統適性。records[horseIndex] は PEDIGREE_SOURCES 順の StallionRecord|null. */
 export function pedigreeAptitudes(
-  records: (StallionRecord | null)[][], surface: string, distance: number | null, going: string | null
+  records: (StallionRecord | null)[][], surface: string, distance: number | null, going: string | null,
+  sources: PedigreeSource[] = PEDIGREE_SOURCES,
 ): HorsePedigreeAptitude[] {
   const all = records.map((list) => list.map((r) => (r ? stallionAptitude(r, surface, distance) : null)));
   // 今回の距離帯の平均3着内率（縮小推定の事前値）
@@ -171,12 +196,12 @@ export function pedigreeAptitudes(
   const isHeavy = going === "重" || going === "不良";
 
   const result = all.map((list, i) => {
-    const sources = PEDIGREE_SOURCES.map((s, j) => ({ ...s, record: records[i][j], aptitude: list[j] }))
+    const usable = sources.map((s, j) => ({ ...s, record: records[i][j], aptitude: list[j] }))
       .filter((s): s is typeof s & { aptitude: StallionAptitude } => s.aptitude !== null);
     const avg = (get: (a: StallionAptitude) => number | null) => {
       let sum = 0;
       let w = 0;
-      for (const s of sources) {
+      for (const s of usable) {
         const v = get(s.aptitude);
         if (v !== null) { sum += s.weight * v; w += s.weight; }
       }
@@ -189,14 +214,14 @@ export function pedigreeAptitudes(
       if (v !== null) bandRates[label] = v;
     }
     const best = Object.entries(bandRates).sort((x, y) => y[1] - x[1])[0];
-    const todayBand = sources.find((s) => s.aptitude.band)?.aptitude.band ?? null;
+    const todayBand = usable.find((s) => s.aptitude.band)?.aptitude.band ?? null;
     const bandValues = Object.values(bandRates);
     const bandMean = bandValues.length ? bandValues.reduce((a, b) => a + b, 0) / bandValues.length : 0;
     const distanceFit = todayBand && bandRates[todayBand] !== undefined && bandMean > 0 ? bandRates[todayBand] / bandMean : null;
     const bandRate = avg((a) => (a.band ? (a.bandTop3 + SHRINK_STARTS * prior) / (a.bandStarts + SHRINK_STARTS) : null));
     const conditionRate = bandRate === null ? null : bandRate * (isHeavy && heavyRatio !== null ? heavyRatio : 1);
     return {
-      sources: sources.map((s) => ({ label: s.label, name: s.record?.name ?? null, weight: s.weight, aptitude: s.aptitude })),
+      sources: usable.map((s) => ({ label: s.label, name: s.record?.name ?? null, weight: s.weight, aptitude: s.aptitude })),
       heavyRatio, heavyLabel: heavyLabel(heavyRatio),
       bandRates, distanceType: best ? BAND_TYPE[best[0]] : null,
       conditionRate, distanceFit, deviation: null as number | null,

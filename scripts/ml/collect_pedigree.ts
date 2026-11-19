@@ -4,13 +4,14 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { cleanText, extractPedigree, type Pedigree } from "@/app/lib/netkeiba";
-import { PEDIGREE_SOURCES, parseStallionPages, type StallionRaw } from "@/app/lib/pedigree";
+import { allMaleSources, parseStallionPages, type StallionRaw } from "@/app/lib/pedigree";
 
 const ROOT = path.resolve(__dirname, "../..");
 const SEISEKI = path.join(ROOT, "data/jra-seiseki/json");
 const OUT = path.join(ROOT, "data/pedigree");
 const CONCURRENCY = 3;
 const WAIT_MS = 300;
+const PED_GENERATIONS = 4; // 血統表を保存する世代数（血統の補正の検証で4代まで使う）
 const GRADED = /[(（](?:G|Ｇ)(?:Ⅰ|Ⅱ|Ⅲ|1|2|3|１|２|３)[)）]/;
 
 export type GradedRace = {
@@ -20,7 +21,7 @@ export type GradedRace = {
 export type HorsePedigree = {
   horseId: string; sire: string | null; dam: string | null; damsire: string | null; damdam: string | null;
   sireLine: string | null;
-  ancestors: Pedigree["ancestors"]; // 3代まで
+  ancestors: Pedigree["ancestors"]; // PED_GENERATIONS 代まで
   crosses: Pedigree["crosses"];
 };
 
@@ -120,14 +121,16 @@ async function main() {
 
   // 2) 馬 → 血統（3代まで・クロス）
   const horseIds = [...new Set(Object.values(races).flatMap((r) => r.runners.map((h) => h.horseId)).filter((id): id is string => !!id))];
-  const horseTodo = horseIds.filter((id) => !(id in horses));
+  // 未取得、または保存している世代が足りない馬
+  const horseTodo = horseIds.filter((id) => !(id in horses) ||
+    (horses[id] !== null && Math.max(...horses[id]!.ancestors.map((a) => a.generation)) < PED_GENERATIONS));
   console.log(`horses: ${horseIds.length} referenced, ${horseTodo.length} to fetch`);
   await pool(horseTodo, async (id, i) => {
     const html = await get(`https://db.netkeiba.com/horse/ped/${id}/`);
     const ped = html ? extractPedigree(html) : null;
     horses[id] = ped ? {
       horseId: id, sire: ped.sire, dam: ped.dam, damsire: ped.damsire, damdam: ped.damdam, sireLine: ped.sireLine,
-      ancestors: ped.ancestors.filter((a) => a.generation <= 3), crosses: ped.crosses,
+      ancestors: ped.ancestors.filter((a) => a.generation <= PED_GENERATIONS), crosses: ped.crosses,
     } : null;
     if (i % 100 === 99) { writeJson(horsesFile, horses); console.log(`  horses ${i + 1}/${horseTodo.length}`); }
   });
@@ -136,7 +139,7 @@ async function main() {
   // 3) 父・母父・母母父 → 産駒成績（年度別）
   const stallionNames = new Map<string, string>();
   for (const h of Object.values(horses)) {
-    for (const s of PEDIGREE_SOURCES) {
+    for (const s of allMaleSources(PED_GENERATIONS)) {
       const a = h?.ancestors.find((x) => x.position === s.position);
       if (a?.horseId) stallionNames.set(a.horseId, a.name);
     }
