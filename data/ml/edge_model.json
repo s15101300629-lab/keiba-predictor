@@ -1,0 +1,664 @@
+{
+ "fit": {
+  "2024": {
+   "market": {
+    "logloss": 0.40486,
+    "auc": 0.82024
+   },
+   "features": {
+    "rounds": 17,
+    "logloss": 0.40433,
+    "auc": 0.82081
+   },
+   "features+odds": {
+    "rounds": 63,
+    "logloss": 0.40358,
+    "auc": 0.82124
+   }
+  },
+  "2025": {
+   "market": {
+    "logloss": 0.4034,
+    "auc": 0.81853
+   },
+   "features": {
+    "rounds": 201,
+    "logloss": 0.40139,
+    "auc": 0.82055
+   },
+   "features+odds": {
+    "rounds": 122,
+    "logloss": 0.40099,
+    "auc": 0.82048
+   }
+  },
+  "2026": {
+   "market": {
+    "logloss": 0.40318,
+    "auc": 0.82059
+   },
+   "features": {
+    "rounds": 362,
+    "logloss": 0.40118,
+    "auc": 0.82249
+   },
+   "features+odds": {
+    "rounds": 199,
+    "logloss": 0.40036,
+    "auc": 0.82291
+   }
+  }
+ },
+ "bets": {
+  "features": {
+   "edge>=1.1": {
+    "2024": {
+     "n": 282,
+     "place_hits": 22,
+     "place_rate": 0.078,
+     "place_roi": 0.866,
+     "wins": 6,
+     "win_roi": 1.476,
+     "model": 0.052,
+     "market": 0.047
+    },
+    "2025": {
+     "n": 9001,
+     "place_hits": 1412,
+     "place_rate": 0.157,
+     "place_roi": 0.72,
+     "wins": 324,
+     "win_roi": 0.69,
+     "model": 0.162,
+     "market": 0.139
+    },
+    "2026": {
+     "n": 9058,
+     "place_hits": 1576,
+     "place_rate": 0.174,
+     "place_roi": 0.8,
+     "wins": 427,
+     "win_roi": 0.852,
+     "model": 0.177,
+     "market": 0.15
+    }
+   },
+   "edge>=1.1 & 6番人気以下": {
+    "2024": {
+     "n": 281,
+     "place_hits": 21,
+     "place_rate": 0.075,
+     "place_roi": 0.861,
+     "wins": 5,
+     "win_roi": 1.431,
+     "model": 0.051,
+     "market": 0.046
+    },
+    "2025": {
+     "n": 7069,
+     "place_hits": 698,
+     "place_rate": 0.099,
+     "place_roi": 0.693,
+     "wins": 131,
+     "win_roi": 0.663,
+     "model": 0.104,
+     "market": 0.087
+    },
+    "2026": {
+     "n": 7013,
+     "place_hits": 692,
+     "place_rate": 0.099,
+     "place_roi": 0.774,
+     "wins": 148,
+     "win_roi": 0.85,
+     "model": 0.104,
+     "market": 0.086
+    }
+   },
+   "edge>=1.2": {
+    "2024": {
+     "n": 1,
+     "place_hits": 0,
+     "place_rate": 0.0,
+     "place_roi": 0.0,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.027,
+     "market": 0.022
+    },
+    "2025": {
+     "n": 3416,
+     "place_hits": 374,
+     "place_rate": 0.109,
+     "place_roi": 0.67,
+     "wins": 71,
+     "win_roi": 0.657,
+     "model": 0.119,
+     "market": 0.094
+    },
+    "2026": {
+     "n": 3865,
+     "place_hits": 450,
+     "place_rate": 0.116,
+     "place_roi": 0.749,
+     "wins": 89,
+     "win_roi": 0.718,
+     "model": 0.124,
+     "market": 0.097
+    }
+   },
+   "edge>=1.2 & 6番人気以下": {
+    "2024": {
+     "n": 1,
+     "place_hits": 0,
+     "place_rate": 0.0,
+     "place_roi": 0.0,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.027,
+     "market": 0.022
+    },
+    "2025": {
+     "n": 3052,
+     "place_hits": 263,
+     "place_rate": 0.086,
+     "place_roi": 0.652,
+     "wins": 48,
+     "win_roi": 0.649,
+     "model": 0.097,
+     "market": 0.076
+    },
+    "2026": {
+     "n": 3450,
+     "place_hits": 305,
+     "place_rate": 0.088,
+     "place_roi": 0.731,
+     "wins": 57,
+     "win_roi": 0.711,
+     "model": 0.097,
+     "market": 0.076
+    }
+   },
+   "edge>=1.3": {
+    "2024": {
+     "n": 0
+    },
+    "2025": {
+     "n": 1120,
+     "place_hits": 106,
+     "place_rate": 0.095,
+     "place_roi": 0.708,
+     "wins": 25,
+     "win_roi": 0.891,
+     "model": 0.097,
+     "market": 0.071
+    },
+    "2026": {
+     "n": 1480,
+     "place_hits": 136,
+     "place_rate": 0.092,
+     "place_roi": 0.712,
+     "wins": 22,
+     "win_roi": 0.712,
+     "model": 0.098,
+     "market": 0.071
+    }
+   },
+   "edge>=1.3 & 6番人気以下": {
+    "2024": {
+     "n": 0
+    },
+    "2025": {
+     "n": 1053,
+     "place_hits": 90,
+     "place_rate": 0.085,
+     "place_roi": 0.713,
+     "wins": 24,
+     "win_roi": 0.934,
+     "model": 0.086,
+     "market": 0.063
+    },
+    "2026": {
+     "n": 1395,
+     "place_hits": 111,
+     "place_rate": 0.08,
+     "place_roi": 0.709,
+     "wins": 20,
+     "win_roi": 0.742,
+     "model": 0.085,
+     "market": 0.062
+    }
+   },
+   "edge>=1.5": {
+    "2024": {
+     "n": 0
+    },
+    "2025": {
+     "n": 52,
+     "place_hits": 2,
+     "place_rate": 0.038,
+     "place_roi": 0.187,
+     "wins": 1,
+     "win_roi": 0.394,
+     "model": 0.074,
+     "market": 0.048
+    },
+    "2026": {
+     "n": 111,
+     "place_hits": 8,
+     "place_rate": 0.072,
+     "place_roi": 0.651,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.074,
+     "market": 0.047
+    }
+   },
+   "edge>=1.5 & 6番人気以下": {
+    "2024": {
+     "n": 0
+    },
+    "2025": {
+     "n": 52,
+     "place_hits": 2,
+     "place_rate": 0.038,
+     "place_roi": 0.187,
+     "wins": 1,
+     "win_roi": 0.394,
+     "model": 0.074,
+     "market": 0.048
+    },
+    "2026": {
+     "n": 109,
+     "place_hits": 8,
+     "place_rate": 0.073,
+     "place_roi": 0.663,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.071,
+     "market": 0.045
+    }
+   },
+   "edge>=2.0": {
+    "2024": {
+     "n": 0
+    },
+    "2025": {
+     "n": 0
+    },
+    "2026": {
+     "n": 1,
+     "place_hits": 0,
+     "place_rate": 0.0,
+     "place_roi": 0.0,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.091,
+     "market": 0.045
+    }
+   },
+   "edge>=2.0 & 6番人気以下": {
+    "2024": {
+     "n": 0
+    },
+    "2025": {
+     "n": 0
+    },
+    "2026": {
+     "n": 1,
+     "place_hits": 0,
+     "place_rate": 0.0,
+     "place_roi": 0.0,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.091,
+     "market": 0.045
+    }
+   },
+   "全馬": {
+    "2024": {
+     "n": 45739,
+     "place_hits": 10029,
+     "place_rate": 0.219,
+     "place_roi": 0.73,
+     "wins": 3346,
+     "win_roi": 0.704,
+     "model": 0.218,
+     "market": 0.218
+    },
+    "2025": {
+     "n": 46512,
+     "place_hits": 10066,
+     "place_rate": 0.216,
+     "place_roi": 0.708,
+     "wins": 3357,
+     "win_roi": 0.715,
+     "model": 0.217,
+     "market": 0.216
+    },
+    "2026": {
+     "n": 40959,
+     "place_hits": 8939,
+     "place_rate": 0.218,
+     "place_roi": 0.72,
+     "wins": 2978,
+     "win_roi": 0.735,
+     "model": 0.219,
+     "market": 0.219
+    }
+   }
+  },
+  "features+odds": {
+   "edge>=1.1": {
+    "2024": {
+     "n": 4888,
+     "place_hits": 554,
+     "place_rate": 0.113,
+     "place_roi": 0.775,
+     "wins": 118,
+     "win_roi": 0.922,
+     "model": 0.106,
+     "market": 0.092
+    },
+    "2025": {
+     "n": 8234,
+     "place_hits": 1218,
+     "place_rate": 0.148,
+     "place_roi": 0.75,
+     "wins": 322,
+     "win_roi": 0.702,
+     "model": 0.143,
+     "market": 0.124
+    },
+    "2026": {
+     "n": 8420,
+     "place_hits": 1396,
+     "place_rate": 0.166,
+     "place_roi": 0.792,
+     "wins": 417,
+     "win_roi": 0.773,
+     "model": 0.165,
+     "market": 0.142
+    }
+   },
+   "edge>=1.1 & 6番人気以下": {
+    "2024": {
+     "n": 4415,
+     "place_hits": 402,
+     "place_rate": 0.091,
+     "place_roi": 0.776,
+     "wins": 84,
+     "win_roi": 0.933,
+     "model": 0.085,
+     "market": 0.074
+    },
+    "2025": {
+     "n": 7022,
+     "place_hits": 691,
+     "place_rate": 0.098,
+     "place_roi": 0.728,
+     "wins": 128,
+     "win_roi": 0.687,
+     "model": 0.1,
+     "market": 0.084
+    },
+    "2026": {
+     "n": 7050,
+     "place_hits": 733,
+     "place_rate": 0.104,
+     "place_roi": 0.768,
+     "wins": 143,
+     "win_roi": 0.759,
+     "model": 0.109,
+     "market": 0.092
+    }
+   },
+   "edge>=1.2": {
+    "2024": {
+     "n": 773,
+     "place_hits": 70,
+     "place_rate": 0.091,
+     "place_roi": 0.925,
+     "wins": 17,
+     "win_roi": 1.269,
+     "model": 0.069,
+     "market": 0.055
+    },
+    "2025": {
+     "n": 2618,
+     "place_hits": 248,
+     "place_rate": 0.095,
+     "place_roi": 0.729,
+     "wins": 36,
+     "win_roi": 0.677,
+     "model": 0.091,
+     "market": 0.072
+    },
+    "2026": {
+     "n": 2975,
+     "place_hits": 319,
+     "place_rate": 0.107,
+     "place_roi": 0.75,
+     "wins": 50,
+     "win_roi": 0.669,
+     "model": 0.107,
+     "market": 0.085
+    }
+   },
+   "edge>=1.2 & 6番人気以下": {
+    "2024": {
+     "n": 756,
+     "place_hits": 63,
+     "place_rate": 0.083,
+     "place_roi": 0.92,
+     "wins": 14,
+     "win_roi": 1.227,
+     "model": 0.065,
+     "market": 0.052
+    },
+    "2025": {
+     "n": 2502,
+     "place_hits": 212,
+     "place_rate": 0.085,
+     "place_roi": 0.726,
+     "wins": 35,
+     "win_roi": 0.702,
+     "model": 0.085,
+     "market": 0.067
+    },
+    "2026": {
+     "n": 2814,
+     "place_hits": 275,
+     "place_rate": 0.098,
+     "place_roi": 0.746,
+     "wins": 46,
+     "win_roi": 0.685,
+     "model": 0.099,
+     "market": 0.078
+    }
+   },
+   "edge>=1.3": {
+    "2024": {
+     "n": 67,
+     "place_hits": 4,
+     "place_rate": 0.06,
+     "place_roi": 0.561,
+     "wins": 1,
+     "win_roi": 0.758,
+     "model": 0.051,
+     "market": 0.039
+    },
+    "2025": {
+     "n": 821,
+     "place_hits": 73,
+     "place_rate": 0.089,
+     "place_roi": 0.763,
+     "wins": 7,
+     "win_roi": 0.521,
+     "model": 0.076,
+     "market": 0.056
+    },
+    "2026": {
+     "n": 822,
+     "place_hits": 71,
+     "place_rate": 0.086,
+     "place_roi": 0.749,
+     "wins": 8,
+     "win_roi": 0.667,
+     "model": 0.086,
+     "market": 0.063
+    }
+   },
+   "edge>=1.3 & 6番人気以下": {
+    "2024": {
+     "n": 66,
+     "place_hits": 4,
+     "place_rate": 0.061,
+     "place_roi": 0.57,
+     "wins": 1,
+     "win_roi": 0.77,
+     "model": 0.05,
+     "market": 0.038
+    },
+    "2025": {
+     "n": 808,
+     "place_hits": 69,
+     "place_rate": 0.085,
+     "place_roi": 0.766,
+     "wins": 7,
+     "win_roi": 0.529,
+     "model": 0.074,
+     "market": 0.055
+    },
+    "2026": {
+     "n": 803,
+     "place_hits": 63,
+     "place_rate": 0.078,
+     "place_roi": 0.744,
+     "wins": 8,
+     "win_roi": 0.683,
+     "model": 0.084,
+     "market": 0.062
+    }
+   },
+   "edge>=1.5": {
+    "2024": {
+     "n": 2,
+     "place_hits": 0,
+     "place_rate": 0.0,
+     "place_roi": 0.0,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.029,
+     "market": 0.019
+    },
+    "2025": {
+     "n": 37,
+     "place_hits": 2,
+     "place_rate": 0.054,
+     "place_roi": 0.284,
+     "wins": 1,
+     "win_roi": 1.086,
+     "model": 0.074,
+     "market": 0.048
+    },
+    "2026": {
+     "n": 10,
+     "place_hits": 0,
+     "place_rate": 0.0,
+     "place_roi": 0.0,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.088,
+     "market": 0.056
+    }
+   },
+   "edge>=1.5 & 6番人気以下": {
+    "2024": {
+     "n": 2,
+     "place_hits": 0,
+     "place_rate": 0.0,
+     "place_roi": 0.0,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.029,
+     "market": 0.019
+    },
+    "2025": {
+     "n": 37,
+     "place_hits": 2,
+     "place_rate": 0.054,
+     "place_roi": 0.284,
+     "wins": 1,
+     "win_roi": 1.086,
+     "model": 0.074,
+     "market": 0.048
+    },
+    "2026": {
+     "n": 9,
+     "place_hits": 0,
+     "place_rate": 0.0,
+     "place_roi": 0.0,
+     "wins": 0,
+     "win_roi": 0.0,
+     "model": 0.075,
+     "market": 0.047
+    }
+   },
+   "edge>=2.0": {
+    "2024": {
+     "n": 0
+    },
+    "2025": {
+     "n": 0
+    },
+    "2026": {
+     "n": 0
+    }
+   },
+   "edge>=2.0 & 6番人気以下": {
+    "2024": {
+     "n": 0
+    },
+    "2025": {
+     "n": 0
+    },
+    "2026": {
+     "n": 0
+    }
+   },
+   "全馬": {
+    "2024": {
+     "n": 45739,
+     "place_hits": 10029,
+     "place_rate": 0.219,
+     "place_roi": 0.73,
+     "wins": 3346,
+     "win_roi": 0.704,
+     "model": 0.218,
+     "market": 0.218
+    },
+    "2025": {
+     "n": 46512,
+     "place_hits": 10066,
+     "place_rate": 0.216,
+     "place_roi": 0.708,
+     "wins": 3357,
+     "win_roi": 0.715,
+     "model": 0.217,
+     "market": 0.216
+    },
+    "2026": {
+     "n": 40959,
+     "place_hits": 8939,
+     "place_rate": 0.218,
+     "place_roi": 0.72,
+     "wins": 2978,
+     "win_roi": 0.735,
+     "model": 0.219,
+     "market": 0.219
+    }
+   }
+  }
+ }
+}
