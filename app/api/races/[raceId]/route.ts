@@ -471,7 +471,7 @@ type PerformanceStats = {
   positionStarts: number; positionGainTotal: number;
   positionForwardStarts: number; positionForwardTop3: number;
   goingUsed: string | null;
-  top2: number;
+  top2: number; gradedTop2: number; gradedTop3: number;
   sameVenueWins: number; sameVenueTop2: number; sameVenueSurfaceWins: number; sameVenueSurfaceTop2: number;
   similarDistanceWins: number; similarDistanceTop2: number; sameGoingWins: number; sameGoingTop2: number;
 };
@@ -542,7 +542,7 @@ function summarizePerformances(
     sameVenueSurfaceStarts: 0, sameVenueSurfaceTop3: 0,
     similarDistanceStarts: 0, similarDistanceTop3: 0, sameGoingStarts: 0, sameGoingTop3: 0,
     positionStarts: 0, positionGainTotal: 0, positionForwardStarts: 0, positionForwardTop3: 0,
-    goingUsed: conditions.going, top2: 0,
+    goingUsed: conditions.going, top2: 0, gradedTop2: 0, gradedTop3: 0,
     sameVenueWins: 0, sameVenueTop2: 0, sameVenueSurfaceWins: 0, sameVenueSurfaceTop2: 0,
     similarDistanceWins: 0, similarDistanceTop2: 0, sameGoingWins: 0, sameGoingTop2: 0,
   };
@@ -570,6 +570,8 @@ function summarizePerformances(
     if (/\((?:J・)?G(?:I{1,3}|[1-3])\)|G[1-3]|Ｇ[１２３]|GⅠ|GⅡ|GⅢ|重賞/.test(raceTitle)) {
       stats.gradedStarts++;
       if (finish === 1) stats.gradedWins++;
+      if (finish !== null && finish <= 2) stats.gradedTop2++;
+      if (finish !== null && finish <= 3) stats.gradedTop3++;
     }
     const venueText = findValue([/^開催$/]);
     const pastVenue = venueNames.find((name) => venueText.includes(name));

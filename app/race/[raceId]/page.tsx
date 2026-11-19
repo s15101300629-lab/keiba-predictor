@@ -24,7 +24,7 @@ type PerformanceStats = {
   positionStarts: number; positionGainTotal: number;
   positionForwardStarts: number; positionForwardTop3: number;
   goingUsed?: string | null;
-  top2?: number;
+  top2?: number; gradedTop2?: number; gradedTop3?: number;
   sameVenueSurfaceWins?: number; sameVenueSurfaceTop2?: number;
   similarDistanceWins?: number; similarDistanceTop2?: number; sameGoingWins?: number; sameGoingTop2?: number;
 };
@@ -174,7 +174,7 @@ function recordText(starts: number, top3: number, wins?: number, top2?: number) 
 function buildFactorScores(horses: Horse[]): Map<string, FactorScore[]> {
   const factors = [
     { label: "全体成績", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.parsedStarts ?? 0, rate: s?.parsedStarts ? s.top3 / s.parsedStarts : 0 }; } },
-    { label: "重賞実績", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.gradedStarts ?? 0, rate: s?.gradedStarts ? s.gradedWins / s.gradedStarts : 0 }; } },
+    { label: "重賞実績", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.gradedStarts ?? 0, rate: s?.gradedStarts ? (s.gradedTop3 ?? s.gradedWins) / s.gradedStarts : 0 }; } },
     { label: "競馬場・馬場適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.sameVenueSurfaceStarts ?? 0, rate: s?.sameVenueSurfaceStarts ? s.sameVenueSurfaceTop3 / s.sameVenueSurfaceStarts : 0 }; } },
     { label: "距離適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.similarDistanceStarts ?? 0, rate: s?.similarDistanceStarts ? s.similarDistanceTop3 / s.similarDistanceStarts : 0 }; } },
     { label: "馬場適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.sameGoingStarts ?? 0, rate: s?.sameGoingStarts ? s.sameGoingTop3 / s.sameGoingStarts : 0 }; } },
@@ -284,8 +284,10 @@ function buildCategoryRanks(
     return `全過去走 ${recordText(value.starts, st?.top3 ?? 0, st?.wins, st?.top2)}`;
   });
   assignFactorRank("種牡馬", "種牡馬", () => "");
-  assignFactorRank("重賞実績", "重賞実績", (value) =>
-    `重賞 ${value.starts}走・勝率 ${Math.round(value.rate * 100)}%`);
+  assignFactorRank("重賞実績", "重賞実績", (value, horseId) => {
+    const st = statsOf(horseId);
+    return `重賞 ${recordText(value.starts, st?.gradedTop3 ?? 0, st?.gradedWins, st?.gradedTop2)}`;
+  });
   assignFactorRank("騎手(今年)", "騎手", () => "");
   assignFactorRank("調子", "調子", () => "");
   assignFactorRank("血統適性", "血統", () => "");
