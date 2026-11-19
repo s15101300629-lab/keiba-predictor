@@ -104,9 +104,9 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
   - logloss は4年とも悪化（平均 0.43072 → 0.43087〜0.43095）。重賞に出る馬の強さは、1着賞金の比（クラスの上下）・近走の着順やタイム指数で、すでに取り込めていると見ている
   - 画面の「重賞実績」は表示用として、勝率・連対率・3着内率を出し、点数は3着内率で付ける
 
-- LightGBM Ranker（lambdarank。1着=3・2着=2・3着=1・他=0）と Classifier（3着以内）の比較（`compare_ranker.py`、`data/ml/ranker_comparison.json`）：不採用
+- LightGBM Ranker（lambdarank。1着=3・2着=2・3着=1・他=0）と Classifier（3着以内）の比較（`compare_ranker.py`、`data/ml/ranker_comparison.json`）：差はほぼない。採用するかは依頼者と相談中
   - 1年ずつ外した平均：上位3頭の3着内率 Classifier 49.28% / Ranker 49.12% / 順位の平均 49.32%。1位の馬の勝率 28.46% / 28.54% / 28.50%、単勝回収率 75.6% / 76.1% / 75.7%、複勝回収率 82.7% / 82.3% / 82.5%
-  - 差はどれも ±0.2pt 前後で、年によって勝ち負けが入れ替わる。Classifier のままにした
+  - 差はどれも ±0.2pt 前後で、年によって勝ち負けが入れ替わる。今は Classifier のまま
 
 ## 稍重の扱い（検証済み）
 
