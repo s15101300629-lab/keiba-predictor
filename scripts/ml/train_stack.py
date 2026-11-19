@@ -43,47 +43,69 @@ def top3_hit(race_ids, labels, scores) -> float:
     return hits / total
 
 
-HEAVY_BETA = 1.0  # 採用値: オッズ × 血統の道悪倍率^β（β=1 = 血統の倍率どおり）
+HEAVY_BETA_DEFAULT = 1.0  # 基準: オッズ × 血統の道悪倍率（倍率どおり）
+HEAVY_BETA_MAX = 3.0
 
 
-def heavy_adjustment(data, base, context) -> dict:
-    """道悪未経験の馬が重・不良を走るときの補正の検証.
+def heavy_adjustment(data, base, context, ratios) -> dict:
+    """道悪（稍重・重・不良）で、重・不良の経験がない馬の補正 logit(p) + β·log(血統の道悪倍率) を検証して β を決める.
 
-    対象: 重・不良の重賞で、その芝ダで重・不良の経験がない馬。
-    補正: logit(p) + β·log(血統の道悪倍率)。β=1 を基準に、最尤推定値と年ごとの対数損失を記録する。
+    β は「ある年を外して推定 → 外した年で評価」で、β=1 と補正なしの両方に勝ったときだけ推定値を使う。
+    勝てなければ β=1、β=1 も補正なしに負けるなら 0（補正しない）。
     """
     rows = []
     for r in data:
         k = (r["race_id"], int(r["umaban"]))
         going, heavy_n = context[k]
-        if going is None or going < 2 or heavy_n != 0 or not r["heavy_fit"]:
+        if going is None or going < 1 or heavy_n != 0 or not ratios.get(k):
             continue
         p = base[k]
-        rows.append((r["date"][:4], math.log(p / (1 - p)), math.log(float(r["heavy_fit"])), int(r["label"]), r["race_id"]))
+        rows.append((r["date"][:4], math.log(p / (1 - p)), math.log(ratios[k]), int(r["label"]), r["race_id"], going))
     if not rows:
-        return {"beta": HEAVY_BETA, "runners": 0}
+        return {"beta": 0.0, "runners": 0}
     yr = np.array([x[0] for x in rows]); z0 = np.array([x[1] for x in rows])
-    x = np.array([x[2] for x in rows]); y = np.array([x[3] for x in rows])
+    x = np.array([x[2] for x in rows]); y = np.array([x[3] for x in rows]); going = np.array([x[5] for x in rows])
 
     def nll(b, idx):
         q = 1 / (1 + np.exp(-(z0[idx] + b * x[idx])))
         return float(-np.sum(y[idx] * np.log(q) + (1 - y[idx]) * np.log(1 - q)))
 
-    b = 0.0
-    for _ in range(50):  # ニュートン法で最尤推定
-        q = 1 / (1 + np.exp(-(z0 + b * x)))
-        h = float(np.sum(q * (1 - q) * x ** 2))
-        b += float(np.sum((y - q) * x)) / h
-    se = 1 / math.sqrt(h)
-    idx_all = np.arange(len(y))
-    per_year = {yy: {"runners": int((yr == yy).sum()), "logloss_none": nll(0, np.where(yr == yy)[0]),
-                     "logloss_adopted": nll(HEAVY_BETA, np.where(yr == yy)[0])} for yy in sorted(set(yr))}
+    def mle(idx):
+        b = 0.0
+        for _ in range(50):  # ニュートン法
+            q = 1 / (1 + np.exp(-(z0[idx] + b * x[idx])))
+            h = float(np.sum(q * (1 - q) * x[idx] ** 2))
+            b += float(np.sum((y[idx] - q) * x[idx])) / h
+        return b, 1 / math.sqrt(h)
+
+    all_idx = np.arange(len(y))
+    b_all, se = mle(all_idx)
+    cv = {"none": 0.0, "beta1": 0.0, "estimated": 0.0}
+    per_year = {}
+    for yy in sorted(set(yr)):
+        te, tr = np.where(yr == yy)[0], np.where(yr != yy)[0]
+        b_tr = min(HEAVY_BETA_MAX, max(0.0, mle(tr)[0]))
+        row = {"runners": int(len(te)), "beta_without_year": b_tr,
+               "logloss_none": nll(0, te), "logloss_beta1": nll(HEAVY_BETA_DEFAULT, te), "logloss_estimated": nll(b_tr, te)}
+        per_year[yy] = row
+        cv["none"] += row["logloss_none"]; cv["beta1"] += row["logloss_beta1"]; cv["estimated"] += row["logloss_estimated"]
+    if cv["estimated"] < cv["beta1"] and cv["estimated"] < cv["none"]:
+        beta, chosen = min(HEAVY_BETA_MAX, max(0.0, b_all)), "estimated"
+    elif cv["beta1"] < cv["none"]:
+        beta, chosen = HEAVY_BETA_DEFAULT, "beta1"
+    else:
+        beta, chosen = 0.0, "none"
+    by_going = {}
+    for code, name in ((1, "稍重"), (2, "重"), (3, "不良")):
+        idx = np.where(going == code)[0]
+        if len(idx):
+            by_going[name] = {"runners": int(len(idx)), "logloss_none": nll(0, idx), "logloss_adopted": nll(beta, idx)}
     return {
-        "beta": HEAVY_BETA, "races": len({x[4] for x in rows}), "runners": len(rows),
-        "mle_beta": b, "mle_ci95": [b - 1.96 * se, b + 1.96 * se],
-        "logloss_none": nll(0, idx_all), "logloss_adopted": nll(HEAVY_BETA, idx_all),
-        "years_improved": sum(1 for v in per_year.values() if v["logloss_adopted"] < v["logloss_none"]),
-        "per_year": per_year,
+        "beta": beta, "chosen": chosen, "goings": ["稍重", "重", "不良"],
+        "races": len({x[4] for x in rows}), "runners": len(rows),
+        "mle_beta": b_all, "mle_ci95": [b_all - 1.96 * se, b_all + 1.96 * se],
+        "cv_logloss": cv, "years_improved": sum(1 for v in per_year.values() if v["logloss_estimated" if chosen == "estimated" else "logloss_beta1"] < v["logloss_none"]),
+        "per_year": per_year, "by_going": by_going,
     }
 
 
@@ -140,7 +162,8 @@ def main() -> None:
     result["coefficients"] = dict(zip(STACK_FEATURES, (round(float(c), 4) for c in lr.coef_[0])))
     print(json.dumps(result, ensure_ascii=False, indent=1), file=sys.stderr)
 
-    heavy = heavy_adjustment(data, base, context)
+    ratios = {(r["race_id"], int(r["umaban"])): float(r["heavy_ratio"]) for r in data if r.get("heavy_ratio")}
+    heavy = heavy_adjustment(data, base, context, ratios)
     print(json.dumps(heavy, ensure_ascii=False, indent=1), file=sys.stderr)
     (OUT / "heavy_adjustment.json").write_text(json.dumps(heavy, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 

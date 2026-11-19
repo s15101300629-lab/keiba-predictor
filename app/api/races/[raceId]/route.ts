@@ -657,7 +657,10 @@ async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: b
 
 // 学習済みモデルと特徴量用データ（scripts/ml/train.py が data/ml に書き出す）
 type StackAsset = StackModel & { adopted: boolean; validation?: Record<string, unknown> };
-type HeavyAdjustment = { beta: number; runners: number; mle_beta?: number; years_improved?: number; per_year?: Record<string, unknown> };
+type HeavyAdjustment = {
+  beta: number; runners: number; goings?: string[]; chosen?: string; mle_beta?: number; years_improved?: number;
+  per_year?: Record<string, unknown>;
+};
 let mlAssets: Promise<{
   model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
 } | null> | null = null;
@@ -1001,7 +1004,8 @@ export async function GET(
         const inexperienced = rows[i].features.heavy_n === 0 && heavyRunsInHistory(performances, surfaceName, raceConditions.date) === 0;
         if (!inexperienced || apt?.heavyRatio == null) return null;
         const label = apt.heavyLabel;
-        const applies = isHeavy && !useStack && beta !== 0;
+        // 対象の馬場: heavy_adjustment.json の goings（稍重・重・不良）
+        const applies = !!raceConditions.going && (ml.heavy?.goings ?? ["重", "不良"]).includes(raceConditions.going) && !useStack && beta !== 0;
         const before = stacked[i];
         const after = applies
           ? 1 / (1 + Math.exp(-(Math.log(before / (1 - before)) + beta * Math.log(apt.heavyRatio))))
@@ -1029,7 +1033,10 @@ export async function GET(
       mlSummary = {
         status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource,
         pedigreeIncluded: useStack, stackValidation: ml.stack?.validation ?? null,
-        heavyAdjustment: ml.heavy ? { beta: ml.heavy.beta, runners: ml.heavy.runners, yearsImproved: ml.heavy.years_improved ?? null } : null,
+        heavyAdjustment: ml.heavy ? {
+          beta: ml.heavy.beta, chosen: ml.heavy.chosen ?? null, goings: ml.heavy.goings ?? null,
+          runners: ml.heavy.runners, yearsImproved: ml.heavy.years_improved ?? null,
+        } : null,
         prize1stMan: raceInput.prize1stMan, metrics: {
           auc: ml.metrics.auc, raceTop3Hit: ml.metrics.race_top3_hit, testYear: ml.metrics.test_year,
         },
