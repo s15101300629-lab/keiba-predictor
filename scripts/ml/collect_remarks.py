@@ -54,15 +54,15 @@ def main() -> None:
     done = {json.loads(line)["race_id"] for line in out.open(encoding="utf-8")} if out.exists() else set()
     todo = [r for r in races if r not in done]
     print(f"{year}: {len(races)} races, done {len(done)}, todo {len(todo)}", file=sys.stderr, flush=True)
-    session = requests.Session()
-    session.headers["User-Agent"] = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"
+    headers = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", "Connection": "close"}
     failures = 0
     with out.open("a", encoding="utf-8") as f:
         for i, race_id in enumerate(todo, 1):
             res = None
             for attempt in range(4):
                 try:
-                    res = session.get(URL.format(race_id), timeout=20)
+                    # 同じ接続・Cookie を使い続けると netkeiba が 400 を返すことがあるため、毎回新しく接続する
+                    res = requests.get(URL.format(race_id), headers=headers, timeout=20)
                     res.encoding = "utf-8"
                     if res.ok:
                         break
