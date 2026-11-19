@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
-import { addFieldFeatures, addFormDeviation, expectedPace, jockeyStats, runningStyle, resolveJockey, runnerFeatures, type Store } from "@/app/lib/ml/features";
+import { addFieldFeatures, addFormDeviation, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, type Store } from "@/app/lib/ml/features";
 import { predictProbability, type Model } from "@/app/lib/ml/model";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, stackFeatures, stackProbability, stallionRecord,
@@ -982,14 +982,15 @@ export async function GET(
         const entry = entryByHorseId.get(horse.horseId) ?? null;
         const sexAge = entry?.sexAge?.match(/^([牡牝セ])(\d+)$/);
         const jockeyKey = resolveJockey(entry?.jockey, ml.store, raceInput.date);
+        const trainerKey = resolveTrainer(entry?.trainer, ml.store, raceInput.date, horse.name);
         const features = runnerFeatures(ml.store, raceInput, {
-          horse: horse.name, jockeyKey,
+          horse: horse.name, jockeyKey, trainerKey,
           waku: entry?.frameNumber ?? null, umaban: entry?.horseNumber ?? null,
           weight: entry?.carriedWeight ?? null,
           age: sexAge ? Number(sexAge[2]) : null, sex: sexAge?.[1] ?? null,
           bodyWeight: entry?.bodyWeight ?? null, bodyWeightDiff: entry?.bodyWeightChange ?? null,
         });
-        return { jockeyKey, features };
+        return { jockeyKey, trainerKey, features };
       });
       addFormDeviation(rows.map((row) => row.features));
       addFieldFeatures(rows.map((row) => row.features));
@@ -1034,6 +1035,13 @@ export async function GET(
             relPosRank: num(f.rel_pos_rank),
           },
           jockey: jockeyStats(ml.store, raceInput, rows[i].jockeyKey),
+          trainerName: rows[i].trainerKey,
+          trainer: trainerStats(ml.store, raceInput, rows[i].trainerKey),
+          extras: {
+            prizeRatioLast: num(f.prize_ratio_last), distChange: num(f.dist_change), surfaceChange: num(f.surface_change),
+            weightChange: num(f.weight_change), jockeyChange: num(f.jockey_change),
+            tidxMean5: num(f.tidx_mean5), tidxBest5: num(f.tidx_best5), wakuCourseN: f.waku_course_n, wakuCourseDiff: num(f.waku_course_diff),
+          },
         };
       });
       const f0 = rows[0]?.features;

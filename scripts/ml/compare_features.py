@@ -16,7 +16,7 @@ import numpy as np
 from sklearn.metrics import log_loss, roc_auc_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from features import FEATURES, build_dataset  # noqa: E402
+from features import EXTRA_FEATURES, EXTRA_GROUPS, FEATURES, build_dataset  # noqa: E402
 from train import DATA, OUT, PARAMS, TRAIN_FROM, race_top3_hit  # noqa: E402
 
 PACE = ["pos_first_mean", "pos_last_mean", "nige_rate", "senko_rate", "hp_n", "hp_top3", "sp_n", "sp_top3",
@@ -30,6 +30,8 @@ SETS_BY_NAME = {
         "heavy_and_wet": [*FEATURES, "heavy_n", "heavy_top3"],
     },
 }
+_BASE = [f for f in FEATURES if f not in EXTRA_FEATURES]
+SETS_BY_NAME["extra"] = {"base": _BASE, **{f"+{g}": _BASE + fs for g, fs in EXTRA_GROUPS.items()}, "+all": FEATURES}
 SETS = SETS_BY_NAME[sys.argv[1] if len(sys.argv) > 1 else "pace"]
 OUTPUT = f"feature_comparison{'' if len(sys.argv) < 2 or sys.argv[1] == 'pace' else '_' + sys.argv[1]}.json"
 

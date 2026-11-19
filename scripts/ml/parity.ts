@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { addFieldFeatures, addFormDeviation, normJockey, runnerFeatures, type Store } from "../../app/lib/ml/features.ts";
 import { predictProbability, type Model } from "../../app/lib/ml/model.ts";
 
-type Row = { race_id: string; date: string; horse: string; jockey: string | null; features: Record<string, number | null>; pred: number };
+type Row = { race_id: string; date: string; horse: string; jockey: string | null; trainer: string | null; features: Record<string, number | null>; pred: number };
 const root = new URL("../../data/ml/", import.meta.url);
 const store = JSON.parse(readFileSync(new URL("store.json", root), "utf8")) as Store;
 const model = JSON.parse(readFileSync(new URL("model.json", root), "utf8")) as Model;
@@ -23,7 +23,7 @@ for (const raceRows of byRace.values()) {
     going: num(f0.going), fieldSize: f0.field_size!, prize1stMan: num(f0.prize_1st),
   };
   const computed = raceRows.map((row) => runnerFeatures(store, race, {
-    horse: row.horse, jockeyKey: normJockey(row.jockey) || null,
+    horse: row.horse, jockeyKey: normJockey(row.jockey) || null, trainerKey: normJockey(row.trainer) || null,
     waku: num(row.features.waku), umaban: num(row.features.umaban), weight: num(row.features.weight),
     age: num(row.features.age), sex: row.features.sex === null ? null : ["牡", "牝", "セ"][row.features.sex],
     bodyWeight: num(row.features.body_weight), bodyWeightDiff: num(row.features.body_weight_diff),

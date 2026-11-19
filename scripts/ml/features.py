@@ -15,6 +15,16 @@ from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
+# 追加候補の5グループ
+EXTRA_GROUPS = {
+    "class": ["prize_ratio_last", "prize_ratio_mean5"],
+    "trainer": ["trainer_n", "trainer_top3", "trainer_venue_n", "trainer_venue_top3"],
+    "change": ["dist_change", "surface_change", "weight_change", "jockey_change"],
+    "time_index": ["tidx_mean5", "tidx_best5", "tidx_last1"],
+    "waku_bias": ["waku_course_n", "waku_course_diff"],
+}
+EXTRA_FEATURES = [f for g in EXTRA_GROUPS.values() for f in g]
+
 FEATURES = [
     # レース条件
     "surface", "distance", "going", "field_size", "venue", "prize_1st",
@@ -33,6 +43,8 @@ FEATURES = [
     "pos_first_mean", "pos_last_mean", "nige_rate", "senko_rate",
     "hp_n", "hp_top3", "sp_n", "sp_top3",
     "field_nige_cands", "field_front", "field_front_ratio", "rel_pos_rank",
+    # 追加候補（compare_features.py extra で比較し、採用分を残す）
+    *EXTRA_FEATURES,
 ]
 
 NIGE_CAND_RATE = 0.4  # 近5走で最初のコーナー1番手が4割以上 → 逃げ候補
@@ -146,6 +158,24 @@ def load_races(data_root: Path) -> list[dict]:
     for g, vals in groups.items():
         vals.sort()
         cuts[g] = (vals[len(vals) // 3], vals[2 * len(vals) // 3])
+    # タイム指数: 同じ 競馬場・芝ダ・距離・馬場 の勝ちタイムの中央値（10レース未満なら馬場を問わない）との差を
+    # 1000m あたりの秒に直す。大きいほど速い。基準は全期間の勝ちタイムから作る（着順ラベルは使わない）
+    win_times: dict[tuple, list[float]] = defaultdict(list)
+    for r in races:
+        wt = min((h["time_sec"] for h in r["runners"] if h["finish"] == 1 and h.get("time_sec")), default=None)
+        if wt is not None and r["distance"]:
+            win_times[(r["venue"], r["surface"], r["distance"], r["going"])].append(wt)
+            win_times[(r["venue"], r["surface"], r["distance"], None)].append(wt)
+    def median(xs):
+        xs = sorted(xs)
+        n = len(xs)
+        return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+    standard = {k: median(v) for k, v in win_times.items() if len(v) >= 10}
+    for r in races:
+        std = standard.get((r["venue"], r["surface"], r["distance"], r["going"])) or standard.get((r["venue"], r["surface"], r["distance"], None))
+        for h in r["runners"]:
+            t = h.get("time_sec") if h["finish"] is not None else None
+            h["tidx"] = None if std is None or not t or not r["distance"] else round((std - t) / r["distance"] * 1000, 4)
     for r in races:
         c = cuts.get(pace_group(r["surface"], r["distance"]))
         r["pace"] = None if r["pace_index"] is None or c is None else (0 if r["pace_index"] < c[0] else 2 if r["pace_index"] > c[1] else 1)
@@ -158,6 +188,10 @@ class History:
     def __init__(self):
         self.horses: dict[str, list[dict]] = defaultdict(list)
         self.jockeys: dict[str, list[dict]] = defaultdict(list)
+        self.trainers: dict[str, list[dict]] = defaultdict(list)
+        # (競馬場, 芝ダ, 距離) -> 枠番 -> [出走数, 3着以内数]
+        self.course_waku: dict[tuple, dict[int, list[int]]] = defaultdict(lambda: defaultdict(lambda: [0, 0]))
+        self.course_waku_events: dict[tuple, list[tuple]] = defaultdict(list)  # アプリ用 store の元
 
     def add_race(self, race: dict) -> None:
         for h in race["runners"]:
@@ -167,7 +201,20 @@ class History:
                 "finish": h["finish"], "time_diff": h["time_diff"], "pace": race["pace"],
                 "pos_first": next((x for x in (h.get("corner_positions") or []) if x), None),
                 "pos_last": next((x for x in reversed(h.get("corner_positions") or []) if x), None),
+                "prize": None if race["prize_1st"] is None else race["prize_1st"] / 10000,
+                "weight": h.get("weight"), "jockey": norm_jockey(h.get("jockey")), "tidx": h.get("tidx"),
+                "trainer": norm_jockey(h.get("trainer")),
             }
+            top3 = 1 if h["finish"] is not None and h["finish"] <= 3 else 0
+            tr = norm_jockey(h.get("trainer"))  # 表記ゆれ吸収は騎手と同じ
+            if tr:
+                self.trainers[tr].append({"date": race["date"], "venue": race["venue"], "top3": top3})
+            if h.get("waku"):
+                key = (race["venue"], race["surface"], race["distance"])
+                cw = self.course_waku[key][h["waku"]]
+                cw[0] += 1
+                cw[1] += top3
+                self.course_waku_events[key].append((race["date"], h["waku"], top3))
             self.horses[h["horse"]].append(run)
             jk = norm_jockey(h.get("jockey"))
             if jk:
@@ -210,6 +257,25 @@ def horse_features(runs: list[dict], race: dict) -> dict:
     agg("hp", lambda r: r["pace"] == 2)
     agg("sp", lambda r: r["pace"] == 0)
 
+    # クラスの上下（今回の1着賞金 ÷ 前走 / 近5走平均）
+    today_prize = None if race["prize_1st"] is None else race["prize_1st"] / 10000
+    prizes = [r["prize"] for r in runs[-FORM_RUNS:] if r["prize"]]
+    last_prize = runs[-1]["prize"] if runs else None
+    f["prize_ratio_last"] = today_prize / last_prize if today_prize and last_prize else NAN
+    f["prize_ratio_mean5"] = today_prize / (sum(prizes) / len(prizes)) if today_prize and prizes else NAN
+    # 前走からの変化（騎手の乗り替わりは runner_features で計算）
+    if runs:
+        last = runs[-1]
+        f["dist_change"] = d - last["distance"] if d is not None and last["distance"] is not None else NAN
+        f["surface_change"] = 1.0 if last["surface"] != s else 0.0
+    else:
+        f["dist_change"] = f["surface_change"] = NAN
+    # タイム指数（近5走）
+    tx = [r["tidx"] for r in runs[-FORM_RUNS:] if r["tidx"] is not None]
+    f["tidx_mean5"] = sum(tx) / len(tx) if tx else NAN
+    f["tidx_best5"] = max(tx) if tx else NAN
+    f["tidx_last1"] = runs[-1]["tidx"] if runs and runs[-1]["tidx"] is not None else NAN
+
     # 脚質・位置取り（近5走のうち通過順位がある走）
     pos = [r for r in runs[-FORM_RUNS:] if r["pos_first"] and r["pos_last"] and r["field"]]
     if pos:
@@ -240,7 +306,29 @@ def jockey_features(rides: list[dict], race: dict) -> dict:
     return f
 
 
-def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rides: list[dict]) -> dict:
+def trainer_features(entries: list[dict], race: dict) -> dict:
+    """entries は対象レースより前の出走。今年（同じ暦年）だけを集計する."""
+    year = race["date"][:4]
+    this_year = [r for r in entries if r["date"][:4] == year]
+    venue = [r for r in this_year if r["venue"] == race["venue"]]
+    return {
+        "trainer_n": len(this_year), "trainer_top3": rate(sum(r["top3"] for r in this_year), len(this_year)),
+        "trainer_venue_n": len(venue), "trainer_venue_top3": rate(sum(r["top3"] for r in venue), len(venue)),
+    }
+
+
+def waku_features(course: dict, waku) -> dict:
+    """course: 枠番 -> [出走数, 3着以内数]（対象レースより前）。今回の枠の3着内率 − コース全体の3着内率."""
+    if not waku or not course:
+        return {"waku_course_n": 0 if not course else course.get(waku, [0, 0])[0], "waku_course_diff": NAN}
+    n, t = course.get(waku, [0, 0])
+    total_n = sum(v[0] for v in course.values())
+    total_t = sum(v[1] for v in course.values())
+    return {"waku_course_n": n, "waku_course_diff": t / n - total_t / total_n if n and total_n else NAN}
+
+
+def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rides: list[dict],
+                    trainer_entries: list[dict] = (), course: dict | None = None) -> dict:
     f = {
         "surface": race["surface"], "distance": race["distance"],
         "going": NAN if race["going"] is None else race["going"],
@@ -255,6 +343,12 @@ def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rid
     f["umaban_ratio"] = f["umaban"] / race["field_size"] if not math.isnan(f["umaban"]) else NAN
     f.update(horse_features(horse_runs, race))
     f.update(jockey_features(jockey_rides, race))
+    f.update(trainer_features(list(trainer_entries), race))
+    f.update(waku_features(course or {}, runner.get("waku")))
+    w, jk = runner.get("weight"), norm_jockey(runner.get("jockey"))
+    last = horse_runs[-1] if horse_runs else None
+    f["weight_change"] = w - last["weight"] if last and w and last["weight"] else NAN
+    f["jockey_change"] = (0.0 if jk == last["jockey"] else 1.0) if last and jk and last["jockey"] else NAN
     return f
 
 
@@ -300,10 +394,12 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
         for race in same_day:
             race_rows = []
             for h in race["runners"]:
-                f = runner_features(race, h, hist.horses.get(h["horse"], []), hist.jockeys.get(norm_jockey(h.get("jockey")), []))
+                course = hist.course_waku.get((race["venue"], race["surface"], race["distance"]))
+                f = runner_features(race, h, hist.horses.get(h["horse"], []), hist.jockeys.get(norm_jockey(h.get("jockey")), []),
+                                    hist.trainers.get(norm_jockey(h.get("trainer")), []), {k: list(v) for k, v in course.items()} if course else None)
                 f.update({
                     "race_id": race["race_id"], "date": race["date"], "horse": h["horse"],
-                    "finish": h["finish"], "popularity": h.get("popularity"), "jockey": h.get("jockey"), "label": 1 if h["finish"] is not None and h["finish"] <= 3 else 0,
+                    "finish": h["finish"], "popularity": h.get("popularity"), "jockey": h.get("jockey"), "trainer": h.get("trainer"), "label": 1 if h["finish"] is not None and h["finish"] <= 3 else 0,
                 })
                 race_rows.append(f)
             add_form_deviation(race_rows)

@@ -103,7 +103,8 @@ def build_store(hist, last_date: str) -> dict:
                              -1 if r["finish"] is None else r["finish"],
                              -1 if r["time_diff"] is None else r["time_diff"],
                              -1 if r["pace"] is None else r["pace"],
-                             r["pos_first"] or -1, r["pos_last"] or -1] for r in runs]
+                             r["pos_first"] or -1, r["pos_last"] or -1,
+                             r["prize"], r["weight"], r["jockey"], r["trainer"], r["tidx"]] for r in runs]
     year_start = last_date[:4] + "-01-01"
     prev_year_start = str(int(last_date[:4]) - 1) + "-01-01"
     jockeys = {}
@@ -112,8 +113,22 @@ def build_store(hist, last_date: str) -> dict:
         sel = [[r["date"], r["venue"], r["surface"], r["distance"], r["top3"]] for r in rides if r["date"] >= prev_year_start]
         if sel and sel[-1][0] >= prev_year_start:
             jockeys[name] = sel
+    trainers = {name: [[r["date"], r["venue"], r["top3"]] for r in entries if r["date"] >= prev_year_start]
+                for name, entries in hist.trainers.items()}
+    trainers = {k: v for k, v in trainers.items() if v}
+    # コース(競馬場-芝ダ-距離) -> [[日付, 枠番, 出走数, 3着以内数], ...]（日付・枠ごとに集計）
+    course_waku = {}
+    for (venue, surface, distance), events in hist.course_waku_events.items():
+        agg: dict[tuple, list[int]] = {}
+        for d, waku, top3 in events:
+            a = agg.setdefault((d, waku), [0, 0])
+            a[0] += 1
+            a[1] += top3
+        course_waku[f"{venue}-{surface}-{distance}"] = [[d, w, n, t] for (d, w), (n, t) in sorted(agg.items())]
     return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys,
-            "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast"],
+            "trainers": trainers, "courseWaku": course_waku,
+            "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast",
+                          "prize", "weight", "jockey", "trainer", "tidx"],
             "rideFields": ["date", "venue", "surface", "distance", "top3"]}
 
 
@@ -160,7 +175,7 @@ def main() -> None:
     last_races = sorted({r["race_id"] for r in rows if r["date"] == store["lastDate"]})[:3]
     sample = [r for r in rows if r["race_id"] in last_races]
     sample_pred = final.predict(matrix(sample))
-    parity = [{"race_id": r["race_id"], "date": r["date"], "horse": r["horse"], "jockey": r["jockey"],
+    parity = [{"race_id": r["race_id"], "date": r["date"], "horse": r["horse"], "jockey": r["jockey"], "trainer": r["trainer"],
                "features": {f: (None if isinstance(r[f], float) and math.isnan(r[f]) else r[f]) for f in FEATURES},
                "pred": float(p)} for r, p in zip(sample, sample_pred)]
     (OUT / "parity.json").write_text(json.dumps(parity, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

@@ -4,10 +4,16 @@
 export type Store = {
   lastDate: string;
   // [date, venue, surface, distance, going(-1=不明), field, finish(-1=中止), timeDiff(-1=不明),
-  //  pace(0=スロー 1=ミドル 2=ハイ -1=不明), posFirst(最初のコーナーの位置, -1=不明), posLast]
-  horses: Record<string, [string, number, number, number | null, number, number, number, number, number, number, number][]>;
+  //  pace(0=スロー 1=ミドル 2=ハイ -1=不明), posFirst(最初のコーナーの位置, -1=不明), posLast,
+  //  prize(1着賞金・万円), weight(斤量), jockey, trainer, tidx(タイム指数)]
+  horses: Record<string, [string, number, number, number | null, number, number, number, number, number, number, number,
+    number | null, number | null, string, string, number | null][]>;
   // [date, venue, surface, distance, top3]
   jockeys: Record<string, [string, number, number, number | null, number][]>;
+  // [date, venue, top3]
+  trainers?: Record<string, [string, number, number][]>;
+  // "競馬場-芝ダ-距離" -> [[date, 枠番, 出走数, 3着以内数]]
+  courseWaku?: Record<string, [string, number, number, number][]>;
 };
 
 export type RaceInput = {
@@ -23,6 +29,7 @@ export type RaceInput = {
 export type RunnerInput = {
   horse: string;
   jockeyKey: string | null; // normJockey 済みで store.jockeys のキー
+  trainerKey?: string | null; // normJockey 済みで store.trainers のキー
   waku: number | null; umaban: number | null; weight: number | null;
   age: number | null; sex: string | null;
   bodyWeight: number | null; bodyWeightDiff: number | null;
@@ -75,6 +82,7 @@ function horseFeatures(store: Store, race: RaceInput, horse: string): Features {
       going: r[4] < 0 ? null : r[4], field: r[5],
       finish: r[6] < 0 ? null : r[6], timeDiff: r[7] < 0 ? null : r[7],
       pace: r[8] < 0 ? null : r[8], posFirst: r[9] > 0 ? r[9] : null, posLast: r[10] > 0 ? r[10] : null,
+      prize: r[11] ?? null, weight: r[12] ?? null, jockey: r[13] ?? "", trainer: r[14] ?? "", tidx: r[15] ?? null,
     }));
   const f: Features = { n_prior: runs.length };
   if (runs.length) {
@@ -105,6 +113,31 @@ function horseFeatures(store: Store, race: RaceInput, horse: string): Features {
   agg("wet", (r) => r.surface === s && r.going !== null && r.going >= 1); // 稍重以上（モデルの入力）
   agg("hp", (r) => r.pace === 2);
   agg("sp", (r) => r.pace === 0);
+
+  // クラスの上下（今回の1着賞金 ÷ 前走 / 近5走平均）
+  const todayPrize = race.prize1stMan;
+  const prizes = runs.slice(-FORM_RUNS).map((r) => r.prize).filter((p): p is number => !!p);
+  const lastPrize = runs.length ? runs[runs.length - 1].prize : null;
+  f.prize_ratio_last = todayPrize && lastPrize ? todayPrize / lastPrize : NaN;
+  let prizeSum = 0;
+  for (const p of prizes) prizeSum += p;
+  f.prize_ratio_mean5 = todayPrize && prizes.length ? todayPrize / (prizeSum / prizes.length) : NaN;
+  // 前走からの変化（騎手の乗り替わり・斤量は runnerFeatures で計算）
+  if (runs.length) {
+    const last = runs[runs.length - 1];
+    f.dist_change = d !== null && last.distance !== null ? d - last.distance : NaN;
+    f.surface_change = last.surface !== s ? 1 : 0;
+  } else {
+    f.dist_change = NaN;
+    f.surface_change = NaN;
+  }
+  // タイム指数（近5走）
+  const tx = runs.slice(-FORM_RUNS).map((r) => r.tidx).filter((t): t is number => t !== null);
+  let txSum = 0;
+  for (const t of tx) txSum += t;
+  f.tidx_mean5 = tx.length ? txSum / tx.length : NaN;
+  f.tidx_best5 = tx.length ? Math.max(...tx) : NaN;
+  f.tidx_last1 = runs.length && runs[runs.length - 1].tidx !== null ? runs[runs.length - 1].tidx! : NaN;
 
   // 脚質・位置取り（近5走のうち通過順位がある走）
   const pos = runs.slice(-FORM_RUNS).filter((r) => r.posFirst && r.posLast && r.field);
@@ -140,6 +173,50 @@ export function jockeyStats(store: Store, race: RaceInput, jockeyKey: string | n
   return { n, top3, venueN, venueTop3, courseN, courseTop3 };
 }
 
+/** netkeiba の厩舎表記（例: 栗東中村）を成績表の調教師名に対応付ける。同じ苗字の調教師がいるので、まずその馬の前走の調教師と照合する. */
+export function resolveTrainer(name: string | null | undefined, store: Store, raceDate: string, horse: string): string | null {
+  const n = normJockey((name ?? "").replace(/^(美浦|栗東|地方|海外)/, ""));
+  if (!n) return null;
+  const runs = (store.horses[horse] ?? []).filter((r) => r[0] < raceDate);
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const t = runs[i][14];
+    if (t && (t === n || t.startsWith(n))) return t;
+  }
+  const trainers = store.trainers ?? {};
+  if (trainers[n]) return n;
+  const year = raceDate.slice(0, 4);
+  const candidates = Object.keys(trainers).filter((k) => k.startsWith(n))
+    .map((key) => ({ key, n: trainers[key].filter((r) => r[0].slice(0, 4) === year && r[0] < raceDate).length }))
+    .sort((a, b) => b.n - a.n);
+  if (!candidates.length || (candidates.length > 1 && candidates[0].n === candidates[1].n)) return null;
+  return candidates[0].key;
+}
+
+export type TrainerStats = { n: number; top3: number; venueN: number; venueTop3: number };
+
+/** 今年（レースと同じ暦年）のレース日より前の出走を集計. */
+export function trainerStats(store: Store, race: RaceInput, trainerKey: string | null | undefined): TrainerStats {
+  const year = race.date.slice(0, 4);
+  const entries = (trainerKey ? store.trainers?.[trainerKey] ?? [] : []).filter((r) => r[0] < race.date && r[0].slice(0, 4) === year);
+  const venue = entries.filter((r) => r[1] === race.venue);
+  return {
+    n: entries.length, top3: entries.reduce((a, r) => a + r[2], 0),
+    venueN: venue.length, venueTop3: venue.reduce((a, r) => a + r[2], 0),
+  };
+}
+
+/** 同じコースでの今回の枠の成績: 出走数と、3着内率 − コース全体の3着内率. */
+export function wakuCourse(store: Store, race: RaceInput, waku: number | null): { n: number; diff: number } {
+  const entries = (store.courseWaku?.[`${race.venue}-${race.surface}-${race.distance}`] ?? []).filter((e) => e[0] < race.date);
+  if (!waku || !entries.length) return { n: 0, diff: NaN };
+  let n = 0, t = 0, totalN = 0, totalT = 0;
+  for (const e of entries) {
+    totalN += e[2]; totalT += e[3];
+    if (e[1] === waku) { n += e[2]; t += e[3]; }
+  }
+  return { n, diff: n && totalN ? t / n - totalT / totalN : NaN };
+}
+
 export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInput): Features {
   const nz = (v: number | null) => (v === null || v === 0 ? NaN : v); // Python の `x or NAN` と同じ
   const f: Features = {
@@ -156,6 +233,17 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
   };
   f.umaban_ratio = Number.isNaN(f.umaban) ? NaN : f.umaban / race.fieldSize;
   Object.assign(f, horseFeatures(store, race, runner.horse));
+  const tr = trainerStats(store, race, runner.trainerKey);
+  Object.assign(f, {
+    trainer_n: tr.n, trainer_top3: rate(tr.top3, tr.n), trainer_venue_n: tr.venueN, trainer_venue_top3: rate(tr.venueTop3, tr.venueN),
+  });
+  const wc = wakuCourse(store, race, runner.waku);
+  f.waku_course_n = wc.n;
+  f.waku_course_diff = wc.diff;
+  const prior = (store.horses[runner.horse] ?? []).filter((r) => r[0] < race.date);
+  const last = prior.length ? prior[prior.length - 1] : null;
+  f.weight_change = last && runner.weight && last[12] ? runner.weight - last[12] : NaN;
+  f.jockey_change = last && runner.jockeyKey && last[13] ? (runner.jockeyKey === last[13] ? 0 : 1) : NaN;
   const j = jockeyStats(store, race, runner.jockeyKey);
   Object.assign(f, {
     jockey_n: j.n, jockey_top3: rate(j.top3, j.n),

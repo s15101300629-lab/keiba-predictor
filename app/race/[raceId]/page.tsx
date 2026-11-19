@@ -57,8 +57,16 @@ type PaceInfo = {
   style: string | null; posFirstMean: number | null; nigeRate: number | null;
   highPace: { n: number; top3: number | null }; slowPace: { n: number; top3: number | null }; relPosRank: number | null;
 };
+type Extras = {
+  prizeRatioLast: number | null; distChange: number | null; surfaceChange: number | null;
+  weightChange: number | null; jockeyChange: number | null;
+  tidxMean5: number | null; tidxBest5: number | null; wakuCourseN: number; wakuCourseDiff: number | null;
+};
 type Prediction = {
   pace?: PaceInfo;
+  extras?: Extras;
+  trainerName?: string | null;
+  trainer?: { n: number; top3: number; venueN: number; venueTop3: number };
   probability: number; baseProbability: number; pedigreeIncluded: boolean;
   rank: number; modelFormDeviation: number | null; priorRuns: number;
   heavyNote: {
@@ -343,6 +351,25 @@ function buildCategoryRanks(
   return result;
 }
 
+function extrasText(p: Prediction): string {
+  const e = p.extras!;
+  const parts: string[] = [];
+  if (e.prizeRatioLast != null) {
+    const r = e.prizeRatioLast;
+    parts.push(`クラス：${r > 1.15 ? "昇級・格上挑戦" : r < 0.87 ? "降級・格下" : "前走と同程度"}（1着賞金 前走の${r.toFixed(2)}倍）`);
+  }
+  const change: string[] = [];
+  if (e.distChange) change.push(`距離${e.distChange > 0 ? "+" : ""}${e.distChange}m`);
+  if (e.surfaceChange === 1) change.push("芝ダ替わり");
+  if (e.weightChange) change.push(`斤量${e.weightChange > 0 ? "+" : ""}${e.weightChange}kg`);
+  if (e.jockeyChange === 1) change.push("乗り替わり");
+  if (e.distChange != null) parts.push(`前走から：${change.length ? change.join("・") : "変化なし"}`);
+  if (e.tidxMean5 != null) parts.push(`タイム指数 近5走平均${e.tidxMean5.toFixed(2)}・最高${e.tidxBest5!.toFixed(2)}（1000mあたり基準より何秒速いか）`);
+  if (p.trainer && p.trainer.n) parts.push(`調教師（${p.trainerName ?? "-"}）今年 ${p.trainer.n}頭・3着内${Math.round(p.trainer.top3 / p.trainer.n * 100)}%`);
+  if (e.wakuCourseN && e.wakuCourseDiff != null) parts.push(`この枠の同コース成績：3着内率がコース平均より${e.wakuCourseDiff >= 0 ? "+" : ""}${Math.round(e.wakuCourseDiff * 100)}pt（${e.wakuCourseN}頭）`);
+  return parts.join(" ／ ");
+}
+
 const BAND_NAMES: Record<string, string> = { "-1400": "〜1400m", "-1800": "〜1800m", "-2200": "〜2200m", "-2600": "〜2600m", "2600-": "2600m〜" };
 const bandText = (rates: Record<string, number>) =>
   Object.entries(rates).map(([band, rate]) => `${BAND_NAMES[band] ?? band} ${Math.round(rate * 100)}%`).join("・");
@@ -480,6 +507,7 @@ function OverallHorseCard({ horse, total, categories, factors }: {
               ? " 今回は良のため補正なし。"
               : " 馬場未発表。稍重〜不良になった場合は補正対象。"}
         </p>}
+        {prediction?.extras && <p className="result-category-rank">{extrasText(prediction)}</p>}
         {prediction?.pace && <p className="result-category-rank">
           脚質：{prediction.pace.style ?? "不明"}
           {prediction.pace.posFirstMean != null && `（近走の最初のコーナー 平均${Math.round(prediction.pace.posFirstMean * 100)}%地点${prediction.pace.nigeRate ? `・逃げ${Math.round(prediction.pace.nigeRate * 100)}%` : ""}）`}
