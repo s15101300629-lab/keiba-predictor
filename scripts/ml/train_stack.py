@@ -109,12 +109,12 @@ def heavy_adjustment(data, base, context, ratios) -> dict:
     }
 
 
-def main() -> None:
-    ped = list(csv.DictReader(PED.open(encoding="utf-8")))
-    keys = {(r["race_id"], int(r["umaban"])) for r in ped}
-    years = sorted({r["date"][:4] for r in ped})
-    rounds = json.loads((OUT / "metrics.json").read_text())["best_iteration"]
+def oof_base(keys: set, years: list[str]):
+    """重賞の出走馬について、そのレースの年を除いて学習した1段目の確率（結果を見ていない予測）.
 
+    戻り値: base[(race_id, umaban)] = 確率, context[(race_id, umaban)] = (馬場コード, 重不良の出走数)
+    """
+    rounds = json.loads((OUT / "metrics.json").read_text())["best_iteration"]
     rows, _ = build_dataset(DATA)
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
     base: dict[tuple[str, int], float] = {}
@@ -127,6 +127,14 @@ def main() -> None:
             base[(r["race_id"], int(r["umaban"]))] = float(p)
             context[(r["race_id"], int(r["umaban"]))] = (r["going"], r["heavy_n"])
         print(f"base model without {year}: {len(target)} graded runners", file=sys.stderr)
+    return base, context
+
+
+def main() -> None:
+    ped = list(csv.DictReader(PED.open(encoding="utf-8")))
+    keys = {(r["race_id"], int(r["umaban"])) for r in ped}
+    years = sorted({r["date"][:4] for r in ped})
+    base, context = oof_base(keys, years)
 
     data = [r for r in ped if (r["race_id"], int(r["umaban"])) in base]
     for r in data:
