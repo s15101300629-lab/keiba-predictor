@@ -418,3 +418,6 @@ footer span { letter-spacing:0; }
 .race-arrow { color: var(--muted); font-size: 22px; line-height: 1; }
 .sample-section { margin-top: 26px; }
 .sample-section h3 { margin: 0 0 8px; color: var(--muted); font-size: 12px; font-weight: 700; }
+/* 勝率・連対率（AI予測） */
+.sub-probs { display: flex; gap: 14px; margin: -2px 0 8px; color: var(--muted); font-size: 11px; }
+.sub-probs b { color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }

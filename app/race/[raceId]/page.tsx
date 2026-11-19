@@ -24,6 +24,9 @@ type PerformanceStats = {
   positionStarts: number; positionGainTotal: number;
   positionForwardStarts: number; positionForwardTop3: number;
   goingUsed?: string | null;
+  top2?: number;
+  sameVenueSurfaceWins?: number; sameVenueSurfaceTop2?: number;
+  similarDistanceWins?: number; similarDistanceTop2?: number; sameGoingWins?: number; sameGoingTop2?: number;
 };
 type CourseFrame = { starts: number; top3: number; courseStarts: number; courseTop3: number; years: string[] } | null;
 type Pedigree = {
@@ -63,6 +66,7 @@ type Prediction = {
   trainerName?: string | null;
   trainer?: { n: number; top3: number; venueN: number; venueTop3: number };
   probability: number; baseProbability: number; pedigreeIncluded: boolean;
+  winProbability?: number | null; top2Probability?: number | null;
   rank: number; modelFormDeviation: number | null; priorRuns: number;
   heavyNote: {
     applied: boolean; show: boolean; label: string | null; ratio: number;
@@ -157,6 +161,15 @@ function jockeyYearRate(j: JockeyYear | undefined) {
   return { starts: j.n, rate: (j.venueTop3 + JOCKEY_PRIOR_RIDES * (j.top3 / j.n)) / (j.venueN + JOCKEY_PRIOR_RIDES) };
 }
 const pct = (rate: number) => Math.round(rate * 100) + "%";
+// 「N走・勝率 a%・連対率 b%・3着以内率 c%」（勝ち・連対の数がないときは3着以内率だけ）
+function recordText(starts: number, top3: number, wins?: number, top2?: number) {
+  if (!starts) return "0走";
+  const parts = [`${starts}走`];
+  if (wins != null) parts.push(`勝率 ${pct(wins / starts)}`);
+  if (top2 != null) parts.push(`連対率 ${pct(top2 / starts)}`);
+  parts.push(`3着以内率 ${pct(top3 / starts)}`);
+  return parts.join("・");
+}
 
 function buildFactorScores(horses: Horse[]): Map<string, FactorScore[]> {
   const factors = [
@@ -167,6 +180,7 @@ function buildFactorScores(horses: Horse[]): Map<string, FactorScore[]> {
     { label: "馬場適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.sameGoingStarts ?? 0, rate: s?.sameGoingStarts ? s.sameGoingTop3 / s.sameGoingStarts : 0 }; } },
     { label: "枠順実績", get: (horse: Horse) => { const c = horse.courseFrame; return { starts: c?.starts ?? 0, rate: c?.starts ? c.top3 / c.starts : 0 }; } },
     { label: "調子", get: (horse: Horse) => ({ starts: horse.form?.runs.length ?? 0, rate: horse.form?.raw ?? 0 }) },
+    { label: "種牡馬", get: (horse: Horse) => { const a = horse.pedigreeAptitude?.sources.find((x) => x.label === "父")?.aptitude; return { starts: a?.bandStarts ?? 0, rate: a?.bandStarts ? a.bandTop3 / a.bandStarts : 0 }; } },
     { label: "血統適性", get: (horse: Horse) => { const a = horse.pedigreeAptitude; return { starts: a?.conditionRate != null ? 1 : 0, rate: a?.conditionRate ?? 0 }; } },
     { label: "騎手(今年)", get: (horse: Horse) => jockeyYearRate(horse.prediction?.jockey) },
   ];
@@ -232,7 +246,8 @@ function buildCategoryRanks(
     if (row) {
       row.rank = distanceRank;
       row.total = distanceValues.length;
-      row.detail = `今回の距離±200mの全過去走 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`;
+      const st = horses.find((horse) => horse.horseId === value.horseId)?.performanceStats;
+      row.detail = `今回の距離±200mの全過去走 ${recordText(value.starts, st?.similarDistanceTop3 ?? Math.round(value.rate * value.starts), st?.similarDistanceWins, st?.similarDistanceTop2)}`;
     }
   });
   const assignFactorRank = (factorLabel: string, categoryLabel: string, detailBuilder: (value: FactorScore, horseId: string) => string) => {
@@ -254,13 +269,21 @@ function buildCategoryRanks(
       }
     });
   };
-  assignFactorRank("競馬場・馬場適性", "コース適性", (value) =>
-    `同競馬場・同芝ダート ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
+  const statsOf = (horseId: string) => horses.find((horse) => horse.horseId === horseId)?.performanceStats;
+  assignFactorRank("競馬場・馬場適性", "コース適性", (value, horseId) => {
+    const st = statsOf(horseId);
+    return `同競馬場・同芝ダート ${recordText(value.starts, st?.sameVenueSurfaceTop3 ?? 0, st?.sameVenueSurfaceWins, st?.sameVenueSurfaceTop2)}`;
+  });
   const goingUsed = horses.find((horse) => horse.performanceStats?.goingUsed)?.performanceStats?.goingUsed ?? null;
-  assignFactorRank("馬場適性", "馬場適性", (value) =>
-    `${goingUsed ?? "同じ馬場"}での過去走 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
-  assignFactorRank("全体成績", "全体成績", (value) =>
-    `全過去走 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
+  assignFactorRank("馬場適性", "馬場適性", (value, horseId) => {
+    const st = statsOf(horseId);
+    return `${goingUsed ?? "同じ馬場"}での過去走 ${recordText(value.starts, st?.sameGoingTop3 ?? 0, st?.sameGoingWins, st?.sameGoingTop2)}`;
+  });
+  assignFactorRank("全体成績", "全体成績", (value, horseId) => {
+    const st = statsOf(horseId);
+    return `全過去走 ${recordText(value.starts, st?.top3 ?? 0, st?.wins, st?.top2)}`;
+  });
+  assignFactorRank("種牡馬", "種牡馬", () => "");
   assignFactorRank("重賞実績", "重賞実績", (value) =>
     `重賞 ${value.starts}走・勝率 ${Math.round(value.rate * 100)}%`);
   assignFactorRank("騎手(今年)", "騎手", () => "");
@@ -553,6 +576,10 @@ function OverallHorseCard({ horse, total, categories, factors, mark }: {
           <div><small>3着以内に入る確率</small><strong>{probabilityText}</strong></div>
           <span>{prediction ? prediction.rank + "位 / " + total + "頭" : "順位対象外"}</span>
         </div>
+        {prediction && prediction.winProbability != null && prediction.top2Probability != null && <div className="sub-probs">
+          <span>勝率 <b>{(prediction.winProbability * 100).toFixed(1)}%</b></span>
+          <span>連対率 <b>{(prediction.top2Probability * 100).toFixed(1)}%</b></span>
+        </div>}
         {(strong.length > 0 || weak.length > 0) && <div className="point-chips">
           {strong.map((label) => <span className="point-chip strong" key={label}>◎ {label}</span>)}
           {weak.map((label) => <span className="point-chip weak" key={label}>△ {label}</span>)}

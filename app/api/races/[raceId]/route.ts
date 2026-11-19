@@ -471,6 +471,9 @@ type PerformanceStats = {
   positionStarts: number; positionGainTotal: number;
   positionForwardStarts: number; positionForwardTop3: number;
   goingUsed: string | null;
+  top2: number;
+  sameVenueWins: number; sameVenueTop2: number; sameVenueSurfaceWins: number; sameVenueSurfaceTop2: number;
+  similarDistanceWins: number; similarDistanceTop2: number; sameGoingWins: number; sameGoingTop2: number;
 };
 
 // 学習済みモデルと特徴量用データ（scripts/ml/train.py が data/ml に書き出す）
@@ -481,6 +484,7 @@ type HeavyAdjustment = {
 };
 let mlAssets: Promise<{
   model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
+  winModel: Model | null; top2Model: Model | null;
 } | null> | null = null;
 function loadMlAssets() {
   mlAssets ??= (async () => {
@@ -493,7 +497,10 @@ function loadMlAssets() {
       const stack = await readFile(path.join(dir, "stack.json"), "utf8").then((text) => JSON.parse(text) as StackAsset).catch(() => null);
       // 道悪未経験 × 血統の道悪倍率 の補正（scripts/ml/train_stack.py が検証して書き出す）
       const heavy = await readFile(path.join(dir, "heavy_adjustment.json"), "utf8").then((text) => JSON.parse(text) as HeavyAdjustment).catch(() => null);
-      return { model, store, metrics, stack, heavy };
+      // 勝率（1着）・連対率（2着以内）のモデル（scripts/ml/train.py が書き出す）。なければ出さない
+      const [winModel, top2Model] = await Promise.all(["model_win.json", "model_top2.json"].map((name) =>
+        readFile(path.join(dir, name), "utf8").then((text) => JSON.parse(text) as Model).catch(() => null)));
+      return { model, store, metrics, stack, heavy, winModel, top2Model };
     } catch {
       mlAssets = null; // 次のリクエストで再試行
       return null;
@@ -535,7 +542,9 @@ function summarizePerformances(
     sameVenueSurfaceStarts: 0, sameVenueSurfaceTop3: 0,
     similarDistanceStarts: 0, similarDistanceTop3: 0, sameGoingStarts: 0, sameGoingTop3: 0,
     positionStarts: 0, positionGainTotal: 0, positionForwardStarts: 0, positionForwardTop3: 0,
-    goingUsed: conditions.going,
+    goingUsed: conditions.going, top2: 0,
+    sameVenueWins: 0, sameVenueTop2: 0, sameVenueSurfaceWins: 0, sameVenueSurfaceTop2: 0,
+    similarDistanceWins: 0, similarDistanceTop2: 0, sameGoingWins: 0, sameGoingTop2: 0,
   };
   const venueNames = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
   const finishes: number[] = [];
@@ -555,6 +564,7 @@ function summarizePerformances(
       finishes.push(finish);
       if (finish === 1) stats.wins++;
       if (finish <= 3) stats.top3++;
+      if (finish <= 2) stats.top2++;
     }
     const raceTitle = findValue([/^レース名$/]);
     if (/\((?:J・)?G(?:I{1,3}|[1-3])\)|G[1-3]|Ｇ[１２３]|GⅠ|GⅡ|GⅢ|重賞/.test(raceTitle)) {
@@ -566,6 +576,8 @@ function summarizePerformances(
     if (conditions.venue && pastVenue === conditions.venue && finish !== null) {
       stats.sameVenueStarts++;
       if (finish <= 3) stats.sameVenueTop3++;
+      if (finish <= 2) stats.sameVenueTop2++;
+      if (finish === 1) stats.sameVenueWins++;
     }
 
     const passageText = findValue([/^通過$/, /通過順位/]);
@@ -598,10 +610,14 @@ function summarizePerformances(
         conditions.surface && pastSurface === conditions.surface && finish !== null) {
         stats.sameVenueSurfaceStarts++;
         if (finish <= 3) stats.sameVenueSurfaceTop3++;
+      if (finish <= 2) stats.sameVenueSurfaceTop2++;
+      if (finish === 1) stats.sameVenueSurfaceWins++;
       }
       if (surfaceMatches && Math.abs(pastDistance - conditions.distanceMeters) <= 200 && finish !== null) {
         stats.similarDistanceStarts++;
         if (finish <= 3) stats.similarDistanceTop3++;
+      if (finish <= 2) stats.similarDistanceTop2++;
+      if (finish === 1) stats.similarDistanceWins++;
       }
     }
     const goingText = findValue([/^馬場$/, /^馬場状態$/, /^状態$/]);
@@ -616,6 +632,8 @@ function summarizePerformances(
     if (conditions.going && normalizeGoing(goingText) === normalizeGoing(conditions.going) && finish !== null) {
       stats.sameGoingStarts++;
       if (finish <= 3) stats.sameGoingTop3++;
+      if (finish <= 2) stats.sameGoingTop2++;
+      if (finish === 1) stats.sameGoingWins++;
     }
   }
   stats.parsedStarts = finishes.length;
@@ -841,12 +859,16 @@ export async function GET(
         };
       });
       const probs = stacked.map((p, i) => heavyNotes[i]?.after ?? p);
+      // 勝率・連対率（道悪補正はかけない）。3着以内確率を超えないようにそろえる
+      const top2Probs = rows.map((row, i) => ml.top2Model ? Math.min(predictProbability(ml.top2Model, row.features), probs[i]) : null);
+      const winProbs = rows.map((row, i) => ml.winModel ? Math.min(predictProbability(ml.winModel, row.features), top2Probs[i] ?? probs[i]) : null);
       const order = probs.map((p, i) => ({ p, i })).sort((a, b) => b.p - a.p);
       order.forEach(({ i }, rank) => {
         const f = rows[i].features;
         const num = (v: number) => (Number.isNaN(v) ? null : v);
         predictions[i] = {
           probability: probs[i], baseProbability: baseProbs[i], pedigreeIncluded: useStack, rank: rank + 1,
+          winProbability: winProbs[i], top2Probability: top2Probs[i],
           heavyNote: heavyNotes[i],
           modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior,
           jockeyName: rows[i].jockeyKey,

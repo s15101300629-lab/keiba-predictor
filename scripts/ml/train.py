@@ -143,8 +143,39 @@ def build_store(hist, last_date: str) -> dict:
             "rideFields": ["date", "venue", "surface", "distance", "top3"]}
 
 
+# 3着以内のほかに、勝率（1着）・連対率（2着以内）も同じ特徴量で予測する
+EXTRA_TARGETS = {"win": 1, "top2": 2}
+
+
+def train_extra_targets(rows: list[dict], test_year: str) -> dict:
+    """1着・2着以内のモデルを学習して model_<name>.json に書き出し、検証の結果を返す."""
+    train = [r for r in rows if r["date"][:4] != test_year]
+    test = [r for r in rows if r["date"][:4] == test_year]
+    out = {}
+    for name, k in EXTRA_TARGETS.items():
+        label = lambda rs: [1 if r["finish"] is not None and r["finish"] <= k else 0 for r in rs]  # noqa: E731
+        dtrain = lgb.Dataset(matrix(train), label=label(train), feature_name=FEATURES)
+        dtest = lgb.Dataset(matrix(test), label=label(test), reference=dtrain)
+        booster = lgb.train(PARAMS, dtrain, num_boost_round=3000, valid_sets=[dtest],
+                            callbacks=[lgb.early_stopping(100, verbose=False)])
+        best = booster.best_iteration
+        pred = booster.predict(matrix(test), num_iteration=best)
+        y = label(test)
+        out[name] = {"best_iteration": best, "auc": roc_auc_score(y, pred), "logloss": log_loss(y, pred), "base_rate": sum(y) / len(y)}
+        print(name, out[name], file=sys.stderr)
+        final = lgb.train(PARAMS, lgb.Dataset(matrix(rows), label=label(rows), feature_name=FEATURES), num_boost_round=max(best, 50))
+        (OUT / f"model_{name}.json").write_text(json.dumps(export_model(final), separators=(",", ":")), encoding="utf-8")
+    return out
+
+
 def main() -> None:
     rows, hist = build_dataset(DATA)
+    if sys.argv[1:] == ["extra"]:  # 勝率・連対率のモデルだけ学習し直す
+        rows = [r for r in rows if r["date"] >= TRAIN_FROM]
+        metrics = json.loads((OUT / "metrics.json").read_text(encoding="utf-8"))
+        metrics["extra_targets"] = train_extra_targets(rows, metrics["test_year"])
+        (OUT / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        return
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
     years = sorted({r["date"][:4] for r in rows})
     test_year = years[-1]
@@ -180,6 +211,7 @@ def main() -> None:
     (OUT / "model.json").write_text(json.dumps(export_model(final), separators=(",", ":")), encoding="utf-8")
     store = build_store(hist, max(r["date"] for r in rows))
     (OUT / "store.json").write_text(json.dumps(store, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    metrics["extra_targets"] = train_extra_targets(rows, test_year)
     (OUT / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
     # parity: 最新日のレースから数レース分、特徴量と予測値を保存
