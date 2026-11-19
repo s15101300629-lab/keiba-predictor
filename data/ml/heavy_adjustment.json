@@ -1,0 +1,35 @@
+{
+ "beta": 1.0,
+ "races": 33,
+ "runners": 285,
+ "mle_beta": 2.084943883055794,
+ "mle_ci95": [
+  -1.224365140321571,
+  5.394252906433159
+ ],
+ "logloss_none": 135.22876828986386,
+ "logloss_adopted": 134.66194478831136,
+ "years_improved": 4,
+ "per_year": {
+  "2023": {
+   "runners": 145,
+   "logloss_none": 69.86800549164509,
+   "logloss_adopted": 69.71791204868354
+  },
+  "2024": {
+   "runners": 61,
+   "logloss_none": 29.73987109882963,
+   "logloss_adopted": 29.489399504215882
+  },
+  "2025": {
+   "runners": 23,
+   "logloss_none": 14.167208090543953,
+   "logloss_adopted": 14.031969559276446
+  },
+  "2026": {
+   "runners": 56,
+   "logloss_none": 21.453683608845168,
+   "logloss_adopted": 21.42266367613549
+  }
+ }
+}

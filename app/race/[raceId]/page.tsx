@@ -59,6 +59,7 @@ type Prediction = {
   heavyNote: {
     applied: boolean; show: boolean; label: string | null; ratio: number;
     before: number; after: number; goingKnown: boolean; beta: number;
+    going: string | null; goingAssumedByUser: boolean;
   } | null;
   jockeyName: string | null; jockey: JockeyYear;
 };
@@ -456,7 +457,7 @@ function OverallHorseCard({ horse, total, categories, factors }: {
           <h4>AI予測：3着以内に入る確率</h4>
           <p>{prediction?.pedigreeIncluded
             ? `LightGBM（成績表で学習）の確率 ${(prediction.baseProbability * 100).toFixed(1)}% に、血統適性を加味（重賞データで学習した2段目モデル）`
-            : "LightGBM（成績表データで学習）。血統適性は下の項目に別表示"}</p>
+            : "LightGBM（成績表データで学習）。道悪未経験馬の重・不良では血統の道悪倍率で補正"}</p>
         </div>
         <div className="horse-result-score-line">
           <strong>{probabilityText}</strong>
@@ -468,7 +469,7 @@ function OverallHorseCard({ horse, total, categories, factors }: {
         {prediction?.heavyNote && (prediction.heavyNote.applied || prediction.heavyNote.show) && <p className="heavy-note" role="note">
           ⚠ 道悪（重・不良）未経験・血統は道悪{prediction.heavyNote.label}（血統の道悪倍率 {prediction.heavyNote.ratio.toFixed(2)}倍）。
           {prediction.heavyNote.applied
-            ? ` 重・不良の発表に合わせ、3着以内確率を ${(prediction.heavyNote.before * 100).toFixed(1)}% → ${(prediction.heavyNote.after * 100).toFixed(1)}% に補正。`
+            ? ` 今回は${prediction.heavyNote.going ?? "重・不良"}${prediction.heavyNote.goingAssumedByUser ? "（想定）" : ""}のため、3着以内確率を ${(prediction.heavyNote.before * 100).toFixed(1)}% → ${(prediction.heavyNote.after * 100).toFixed(1)}% に補正（オッズ × 血統の道悪倍率）。`
             : prediction.heavyNote.goingKnown
               ? " 今回は良・稍重のため補正なし。"
               : " 馬場未発表。重・不良になった場合は補正対象。"}

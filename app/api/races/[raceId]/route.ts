@@ -1008,7 +1008,10 @@ export async function GET(
           : before;
         // 判定が「普通」の馬は、補正があっても表示はしない
         const show = label === "得意" || label === "苦手";
-        return { applied: applies, show, label, ratio: apt.heavyRatio, before, after, goingKnown: !goingAssumed, beta };
+        return {
+          applied: applies, show, label, ratio: apt.heavyRatio, before, after, goingKnown: !goingAssumed, beta,
+          going: raceConditions.going, goingAssumedByUser: goingSource === "user",
+        };
       });
       const probs = stacked.map((p, i) => heavyNotes[i]?.after ?? p);
       const order = probs.map((p, i) => ({ p, i })).sort((a, b) => b.p - a.p);
