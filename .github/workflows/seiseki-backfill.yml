@@ -1,0 +1,53 @@
+name: 成績表の過去分の変換（作業ブランチ用）
+
+# JRA 成績表 PDF の過去分（2019〜2021年）を JSON/CSV に変換して、作業ブランチに commit する。
+# 「JRA 成績表 PDF 変換」とは別の名前にしてあるので、終わっても main での再学習（ml-train.yml）は動かない。
+# 1年ずつ順番に変換し、50ファイルごとに commit する（manifest に記録されるので、止まっても続きから変換できる）。
+on:
+  push:
+    branches: [claude/horse-racing-pdf-conversion-ucigrq]
+    paths: [.github/workflows/seiseki-backfill.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: seiseki-backfill
+  cancel-in-progress: false
+
+jobs:
+  convert:
+    strategy:
+      max-parallel: 1
+      matrix:
+        year: ["2021", "2020", "2019"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - run: git pull -q --rebase origin "${GITHUB_REF_NAME}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/jra_seiseki/requirements.txt
+      - run: pip install -r scripts/jra_seiseki/requirements.txt
+      - name: Convert (commit every 50 files)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          save() {
+            git add data/jra-seiseki
+            if git diff --cached --quiet; then return 1; fi
+            git commit -q -m "data: 成績表 ${{ matrix.year }}年（途中結果）"
+            for i in 1 2 3 4; do
+              git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && return 0
+              sleep $((i * 10))
+            done
+            return 0
+          }
+          for round in $(seq 1 40); do
+            (cd scripts && python -m jra_seiseki update --year ${{ matrix.year }} --limit 50)
+            if ! save; then echo "no more files"; exit 0; fi
+          done
