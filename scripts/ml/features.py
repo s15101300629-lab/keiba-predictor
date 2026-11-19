@@ -206,6 +206,7 @@ def horse_features(runs: list[dict], race: dict) -> dict:
     agg("dist", lambda r: r["surface"] == s and d is not None and r["distance"] is not None and abs(r["distance"] - d) <= 200)
     agg("venue", lambda r: r["surface"] == s and r["venue"] == race["venue"])
     agg("heavy", lambda r: r["surface"] == s and r["going"] is not None and r["going"] >= 2)
+    agg("wet", lambda r: r["surface"] == s and r["going"] is not None and r["going"] >= 1)  # 稍重以上（比較用）
     agg("hp", lambda r: r["pace"] == 2)
     agg("sp", lambda r: r["pace"] == 0)
 

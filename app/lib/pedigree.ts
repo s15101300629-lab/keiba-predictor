@@ -137,6 +137,7 @@ export function stallionRecord(raw: StallionRaw, role: StallionRole, throughYear
 export type StallionAptitude = {
   heavyRatio: number | null; // 重・不良の3着内率 ÷ 良の3着内率
   heavyStarts: number;
+  wetRatio: number | null; // 稍重・重・不良の3着内率 ÷ 良の3着内率（比較用）
   bandRates: Record<string, number>; // 距離区分ごとの3着内率（その馬全体の率に寄せた補正値）
   band: string | null; bandStarts: number; bandTop3: number; // 今回の距離帯
 };
@@ -149,6 +150,10 @@ export function stallionAptitude(record: StallionRecord, surface: string, distan
   const goodRate = starts(good) ? top3(good) / starts(good) : null;
   const heavyRate = goodRate !== null && goodRate > 0
     ? (top3(heavy) + SHRINK_STARTS * goodRate) / (starts(heavy) + SHRINK_STARTS)
+    : null;
+  const wet = add(heavy, g["稍重"]);
+  const wetRate = goodRate !== null && goodRate > 0
+    ? (top3(wet) + SHRINK_STARTS * goodRate) / (starts(wet) + SHRINK_STARTS)
     : null;
   const bands = record.distance[surface] ?? [];
   const totalStarts = bands.reduce((sum, b) => sum + starts(b.counts), 0);
@@ -164,6 +169,7 @@ export function stallionAptitude(record: StallionRecord, surface: string, distan
   return {
     heavyRatio: heavyRate !== null && goodRate ? heavyRate / goodRate : null,
     heavyStarts: starts(heavy),
+    wetRatio: wetRate !== null && goodRate ? wetRate / goodRate : null,
     bandRates,
     band: current?.label ?? null,
     bandStarts: current ? starts(current.counts) : 0,
@@ -175,7 +181,7 @@ export const heavyLabel = (r: number | null) => (r === null ? null : r >= 1.1 ? 
 
 export type HorsePedigreeAptitude = {
   sources: { label: string; name: string | null; weight: number; aptitude: StallionAptitude }[];
-  heavyRatio: number | null; heavyLabel: string | null;
+  heavyRatio: number | null; heavyLabel: string | null; wetRatio: number | null;
   bandRates: Record<string, number>; distanceType: string | null; // 補正後の3着内率が最も高い距離区分
   conditionRate: number | null; // 今回条件の3着内率（縮小推定・道悪補正込み）
   distanceFit: number | null; // 今回の距離区分の3着内率 ÷ 全距離区分の平均（>1 なら今回の距離が得意）
@@ -208,6 +214,7 @@ export function pedigreeAptitudes(
       return w ? sum / w : null;
     };
     const heavyRatio = avg((a) => a.heavyRatio);
+    const wetRatio = avg((a) => a.wetRatio);
     const bandRates: Record<string, number> = {};
     for (const label of Object.keys(BAND_TYPE)) {
       const v = avg((a) => a.bandRates[label] ?? null);
@@ -222,7 +229,7 @@ export function pedigreeAptitudes(
     const conditionRate = bandRate === null ? null : bandRate * (isHeavy && heavyRatio !== null ? heavyRatio : 1);
     return {
       sources: usable.map((s) => ({ label: s.label, name: s.record?.name ?? null, weight: s.weight, aptitude: s.aptitude })),
-      heavyRatio, heavyLabel: heavyLabel(heavyRatio),
+      heavyRatio, heavyLabel: heavyLabel(heavyRatio), wetRatio,
       bandRates, distanceType: best ? BAND_TYPE[best[0]] : null,
       conditionRate, distanceFit, deviation: null as number | null,
     };

@@ -12,7 +12,7 @@ const races = JSON.parse(readFileSync(path.join(OUT, "graded_races.json"), "utf8
 const horses = JSON.parse(readFileSync(path.join(OUT, "horses.json"), "utf8")) as Record<string, HorsePedigree | null>;
 const stallions = JSON.parse(readFileSync(path.join(OUT, "stallions.json"), "utf8")) as Record<string, StallionRaw>;
 
-const lines = ["race_id,date,umaban,horse_id,finish,label,n_sources,ped_rate,ped_dev,dist_fit,heavy_fit,heavy_ratio,going,distance_type,heavy_label"];
+const lines = ["race_id,date,umaban,horse_id,finish,label,n_sources,ped_rate,ped_dev,dist_fit,heavy_fit,heavy_ratio,wet_ratio,going,distance_type,heavy_label"];
 for (const race of Object.values(races).sort((a, b) => a.raceId.localeCompare(b.raceId))) {
   const throughYear = Number(race.date.slice(0, 4)) - 1;
   const going = race.going?.replace(/^\(.*?\)/, "") ?? null;
@@ -30,7 +30,7 @@ for (const race of Object.values(races).sort((a, b) => a.raceId.localeCompare(b.
     lines.push([
       race.raceId, race.date, h.umaban, h.horseId ?? "", h.finish ?? "", h.finish !== null && h.finish <= 3 ? 1 : 0,
       apts[i].sources.length, apts[i].conditionRate ?? "", f.ped_dev, f.dist_fit, f.heavy_fit,
-      apts[i].heavyRatio ?? "", going ?? "",
+      apts[i].heavyRatio ?? "", apts[i].wetRatio ?? "", going ?? "",
       apts[i].distanceType ?? "", apts[i].heavyLabel ?? "",
     ].join(","));
   });

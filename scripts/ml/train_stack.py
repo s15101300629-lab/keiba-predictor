@@ -47,7 +47,7 @@ HEAVY_BETA_DEFAULT = 1.0  # 基準: オッズ × 血統の道悪倍率（倍率�
 HEAVY_BETA_MAX = 3.0
 
 
-def heavy_adjustment(data, base, context, ratios) -> dict:
+def heavy_adjustment(data, base, context, ratios, experience: str = "heavy") -> dict:
     """道悪（稍重・重・不良）で、重・不良の経験がない馬の補正 logit(p) + β·log(血統の道悪倍率) を検証して β を決める.
 
     β は「ある年を外して推定 → 外した年で評価」で、β=1 と補正なしの両方に勝ったときだけ推定値を使う。
@@ -56,8 +56,10 @@ def heavy_adjustment(data, base, context, ratios) -> dict:
     rows = []
     for r in data:
         k = (r["race_id"], int(r["umaban"]))
-        going, heavy_n = context[k]
-        if going is None or going < 1 or heavy_n != 0 or not ratios.get(k):
+        going, heavy_n, wet_n = context[k]
+        # 経験の判定: heavy = 重・不良を走ったことがない / wet = 稍重以上を走ったことがない
+        experienced = heavy_n if experience == "heavy" else wet_n
+        if going is None or going < 1 or experienced != 0 or not ratios.get(k):
             continue
         p = base[k]
         rows.append((r["date"][:4], math.log(p / (1 - p)), math.log(ratios[k]), int(r["label"]), r["race_id"], going))
@@ -125,7 +127,7 @@ def oof_base(keys: set, years: list[str]):
         booster = lgb.train(PARAMS, lgb.Dataset(matrix(train), label=[r["label"] for r in train]), num_boost_round=rounds)
         for r, p in zip(target, booster.predict(matrix(target))):
             base[(r["race_id"], int(r["umaban"]))] = float(p)
-            context[(r["race_id"], int(r["umaban"]))] = (r["going"], r["heavy_n"])
+            context[(r["race_id"], int(r["umaban"]))] = (r["going"], r["heavy_n"], r["wet_n"])
         print(f"base model without {year}: {len(target)} graded runners", file=sys.stderr)
     return base, context
 

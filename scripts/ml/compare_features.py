@@ -21,7 +21,17 @@ from train import DATA, OUT, PARAMS, TRAIN_FROM, race_top3_hit  # noqa: E402
 
 PACE = ["pos_first_mean", "pos_last_mean", "nige_rate", "senko_rate", "hp_n", "hp_top3", "sp_n", "sp_top3",
         "field_nige_cands", "field_front", "field_front_ratio", "rel_pos_rank"]
-SETS = {"without_pace": [f for f in FEATURES if f not in PACE], "with_pace": FEATURES}
+SETS_BY_NAME = {
+    "pace": {"without_pace": [f for f in FEATURES if f not in PACE], "with_pace": FEATURES},
+    # 道悪の経験: 重・不良のみ（今）/ 稍重以上に置き換え / 両方
+    "wet": {
+        "heavy_only": FEATURES,
+        "wet_replace": [{"heavy_n": "wet_n", "heavy_top3": "wet_top3"}.get(f, f) for f in FEATURES],
+        "heavy_and_wet": [*FEATURES, "wet_n", "wet_top3"],
+    },
+}
+SETS = SETS_BY_NAME[sys.argv[1] if len(sys.argv) > 1 else "pace"]
+OUTPUT = f"feature_comparison{'' if len(sys.argv) < 2 or sys.argv[1] == 'pace' else '_' + sys.argv[1]}.json"
 
 
 def main() -> None:
@@ -44,7 +54,7 @@ def main() -> None:
         result[name] = {"per_year": per_year,
                         "mean": {k: float(np.mean([v[k] for v in per_year.values()])) for k in ("logloss", "auc", "top3_hit")}}
     print(json.dumps({k: v["mean"] for k, v in result.items()}, indent=1), file=sys.stderr)
-    (OUT / "feature_comparison.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+    (OUT / OUTPUT).write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

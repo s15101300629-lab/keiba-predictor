@@ -41,7 +41,7 @@ def main() -> None:
         for r, p in zip(target, booster.predict(matrix(target))):
             k = (r["race_id"], int(r["umaban"]))
             base[k] = float(p)
-            context[k] = (r["going"], r["heavy_n"])
+            context[k] = (r["going"], r["heavy_n"], r["wet_n"])
     data = [r for r in data if (r["race_id"], int(r["umaban"])) in base]
     result = {}
     for name in names:
