@@ -68,9 +68,16 @@
    "tidx_best5": -1.0,
    "tidx_last1": -1.0,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.6351333333333335,
+   "rank_tidx_mean5": 0.125,
+   "rel_tidx_best5": 0.5423615384615383,
+   "rank_tidx_best5": 0.25,
+   "rel_prize_ratio_mean5": 0.08690390106138224,
+   "rank_prize_ratio_mean5": 0.1875,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.5961114644143357
+  "pred": 0.6331445006176252
  },
  {
   "race_id": "202603030401",
@@ -141,9 +148,16 @@
    "tidx_best5": -3.1429,
    "tidx_last1": -3.1429,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -1.1949666666666665,
+   "rank_tidx_mean5": 0.8125,
+   "rel_tidx_best5": -1.6005384615384617,
+   "rank_tidx_best5": 0.8125,
+   "rel_prize_ratio_mean5": -0.05974706701815724,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.0554198241131686
+  "pred": 0.04775906010258968
  },
  {
   "race_id": "202603030401",
@@ -214,9 +228,16 @@
    "tidx_best5": -1.3333,
    "tidx_last1": -1.3333,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.6146333333333336,
+   "rank_tidx_mean5": 0.1875,
+   "rel_tidx_best5": 0.2090615384615384,
+   "rank_tidx_best5": 0.5,
+   "rel_prize_ratio_mean5": -0.05974706701815724,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.4671479954505813
+  "pred": 0.4789970429255992
  },
  {
   "race_id": "202603030401",
@@ -287,9 +308,16 @@
    "tidx_best5": -1.0,
    "tidx_last1": -1.0,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.40628333333333355,
+   "rank_tidx_mean5": 0.375,
+   "rel_tidx_best5": 0.5423615384615383,
+   "rank_tidx_best5": 0.25,
+   "rel_prize_ratio_mean5": 0.045156545184725005,
+   "rank_prize_ratio_mean5": 0.375,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.3633200672877829
+  "pred": 0.3589133219545762
  },
  {
   "race_id": "202603030401",
@@ -360,9 +388,16 @@
    "tidx_best5": -1.1667,
    "tidx_last1": -1.1667,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.1562583333333334,
+   "rank_tidx_mean5": 0.4375,
+   "rel_tidx_best5": 0.37566153846153827,
+   "rank_tidx_best5": 0.4375,
+   "rel_prize_ratio_mean5": 0.10933287265001779,
+   "rank_prize_ratio_mean5": 0.0625,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.27068018093035917
+  "pred": 0.2159405989331372
  },
  {
   "race_id": "202603030401",
@@ -433,9 +468,16 @@
    "tidx_best5": -1.0,
    "tidx_last1": -1.0,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.008399999999999741,
+   "rank_tidx_mean5": 0.5,
+   "rel_tidx_best5": 0.5423615384615383,
+   "rank_tidx_best5": 0.25,
+   "rel_prize_ratio_mean5": 0.08690390106138224,
+   "rank_prize_ratio_mean5": 0.1875,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.20049413462605997
+  "pred": 0.19331445804342168
  },
  {
   "race_id": "202603030401",
@@ -506,9 +548,16 @@
    "tidx_best5": -1.8333,
    "tidx_last1": -2.1667,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.05206666666666648,
+   "rank_tidx_mean5": 0.5625,
+   "rel_tidx_best5": -0.2909384615384616,
+   "rank_tidx_best5": 0.5625,
+   "rel_prize_ratio_mean5": 0.045156545184725005,
+   "rank_prize_ratio_mean5": 0.375,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.1828007751019543
+  "pred": 0.1645486477530297
  },
  {
   "race_id": "202603030401",
@@ -579,9 +628,16 @@
    "tidx_best5": -0.9167,
    "tidx_last1": -1.6667,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.42013333333333347,
+   "rank_tidx_mean5": 0.3125,
+   "rel_tidx_best5": 0.6256615384615384,
+   "rank_tidx_best5": 0.1875,
+   "rel_prize_ratio_mean5": 0.08690390106138224,
+   "rank_prize_ratio_mean5": 0.1875,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.1388083708256594
+  "pred": 0.13311055176558698
  },
  {
   "race_id": "202603030401",
@@ -652,9 +708,16 @@
    "tidx_best5": -0.75,
    "tidx_last1": -1.4167,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.5229333333333335,
+   "rank_tidx_mean5": 0.25,
+   "rel_tidx_best5": 0.7923615384615383,
+   "rank_tidx_best5": 0.125,
+   "rel_prize_ratio_mean5": 0.10933287265001779,
+   "rank_prize_ratio_mean5": 0.0625,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.2128147035039322
+  "pred": 0.23404411946481615
  },
  {
   "race_id": "202603030401",
@@ -725,9 +788,16 @@
    "tidx_best5": -2.8125,
    "tidx_last1": -2.8125,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.8645666666666665,
+   "rank_tidx_mean5": 0.6875,
+   "rel_tidx_best5": -1.2701384615384617,
+   "rank_tidx_best5": 0.75,
+   "rel_prize_ratio_mean5": -0.05974706701815724,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.05916193870044815
+  "pred": 0.06302314333072413
  },
  {
   "race_id": "202603030401",
@@ -798,9 +868,16 @@
    "tidx_best5": -2.1667,
    "tidx_last1": -3.8333,
    "last1_victim": 0,
-   "victim_n5": 1
+   "victim_n5": 1,
+   "rel_tidx_mean5": -1.0520666666666665,
+   "rank_tidx_mean5": 0.75,
+   "rel_tidx_best5": -0.6243384615384617,
+   "rank_tidx_best5": 0.625,
+   "rel_prize_ratio_mean5": 0.045156545184725005,
+   "rank_prize_ratio_mean5": 0.375,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.009097898487597894
+  "pred": 0.009517549722000748
  },
  {
   "race_id": "202603030401",
@@ -871,9 +948,16 @@
    "tidx_best5": -0.6429,
    "tidx_last1": -0.8929,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.7544583333333335,
+   "rank_tidx_mean5": 0.0625,
+   "rel_tidx_best5": 0.8994615384615383,
+   "rank_tidx_best5": 0.0625,
+   "rel_prize_ratio_mean5": -0.37585881596572707,
+   "rank_prize_ratio_mean5": 0.8125,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.24768660948259377
+  "pred": 0.3310339061085519
  },
  {
   "race_id": "202603030401",
@@ -944,9 +1028,16 @@
    "tidx_best5": null,
    "tidx_last1": null,
    "last1_victim": null,
-   "victim_n5": null
+   "victim_n5": null,
+   "rel_tidx_mean5": null,
+   "rank_tidx_mean5": null,
+   "rel_tidx_best5": null,
+   "rank_tidx_best5": null,
+   "rel_prize_ratio_mean5": null,
+   "rank_prize_ratio_mean5": null,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.06204638283497367
+  "pred": 0.05929803923450046
  },
  {
   "race_id": "202603030401",
@@ -1017,9 +1108,16 @@
    "tidx_best5": -2.2857,
    "tidx_last1": -2.2857,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.3377666666666663,
+   "rank_tidx_mean5": 0.625,
+   "rel_tidx_best5": -0.7433384615384615,
+   "rank_tidx_best5": 0.6875,
+   "rel_prize_ratio_mean5": -0.05974706701815724,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.040062397257676095
+  "pred": 0.03134108400591117
  },
  {
   "race_id": "202603030401",
@@ -1090,9 +1188,16 @@
    "tidx_best5": null,
    "tidx_last1": null,
    "last1_victim": null,
-   "victim_n5": null
+   "victim_n5": null,
+   "rel_tidx_mean5": null,
+   "rank_tidx_mean5": null,
+   "rel_tidx_best5": null,
+   "rank_tidx_best5": null,
+   "rel_prize_ratio_mean5": null,
+   "rank_prize_ratio_mean5": null,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.03350268381060134
+  "pred": 0.025756000411228636
  },
  {
   "race_id": "202603030401",
@@ -1163,9 +1268,16 @@
    "tidx_best5": null,
    "tidx_last1": null,
    "last1_victim": null,
-   "victim_n5": null
+   "victim_n5": null,
+   "rel_tidx_mean5": null,
+   "rank_tidx_mean5": null,
+   "rel_tidx_best5": null,
+   "rank_tidx_best5": null,
+   "rel_prize_ratio_mean5": null,
+   "rank_prize_ratio_mean5": null,
+   "field_form_mean": 0.39358784022245563
   },
-  "pred": 0.04304610748610929
+  "pred": 0.03937942648853839
  },
  {
   "race_id": "202603030402",
@@ -1236,9 +1348,16 @@
    "tidx_best5": -0.4375,
    "tidx_last1": -0.4375,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 1.0404463541666666,
+   "rank_tidx_mean5": 0.125,
+   "rel_tidx_best5": 0.6822999999999999,
+   "rank_tidx_best5": 0.3125,
+   "rel_prize_ratio_mean5": 0.049724863977033795,
+   "rank_prize_ratio_mean5": 0.1875,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.29935431944613655
+  "pred": 0.3207041050663636
  },
  {
   "race_id": "202603030402",
@@ -1309,9 +1428,16 @@
    "tidx_best5": -0.6875,
    "tidx_last1": -0.6875,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.6029463541666666,
+   "rank_tidx_mean5": 0.4375,
+   "rel_tidx_best5": 0.4322999999999999,
+   "rank_tidx_best5": 0.375,
+   "rel_prize_ratio_mean5": 0.049724863977033795,
+   "rank_prize_ratio_mean5": 0.1875,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.17178746403929732
+  "pred": 0.16733167641911514
  },
  {
   "race_id": "202603030402",
@@ -1382,9 +1508,16 @@
    "tidx_best5": -0.3,
    "tidx_last1": -0.3,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 1.0397463541666667,
+   "rank_tidx_mean5": 0.1875,
+   "rel_tidx_best5": 0.8197999999999999,
+   "rank_tidx_best5": 0.25,
+   "rel_prize_ratio_mean5": 0.049724863977033795,
+   "rank_prize_ratio_mean5": 0.1875,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.1600212220319147
+  "pred": 0.15618787753860175
  },
  {
   "race_id": "202603030402",
@@ -1455,9 +1588,16 @@
    "tidx_best5": -1.8571,
    "tidx_last1": -1.8571,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.09790364583333333,
+   "rank_tidx_mean5": 0.6875,
+   "rel_tidx_best5": -0.7373000000000001,
+   "rank_tidx_best5": 0.8125,
+   "rel_prize_ratio_mean5": -0.05517874822584845,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.2602873470494396
+  "pred": 0.24779312148490956
  },
  {
   "race_id": "202603030402",
@@ -1528,9 +1668,16 @@
    "tidx_best5": -1.1875,
    "tidx_last1": -1.1875,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.5716963541666666,
+   "rank_tidx_mean5": 0.5,
+   "rel_tidx_best5": -0.0677000000000001,
+   "rank_tidx_best5": 0.5625,
+   "rel_prize_ratio_mean5": -0.05517874822584845,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.4081587420252699
+  "pred": 0.3496496141241489
  },
  {
   "race_id": "202603030402",
@@ -1601,9 +1748,16 @@
    "tidx_best5": -2.375,
    "tidx_last1": -2.375,
    "last1_victim": 1,
-   "victim_n5": 1
+   "victim_n5": 1,
+   "rel_tidx_mean5": -0.6158036458333334,
+   "rank_tidx_mean5": 0.8125,
+   "rel_tidx_best5": -1.2552,
+   "rank_tidx_best5": 0.875,
+   "rel_prize_ratio_mean5": -0.05517874822584845,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.03782005639426958
+  "pred": 0.030898956899631673
  },
  {
   "race_id": "202603030402",
@@ -1674,9 +1828,16 @@
    "tidx_best5": -2.5278,
    "tidx_last1": -2.5278,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.7686036458333334,
+   "rank_tidx_mean5": 0.875,
+   "rel_tidx_best5": -1.4080000000000001,
+   "rank_tidx_best5": 1.0,
+   "rel_prize_ratio_mean5": -0.05517874822584845,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.22588607970002716
+  "pred": 0.20956172839247683
  },
  {
   "race_id": "202603030402",
@@ -1747,9 +1908,16 @@
    "tidx_best5": -1.45,
    "tidx_last1": -5.2778,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -1.6047036458333335,
+   "rank_tidx_mean5": 0.9375,
+   "rel_tidx_best5": -0.33020000000000005,
+   "rank_tidx_best5": 0.6875,
+   "rel_prize_ratio_mean5": 0.049724863977033795,
+   "rank_prize_ratio_mean5": 0.1875,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.01942339457475053
+  "pred": 0.01827558969269639
  },
  {
   "race_id": "202603030402",
@@ -1820,9 +1988,16 @@
    "tidx_best5": 0.0625,
    "tidx_last1": -2.0625,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.6498213541666666,
+   "rank_tidx_mean5": 0.375,
+   "rel_tidx_best5": 1.1823,
+   "rank_tidx_best5": 0.1875,
+   "rel_prize_ratio_mean5": 0.11390119144232658,
+   "rank_prize_ratio_mean5": 0.0625,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.24489120463620997
+  "pred": 0.2430700437028209
  },
  {
   "race_id": "202603030402",
@@ -1893,9 +2068,16 @@
    "tidx_best5": -1.25,
    "tidx_last1": -1.25,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.5091963541666666,
+   "rank_tidx_mean5": 0.5625,
+   "rel_tidx_best5": -0.1302000000000001,
+   "rank_tidx_best5": 0.625,
+   "rel_prize_ratio_mean5": -0.05517874822584845,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.1118671646705593
+  "pred": 0.1189728209615933
  },
  {
   "race_id": "202603030402",
@@ -1966,9 +2148,16 @@
    "tidx_best5": 0.1111,
    "tidx_last1": -0.3889,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.8877963541666666,
+   "rank_tidx_mean5": 0.25,
+   "rel_tidx_best5": 1.2308999999999999,
+   "rank_tidx_best5": 0.125,
+   "rel_prize_ratio_mean5": -0.11747135757728133,
+   "rank_prize_ratio_mean5": 1.0,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.17088412206628417
+  "pred": 0.23751614032568144
  },
  {
   "race_id": "202603030402",
@@ -2039,9 +2228,16 @@
    "tidx_best5": -1.0625,
    "tidx_last1": -1.0625,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.6966963541666666,
+   "rank_tidx_mean5": 0.3125,
+   "rel_tidx_best5": 0.05729999999999991,
+   "rank_tidx_best5": 0.5,
+   "rel_prize_ratio_mean5": -0.05517874822584845,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.14891689878551206
+  "pred": 0.16383157362558035
  },
  {
   "race_id": "202603030402",
@@ -2112,9 +2308,16 @@
    "tidx_best5": 0.2778,
    "tidx_last1": -1.7,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 1.0999296875,
+   "rank_tidx_mean5": 0.0625,
+   "rel_tidx_best5": 1.3976,
+   "rank_tidx_best5": 0.0625,
+   "rel_prize_ratio_mean5": 0.09147221985369103,
+   "rank_prize_ratio_mean5": 0.125,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.26100820554614973
+  "pred": 0.28315006613484983
  },
  {
   "race_id": "202603030402",
@@ -2185,9 +2388,16 @@
    "tidx_best5": -1.7333,
    "tidx_last1": -1.7333,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.02589635416666658,
+   "rank_tidx_mean5": 0.625,
+   "rel_tidx_best5": -0.6135000000000002,
+   "rank_tidx_best5": 0.75,
+   "rel_prize_ratio_mean5": -0.05517874822584845,
+   "rank_prize_ratio_mean5": 0.5625,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.03763114858749915
+  "pred": 0.042779739654310825
  },
  {
   "race_id": "202603030402",
@@ -2258,9 +2468,16 @@
    "tidx_best5": -2.5,
    "tidx_last1": -2.5,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -3.490803645833333,
+   "rank_tidx_mean5": 1.0,
+   "rel_tidx_best5": -1.3802,
+   "rank_tidx_best5": 0.9375,
+   "rel_prize_ratio_mean5": 0.049724863977033795,
+   "rank_prize_ratio_mean5": 0.1875,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.0203368800699636
+  "pred": 0.014546686314489746
  },
  {
   "race_id": "202603030402",
@@ -2331,9 +2548,16 @@
    "tidx_best5": -1.0,
    "tidx_last1": -3.6111,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.5463536458333336,
+   "rank_tidx_mean5": 0.75,
+   "rel_tidx_best5": 0.1197999999999999,
+   "rank_tidx_best5": 0.4375,
+   "rel_prize_ratio_mean5": 0.049724863977033795,
+   "rank_prize_ratio_mean5": 0.1875,
+   "field_form_mean": 0.5341304702242202
   },
-  "pred": 0.03653861386463821
+  "pred": 0.027275332012642026
  },
  {
   "race_id": "202603030403",
@@ -2404,9 +2628,16 @@
    "tidx_best5": 1.1429,
    "tidx_last1": 1.1429,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.8766346666666668,
+   "rank_tidx_mean5": 0.06666666666666667,
+   "rel_tidx_best5": 1.0676133333333333,
+   "rank_tidx_best5": 0.06666666666666667,
+   "rel_prize_ratio_mean5": -0.030737447946681096,
+   "rank_prize_ratio_mean5": 0.5333333333333333,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.6616487867887842
+  "pred": 0.6682907404267847
  },
  {
   "race_id": "202603030403",
@@ -2477,9 +2708,16 @@
    "tidx_best5": 0.2353,
    "tidx_last1": 0.0556,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.5548746666666667,
+   "rank_tidx_mean5": 0.13333333333333333,
+   "rel_tidx_best5": 0.16001333333333334,
+   "rank_tidx_best5": 0.4666666666666667,
+   "rel_prize_ratio_mean5": -0.0946643885859505,
+   "rank_prize_ratio_mean5": 0.9333333333333333,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.512641513030241
+  "pred": 0.5210339004151648
  },
  {
   "race_id": "202603030403",
@@ -2550,9 +2788,16 @@
    "tidx_best5": -0.3889,
    "tidx_last1": -1.1053,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.3871253333333332,
+   "rank_tidx_mean5": 0.8,
+   "rel_tidx_best5": -0.4641866666666667,
+   "rank_tidx_best5": 0.8,
+   "rel_prize_ratio_mean5": -0.05221716155049971,
+   "rank_prize_ratio_mean5": 0.8666666666666667,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.13959205036249966
+  "pred": 0.15249734715869953
  },
  {
   "race_id": "202603030403",
@@ -2623,9 +2868,16 @@
    "tidx_best5": 0.5714,
    "tidx_last1": 0.5714,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.24185466666666677,
+   "rank_tidx_mean5": 0.4,
+   "rel_tidx_best5": 0.49611333333333335,
+   "rank_tidx_best5": 0.2,
+   "rel_prize_ratio_mean5": -0.01588596279816623,
+   "rank_prize_ratio_mean5": 0.3333333333333333,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.22560788171064666
+  "pred": 0.21236414135754006
  },
  {
   "race_id": "202603030403",
@@ -2696,9 +2948,16 @@
    "tidx_best5": 0.4444,
    "tidx_last1": -0.0556,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.41169466666666676,
+   "rank_tidx_mean5": 0.26666666666666666,
+   "rel_tidx_best5": 0.36911333333333335,
+   "rank_tidx_best5": 0.4,
+   "rel_prize_ratio_mean5": -0.020885231197912635,
+   "rank_prize_ratio_mean5": 0.4,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.33850601333866265
+  "pred": 0.26271949404302464
  },
  {
   "race_id": "202603030403",
@@ -2769,9 +3028,16 @@
    "tidx_best5": 0.5714,
    "tidx_last1": 0.5714,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.3004346666666668,
+   "rank_tidx_mean5": 0.3333333333333333,
+   "rel_tidx_best5": 0.49611333333333335,
+   "rank_tidx_best5": 0.2,
+   "rel_prize_ratio_mean5": -0.4151218323310655,
+   "rank_prize_ratio_mean5": 1.0,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.25704833118324705
+  "pred": 0.26718271756684014
  },
  {
   "race_id": "202603030403",
@@ -2842,9 +3108,16 @@
    "tidx_best5": 0.0588,
    "tidx_last1": -0.2941,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.19549466666666676,
+   "rank_tidx_mean5": 0.4666666666666667,
+   "rel_tidx_best5": -0.016486666666666684,
+   "rank_tidx_best5": 0.5333333333333333,
+   "rel_prize_ratio_mean5": 0.27084985364062053,
+   "rank_prize_ratio_mean5": 0.13333333333333333,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.15563098225894384
+  "pred": 0.14705642378897715
  },
  {
   "race_id": "202603030403",
@@ -2915,9 +3188,16 @@
    "tidx_best5": 0.5556,
    "tidx_last1": 0.1111,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": 0.4922546666666668,
+   "rank_tidx_mean5": 0.2,
+   "rel_tidx_best5": 0.4803133333333333,
+   "rank_tidx_best5": 0.3333333333333333,
+   "rel_prize_ratio_mean5": -0.030737447946681096,
+   "rank_prize_ratio_mean5": 0.5333333333333333,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.37656951785955495
+  "pred": 0.43163780376482097
  },
  {
   "race_id": "202603030403",
@@ -2988,9 +3268,16 @@
    "tidx_best5": -0.3889,
    "tidx_last1": -1.7812,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.3778853333333333,
+   "rank_tidx_mean5": 0.7333333333333333,
+   "rel_tidx_best5": -0.4641866666666667,
+   "rank_tidx_best5": 0.8,
+   "rel_prize_ratio_mean5": -0.030737447946681096,
+   "rank_prize_ratio_mean5": 0.5333333333333333,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.012096067321694775
+  "pred": 0.010116534071617321
  },
  {
   "race_id": "202603030403",
@@ -3061,9 +3348,16 @@
    "tidx_best5": 0.8333,
    "tidx_last1": -1.2222,
    "last1_victim": 0,
-   "victim_n5": 1
+   "victim_n5": 1,
+   "rel_tidx_mean5": 0.12283466666666676,
+   "rank_tidx_mean5": 0.5333333333333333,
+   "rel_tidx_best5": 0.7580133333333333,
+   "rank_tidx_best5": 0.13333333333333333,
+   "rel_prize_ratio_mean5": -0.020885231197912635,
+   "rank_prize_ratio_mean5": 0.4,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.27711024146971025
+  "pred": 0.2937488185819499
  },
  {
   "race_id": "202603030403",
@@ -3134,9 +3428,16 @@
    "tidx_best5": -0.1667,
    "tidx_last1": -0.1667,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.4530253333333333,
+   "rank_tidx_mean5": 0.8666666666666667,
+   "rel_tidx_best5": -0.24198666666666668,
+   "rank_tidx_best5": 0.6,
+   "rel_prize_ratio_mean5": -0.010836950434243375,
+   "rank_prize_ratio_mean5": 0.26666666666666666,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.21919493470474605
+  "pred": 0.2273963158102852
  },
  {
   "race_id": "202603030403",
@@ -3207,9 +3508,16 @@
    "tidx_best5": -0.2143,
    "tidx_last1": -0.5938,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.21802533333333318,
+   "rank_tidx_mean5": 0.6,
+   "rel_tidx_best5": -0.28958666666666666,
+   "rank_tidx_best5": 0.6666666666666666,
+   "rel_prize_ratio_mean5": -0.030737447946681096,
+   "rank_prize_ratio_mean5": 0.5333333333333333,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.11924243270039743
+  "pred": 0.11622766651694269
  },
  {
   "race_id": "202603030403",
@@ -3280,9 +3588,16 @@
    "tidx_best5": -0.25,
    "tidx_last1": -1.8333,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.5005053333333332,
+   "rank_tidx_mean5": 0.9333333333333333,
+   "rel_tidx_best5": -0.32528666666666667,
+   "rank_tidx_best5": 0.7333333333333333,
+   "rel_prize_ratio_mean5": -0.030737447946681096,
+   "rank_prize_ratio_mean5": 0.5333333333333333,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.02960752532452996
+  "pred": 0.028730587161912464
  },
  {
   "race_id": "202603030403",
@@ -3353,9 +3668,16 @@
    "tidx_best5": -0.5,
    "tidx_last1": -1.1071,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -0.22954533333333316,
+   "rank_tidx_mean5": 0.6666666666666666,
+   "rel_tidx_best5": -0.5752866666666667,
+   "rank_tidx_best5": 0.9333333333333333,
+   "rel_prize_ratio_mean5": 0.20420231108946352,
+   "rank_prize_ratio_mean5": 0.2,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.0856596501438115
+  "pred": 0.059201288686758016
  },
  {
   "race_id": "202603030403",
@@ -3426,8 +3748,15 @@
    "tidx_best5": -1.375,
    "tidx_last1": -1.5556,
    "last1_victim": 0,
-   "victim_n5": 0
+   "victim_n5": 0,
+   "rel_tidx_mean5": -1.0299653333333332,
+   "rank_tidx_mean5": 1.0,
+   "rel_tidx_best5": -1.4502866666666667,
+   "rank_tidx_best5": 1.0,
+   "rel_prize_ratio_mean5": 0.30913183309907044,
+   "rank_prize_ratio_mean5": 0.06666666666666667,
+   "field_form_mean": 0.4274238979974274
   },
-  "pred": 0.013739105139055746
+  "pred": 0.010151240543104425
  }
 ]
