@@ -422,3 +422,22 @@ footer span { letter-spacing:0; }
 /* 勝率・連対率（AI予測） */
 .sub-probs { display: flex; gap: 14px; margin: -2px 0 8px; color: var(--muted); font-size: 11px; }
 .sub-probs b { color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+/* ===== 買い目タブ ===== */
+.race-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.race-tab:not(:first-child):not(:last-child) { border-radius: 0; border-left: 0; }
+.race-tab:not(:first-child):not(:last-child).active { border-left: 1px solid var(--accent); }
+.bets-panel { margin-top: 8px; }
+.bet-group { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.bet-group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.bet-group-head h3 { margin: 0; font-size: 16px; }
+.bet-group-head span { color: var(--muted); font-size: 11px; }
+.bet-note { margin: 4px 0 8px; color: var(--muted); font-size: 10px; }
+.bet-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.bet-list li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px; background: var(--panel-2); }
+.bet-combo { display: inline-flex; align-items: center; gap: 3px; }
+.bet-combo > span { display: inline-flex; align-items: center; gap: 3px; }
+.bet-combo i { font-style: normal; color: var(--muted); font-size: 12px; }
+.bet-combo .horse-number-badge { min-width: 26px; height: 26px; font-size: 13px; }
+.bet-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cbd7e8; font-size: 11px; }
+.bet-list strong { color: var(--accent); font-size: 14px; font-variant-numeric: tabular-nums; }

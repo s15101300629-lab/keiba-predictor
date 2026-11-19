@@ -653,6 +653,101 @@ function TopPicks({ horses }: { horses: Horse[] }) {
   </section>;
 }
 
+// ===== 買い目（AIの確率から自動で組む） =====
+// 組み合わせ馬券の的中確率は、AIの勝率を出走馬の合計が1になるようにそろえ、
+// ハービルの式（1着になった馬を除いて、残りの馬の中で次の着順が決まると考える）で計算する。目安の値。
+type BetHorse = { id: string; num: number | null; name: string; win: number; place: number };
+type Ticket = { horses: BetHorse[]; prob: number };
+type BetGroup = { title: string; note: string; tickets: Ticket[]; ordered: boolean };
+
+function harvillePerms(hs: BetHorse[], size: number): { order: number[]; prob: number }[] {
+  const total = hs.reduce((sum, h) => sum + h.win, 0);
+  const w = hs.map((h) => h.win / total);
+  const out: { order: number[]; prob: number }[] = [];
+  const walk = (order: number[], prob: number, used: number) => {
+    if (order.length === size) { out.push({ order, prob }); return; }
+    for (let i = 0; i < w.length; i++) {
+      if (order.includes(i)) continue;
+      walk([...order, i], prob * w[i] / (1 - used), used + w[i]);
+    }
+  };
+  walk([], 1, 0);
+  return out;
+}
+
+function buildBets(horses: Horse[]): BetGroup[] {
+  const hs: BetHorse[] = horses.filter((h) => h.prediction && h.prediction.winProbability != null).map((h) => ({
+    id: h.horseId, num: h.raceEntry?.horseNumber ?? null, name: h.name,
+    win: h.prediction!.winProbability!, place: h.prediction!.probability,
+  }));
+  if (hs.length < 3) return [];
+  const byKey = (perms: { order: number[]; prob: number }[], ordered: boolean) => {
+    const map = new Map<string, Ticket>();
+    for (const p of perms) {
+      const idx = ordered ? p.order : [...p.order].sort((a, b) => a - b);
+      const key = idx.join("-");
+      const t = map.get(key);
+      if (t) t.prob += p.prob; else map.set(key, { horses: idx.map((i) => hs[i]), prob: p.prob });
+    }
+    return [...map.values()].sort((a, b) => b.prob - a.prob);
+  };
+  const p2 = harvillePerms(hs, 2);
+  const p3 = harvillePerms(hs, 3);
+  // ワイド：2頭とも3着以内（3着までの並びのうち、2頭を含むもの）
+  const wide = new Map<string, Ticket>();
+  for (const p of p3) {
+    for (const [a, b] of [[0, 1], [0, 2], [1, 2]]) {
+      const pair = [p.order[a], p.order[b]].sort((x, y) => x - y);
+      const key = pair.join("-");
+      const t = wide.get(key);
+      if (t) t.prob += p.prob; else wide.set(key, { horses: pair.map((i) => hs[i]), prob: p.prob });
+    }
+  }
+  const byWin = [...hs].sort((a, b) => b.win - a.win);
+  const byPlace = [...hs].sort((a, b) => b.place - a.place);
+  return [
+    { title: "単勝", note: "AIの勝率が一番高い馬", ordered: false, tickets: [{ horses: [byWin[0]], prob: byWin[0].win }] },
+    { title: "複勝", note: "AIの3着以内確率が一番高い馬", ordered: false, tickets: [{ horses: [byPlace[0]], prob: byPlace[0].place }] },
+    { title: "ワイド", note: "推定の的中確率が高い順に3点", ordered: false, tickets: [...wide.values()].sort((a, b) => b.prob - a.prob).slice(0, 3) },
+    { title: "馬連", note: "推定の的中確率が高い順に3点", ordered: false, tickets: byKey(p2, false).slice(0, 3) },
+    { title: "3連複", note: "推定の的中確率が高い順に6点", ordered: false, tickets: byKey(p3, false).slice(0, 6) },
+    { title: "3連単", note: "推定の的中確率が高い順に6点（左から1着・2着・3着）", ordered: true, tickets: byKey(p3, true).slice(0, 6) },
+  ];
+}
+
+function BetsPanel({ horses, inTraining }: { horses: Horse[]; inTraining: boolean }) {
+  const groups = buildBets(horses);
+  if (!groups.length) return <p className="state-panel">AIの勝率が出ていないため、買い目を組めない。</p>;
+  return <section className="bets-panel">
+    {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。買い目は参考として見ること。</p>}
+    {groups.map((g) => {
+      const total = g.tickets.reduce((sum, t) => sum + t.prob, 0);
+      return <section className="bet-group" key={g.title}>
+        <div className="bet-group-head">
+          <h3>{g.title}</h3>
+          <span>{g.tickets.length}点・まとめての的中確率 {(total * 100).toFixed(1)}%</span>
+        </div>
+        <p className="bet-note">{g.note}</p>
+        <ul className="bet-list">
+          {g.tickets.map((t) => <li key={t.horses.map((h) => h.id).join("-")}>
+            <span className="bet-combo">{t.horses.map((h, i) => <span key={h.id}>
+              {i > 0 && <i>{g.ordered ? "→" : "-"}</i>}
+              <HorseNumberBadge entry={horses.find((x) => x.horseId === h.id)?.raceEntry ?? null} />
+            </span>)}</span>
+            <span className="bet-names">{t.horses.map((h) => h.name).join(g.ordered ? " → " : "・")}</span>
+            <strong>{(t.prob * 100).toFixed(1)}%</strong>
+          </li>)}
+        </ul>
+      </section>;
+    })}
+    <details className="model-note">
+      <summary>買い目の決め方と注意</summary>
+      <p>単勝・複勝はAIの確率が一番高い馬。組み合わせの馬券は、AIの勝率から各組み合わせの的中確率を計算し（勝率を合計1にそろえ、1着の馬を除いた残りで2着・3着が決まると考える計算）、高い順に並べた。確率は目安。
+        オッズは使っていないので、配当や期待値は考えていない。過去の検証では、AIの1位の馬を買い続けた場合の回収率は単勝 約76%・複勝 約84%で、100%を下回る。</p>
+    </details>
+  </section>;
+}
+
 export default function RaceDetailPage() {
   const params = useParams<{ raceId: string }>();
   const raceId = params.raceId;
@@ -663,7 +758,7 @@ export default function RaceDetailPage() {
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [marks, setMarks] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"detail" | "prediction">("detail");
+  const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "bets">("detail");
   const [predSort, setPredSort] = useState<"number" | "prob">("number");
   const [assumedGoing, setAssumedGoing] = useState(""); // 馬場未発表時に想定する馬場（空 = 想定なし）
 
@@ -751,6 +846,8 @@ export default function RaceDetailPage() {
           onClick={() => setActiveTab("detail")}>レース詳細</button>
         <button type="button" role="tab" aria-selected={activeTab === "prediction"} className={"race-tab" + (activeTab === "prediction" ? " active" : "")}
           onClick={() => setActiveTab("prediction")}>AI予測結果</button>
+        <button type="button" role="tab" aria-selected={activeTab === "bets"} className={"race-tab" + (activeTab === "bets" ? " active" : "")}
+          onClick={() => setActiveTab("bets")}>買い目</button>
       </div>
       {activeTab === "detail" && <div role="tabpanel">
         <section className="detail-section">
@@ -758,6 +855,7 @@ export default function RaceDetailPage() {
             mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />)}
         </section>
       </div>}
+      {activeTab === "bets" && <div role="tabpanel"><BetsPanel horses={horses} inTraining={!!data.ml?.raceInTraining} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         {data.ml?.status === "available" ? <>
           <div className="prediction-summary">
