@@ -72,5 +72,19 @@
   "surface_change": 357.8,
   "victim_n5": 344.2,
   "last1_victim": 48.6
+ },
+ "extra_targets": {
+  "win": {
+   "best_iteration": 647,
+   "auc": 0.7915757832965473,
+   "logloss": 0.2215056729662433,
+   "base_rate": 0.07270685319465807
+  },
+  "top2": {
+   "best_iteration": 623,
+   "auc": 0.7893162371442954,
+   "logloss": 0.3437660688565621,
+   "base_rate": 0.14548695036499915
+  }
  }
 }
