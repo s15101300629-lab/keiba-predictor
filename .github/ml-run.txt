@@ -1,0 +1,3 @@
+# 1行1コマンド。上から順に実行し、data/ml の変化をコマンドごとに commit する
+# 2026-11-20：成績表の範囲（過去走・学習の年）の比較
+cd scripts/ml && python compare_range.py

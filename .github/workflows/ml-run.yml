@@ -1,0 +1,53 @@
+name: 学習・検証の実行（作業ブランチ用）
+
+# scripts/ml の Python スクリプト（比較・再学習など）を GitHub Actions で動かし、data/ml の結果を作業ブランチに commit する。
+# 動かすコマンドは .github/ml-run.txt に1行1つで書く（このファイルを変えて push すると起動する）。
+# クラウドのセッションが再起動しても止まらないように、長い計算はこちらで回す。
+on:
+  push:
+    branches: [claude/horse-racing-pdf-conversion-ucigrq]
+    paths: [.github/ml-run.txt, .github/workflows/ml-run.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ml-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - run: git pull -q --rebase origin "${GITHUB_REF_NAME}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/ml/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: pip install -r scripts/ml/requirements.txt
+      - run: npm ci --no-audit --no-fund
+      - name: Run commands in .github/ml-run.txt
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          grep -v '^\s*#' .github/ml-run.txt | grep -v '^\s*$' | while IFS= read -r cmd; do
+            echo "::group::$cmd"
+            bash -c "$cmd"
+            echo "::endgroup::"
+            git add data/ml
+            if ! git diff --cached --quiet; then
+              git commit -q -m "ml: $cmd"
+              for i in 1 2 3 4; do
+                git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break
+                sleep $((i * 10))
+              done
+            fi
+          done
