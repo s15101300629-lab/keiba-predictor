@@ -51,7 +51,17 @@ def main() -> None:
              if r["surface"] in ("芝", "ダート")]
     out = ROOT / f"data/training/{year}.jsonl"
     out.parent.mkdir(parents=True, exist_ok=True)
-    done = {json.loads(line)["race_id"] for line in out.open(encoding="utf-8")} if out.exists() else set()
+    done = set()
+    if out.exists():
+        # 途中で止めたときの書きかけの行は読み飛ばす（次の実行で取り直す）
+        good = []
+        for line in out.open(encoding="utf-8"):
+            try:
+                done.add(json.loads(line)["race_id"])
+                good.append(line if line.endswith("\n") else line + "\n")
+            except (json.JSONDecodeError, KeyError):
+                pass
+        out.write_text("".join(good), encoding="utf-8")
     todo = [r for r in races if r not in done]
     print(f"{year}: {len(races)} races, done {len(done)}, todo {len(todo)}", file=sys.stderr, flush=True)
     headers = {"User-Agent": "Mozilla/5.0", "Connection": "close"}
