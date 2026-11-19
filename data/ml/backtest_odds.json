@@ -1,0 +1,214 @@
+{
+ "backtest": {
+  "2024": {
+   "AI": {
+    "races": 3340,
+    "top1_win": 0.284,
+    "top1_place": 0.603,
+    "top3_hit": 0.486,
+    "win_roi": 0.776,
+    "place_roi": 0.858
+   },
+   "人気": {
+    "races": 3340,
+    "top1_win": 0.349,
+    "top1_place": 0.666,
+    "top3_hit": 0.536,
+    "win_roi": 0.816,
+    "place_roi": 0.867
+   }
+  },
+  "2025": {
+   "AI": {
+    "races": 3352,
+    "top1_win": 0.286,
+    "top1_place": 0.605,
+    "top3_hit": 0.491,
+    "win_roi": 0.772,
+    "place_roi": 0.841
+   },
+   "人気": {
+    "races": 3352,
+    "top1_win": 0.337,
+    "top1_place": 0.654,
+    "top3_hit": 0.53,
+    "win_roi": 0.798,
+    "place_roi": 0.85
+   }
+  },
+  "2026": {
+   "AI": {
+    "races": 2976,
+    "top1_win": 0.28,
+    "top1_place": 0.606,
+    "top3_hit": 0.497,
+    "win_roi": 0.745,
+    "place_roi": 0.825
+   },
+   "人気": {
+    "races": 2976,
+    "top1_win": 0.345,
+    "top1_place": 0.671,
+    "top3_hit": 0.533,
+    "win_roi": 0.82,
+    "place_roi": 0.869
+   }
+  },
+  "all": {
+   "AI": {
+    "races": 9668,
+    "top1_win": 0.283,
+    "top1_place": 0.605,
+    "top3_hit": 0.491,
+    "win_roi": 0.765,
+    "place_roi": 0.842
+   },
+   "人気": {
+    "races": 9668,
+    "top1_win": 0.344,
+    "top1_place": 0.663,
+    "top3_hit": 0.533,
+    "win_roi": 0.811,
+    "place_roi": 0.862
+   }
+  },
+  "gap_ratio_2025_2026": {
+   "0-0.6": {
+    "n": 10993,
+    "place_rate": 0.257,
+    "place_roi": 0.738,
+    "win_roi": 0.762,
+    "ai": 0.127,
+    "market": 0.281
+   },
+   "0.6-0.8": {
+    "n": 11761,
+    "place_rate": 0.304,
+    "place_roi": 0.801,
+    "win_roi": 0.8,
+    "ai": 0.219,
+    "market": 0.311
+   },
+   "0.8-1.0": {
+    "n": 13965,
+    "place_rate": 0.332,
+    "place_roi": 0.775,
+    "win_roi": 0.783,
+    "ai": 0.3,
+    "market": 0.332
+   },
+   "1.0-1.2": {
+    "n": 12181,
+    "place_rate": 0.302,
+    "place_roi": 0.751,
+    "win_roi": 0.725,
+    "ai": 0.322,
+    "market": 0.296
+   },
+   "1.2-1.5": {
+    "n": 11209,
+    "place_rate": 0.193,
+    "place_roi": 0.691,
+    "win_roi": 0.668,
+    "ai": 0.247,
+    "market": 0.187
+   },
+   "1.5-2.0": {
+    "n": 10467,
+    "place_rate": 0.112,
+    "place_roi": 0.648,
+    "win_roi": 0.693,
+    "ai": 0.184,
+    "market": 0.108
+   },
+   "2.0-99": {
+    "n": 16895,
+    "place_rate": 0.056,
+    "place_roi": 0.615,
+    "win_roi": 0.657,
+    "ai": 0.146,
+    "market": 0.051
+   }
+  },
+  "gap_ge1.5_ai_ge0.3": {
+   "n": 3837,
+   "place_rate": 0.222,
+   "place_roi": 0.744,
+   "win_roi": 0.86,
+   "ai": 0.415,
+   "market": 0.208
+  },
+  "gap_ge1.2_ai_ge0.3": {
+   "n": 7568,
+   "place_rate": 0.3,
+   "place_roi": 0.771,
+   "win_roi": 0.815,
+   "ai": 0.449,
+   "market": 0.287
+  },
+  "all_horses": {
+   "n": 87471,
+   "place_rate": 0.217,
+   "place_roi": 0.714,
+   "win_roi": 0.725,
+   "ai": 0.22,
+   "market": 0.218
+  }
+ },
+ "odds_stack": {
+  "2025": {
+   "オッズだけ": {
+    "logloss": 0.4034,
+    "auc": 0.81853,
+    "top3_hit": 0.5303,
+    "top1_place": 0.6536,
+    "top1_place_roi": 0.85,
+    "top1_win_roi": 0.798
+   },
+   "オッズ＋AI": {
+    "logloss": 0.40289,
+    "auc": 0.81892,
+    "top3_hit": 0.5295,
+    "top1_place": 0.6527,
+    "top1_place_roi": 0.848,
+    "top1_win_roi": 0.789
+   },
+   "AIの係数": 0.136,
+   "AIだけ": {
+    "logloss": 0.43028,
+    "auc": 0.78227,
+    "top3_hit": 0.4911,
+    "top1_place": 0.6053,
+    "top1_place_roi": 0.841,
+    "top1_win_roi": 0.772
+   }
+  },
+  "2026": {
+   "オッズだけ": {
+    "logloss": 0.40318,
+    "auc": 0.82058,
+    "top3_hit": 0.5327,
+    "top1_place": 0.6714,
+    "top1_place_roi": 0.869,
+    "top1_win_roi": 0.82
+   },
+   "オッズ＋AI": {
+    "logloss": 0.40264,
+    "auc": 0.82104,
+    "top3_hit": 0.5315,
+    "top1_place": 0.665,
+    "top1_place_roi": 0.855,
+    "top1_win_roi": 0.791
+   },
+   "AIの係数": 0.139,
+   "AIだけ": {
+    "logloss": 0.43014,
+    "auc": 0.78529,
+    "top3_hit": 0.4973,
+    "top1_place": 0.6062,
+    "top1_place_roi": 0.825,
+    "top1_win_roi": 0.745
+   }
+  }
+ }
+}
