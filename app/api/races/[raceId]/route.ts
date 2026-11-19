@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
-import { addFormDeviation, jockeyStats, resolveJockey, runnerFeatures, type Store } from "@/app/lib/ml/features";
+import { addFieldFeatures, addFormDeviation, expectedPace, jockeyStats, runningStyle, resolveJockey, runnerFeatures, type Store } from "@/app/lib/ml/features";
 import { predictProbability, type Model } from "@/app/lib/ml/model";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, stackFeatures, stackProbability, stallionRecord,
@@ -992,6 +992,7 @@ export async function GET(
         return { jockeyKey, features };
       });
       addFormDeviation(rows.map((row) => row.features));
+      addFieldFeatures(rows.map((row) => row.features));
       const baseProbs = rows.map((row) => predictProbability(ml.model, row.features));
       const useStack = !!ml.stack?.adopted;
       const isHeavy = raceConditions.going === "重" || raceConditions.going === "不良";
@@ -1027,11 +1028,21 @@ export async function GET(
           heavyNote: heavyNotes[i],
           modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior,
           jockeyName: rows[i].jockeyKey,
+          pace: {
+            style: runningStyle(f), posFirstMean: num(f.pos_first_mean), nigeRate: num(f.nige_rate),
+            highPace: { n: f.hp_n, top3: num(f.hp_top3) }, slowPace: { n: f.sp_n, top3: num(f.sp_top3) },
+            relPosRank: num(f.rel_pos_rank),
+          },
           jockey: jockeyStats(ml.store, raceInput, rows[i].jockeyKey),
         };
       });
+      const f0 = rows[0]?.features;
       mlSummary = {
         status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource,
+        pace: f0 ? {
+          nigeCandidates: f0.field_nige_cands, frontRunners: f0.field_front, frontRatio: f0.field_front_ratio,
+          expected: expectedPace(f0.field_nige_cands, f0.field_front_ratio),
+        } : null,
         pedigreeIncluded: useStack, stackValidation: ml.stack?.validation ?? null,
         heavyAdjustment: ml.heavy ? {
           beta: ml.heavy.beta, chosen: ml.heavy.chosen ?? null, goings: ml.heavy.goings ?? null,

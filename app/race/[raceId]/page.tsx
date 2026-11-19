@@ -53,7 +53,12 @@ type FormRun = {
   timeDiff: number | null; agari: number | null; raceLast3f: number | null; score: number;
 };
 type JockeyYear = { n: number; top3: number; venueN: number; venueTop3: number; courseN: number; courseTop3: number };
+type PaceInfo = {
+  style: string | null; posFirstMean: number | null; nigeRate: number | null;
+  highPace: { n: number; top3: number | null }; slowPace: { n: number; top3: number | null }; relPosRank: number | null;
+};
 type Prediction = {
+  pace?: PaceInfo;
   probability: number; baseProbability: number; pedigreeIncluded: boolean;
   rank: number; modelFormDeviation: number | null; priorRuns: number;
   heavyNote: {
@@ -64,6 +69,7 @@ type Prediction = {
   jockeyName: string | null; jockey: JockeyYear;
 };
 type MlSummary = {
+  pace?: { nigeCandidates: number; frontRunners: number; frontRatio: number; expected: string } | null;
   status: "available" | "unavailable"; dataUntil?: string; goingAssumed?: boolean; pedigreeIncluded?: boolean;
   goingSource?: "announced" | "user" | "default";
   metrics?: { auc: number; raceTop3Hit: number; testYear: string };
@@ -474,6 +480,12 @@ function OverallHorseCard({ horse, total, categories, factors }: {
               ? " 今回は良のため補正なし。"
               : " 馬場未発表。稍重〜不良になった場合は補正対象。"}
         </p>}
+        {prediction?.pace && <p className="result-category-rank">
+          脚質：{prediction.pace.style ?? "不明"}
+          {prediction.pace.posFirstMean != null && `（近走の最初のコーナー 平均${Math.round(prediction.pace.posFirstMean * 100)}%地点${prediction.pace.nigeRate ? `・逃げ${Math.round(prediction.pace.nigeRate * 100)}%` : ""}）`}
+          ／ハイペース {prediction.pace.highPace.n}走{prediction.pace.highPace.top3 != null ? `・3着内${Math.round(prediction.pace.highPace.top3 * 100)}%` : ""}
+          ／スローペース {prediction.pace.slowPace.n}走{prediction.pace.slowPace.top3 != null ? `・3着内${Math.round(prediction.pace.slowPace.top3 * 100)}%` : ""}
+        </p>}
         {prediction && <p className="result-category-rank">
           モデル内の調子偏差値 {prediction.modelFormDeviation == null ? "-" : prediction.modelFormDeviation.toFixed(1)}
           （成績表の近5走: 着順＋タイム差）・成績表の過去走 {prediction.priorRuns}走
@@ -633,6 +645,9 @@ export default function RaceDetailPage() {
             学習データ：JRA成績表 〜{data.ml.dataUntil}（{data.ml.metrics?.testYear}年の検証で、予測上位3頭の3着以内的中率 {data.ml.metrics ? Math.round(data.ml.metrics.raceTop3Hit * 1000) / 10 : "-"}%）。
             {data.ml.goingSource === "user" ? `想定馬場「${conditions.going}」で計算。` : data.ml.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
           </p> : <p>AI予測は利用できない（モデル未学習、または対象外のレース）。</p>}
+          {data.ml?.pace && <p>
+            展開予想：想定ペース <b>{data.ml.pace.expected}</b>（逃げ候補 {data.ml.pace.nigeCandidates}頭・先行馬 {data.ml.pace.frontRunners}頭 / {data.horseCount}頭）
+          </p>}
         </div>
         <section className="horse-results-section">
           <div className="result-section-heading">

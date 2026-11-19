@@ -40,9 +40,21 @@
    "jockey_venue_n": 48,
    "jockey_venue_top3": 0.3541666666666667,
    "jockey_course_n": 13,
-   "jockey_course_top3": 0.38461538461538464
+   "jockey_course_top3": 0.38461538461538464,
+   "pos_first_mean": 0.4804232804232804,
+   "pos_last_mean": 0.4063492063492063,
+   "nige_rate": 0.0,
+   "senko_rate": 0.3333333333333333,
+   "hp_n": 1,
+   "hp_top3": 1.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.625
   },
-  "pred": 0.656847377395411
+  "pred": 0.6183864733697042
  },
  {
   "race_id": "202603030401",
@@ -85,9 +97,21 @@
    "jockey_venue_n": 14,
    "jockey_venue_top3": 0.21428571428571427,
    "jockey_course_n": 5,
-   "jockey_course_top3": 0.2
+   "jockey_course_top3": 0.2,
+   "pos_first_mean": 0.6666666666666666,
+   "pos_last_mean": 0.6666666666666666,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.75
   },
-  "pred": 0.05797421627053844
+  "pred": 0.04023080472744299
  },
  {
   "race_id": "202603030401",
@@ -130,9 +154,21 @@
    "jockey_venue_n": 74,
    "jockey_venue_top3": 0.13513513513513514,
    "jockey_course_n": 15,
-   "jockey_course_top3": 0.13333333333333333
+   "jockey_course_top3": 0.13333333333333333,
+   "pos_first_mean": 0.06666666666666667,
+   "pos_last_mean": 0.06666666666666667,
+   "nige_rate": 1.0,
+   "senko_rate": 1.0,
+   "hp_n": 1,
+   "hp_top3": 1.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.0625
   },
-  "pred": 0.5292185666803935
+  "pred": 0.5182872865992734
  },
  {
   "race_id": "202603030401",
@@ -175,9 +211,21 @@
    "jockey_venue_n": 65,
    "jockey_venue_top3": 0.24615384615384617,
    "jockey_course_n": 5,
-   "jockey_course_top3": 0.4
+   "jockey_course_top3": 0.4,
+   "pos_first_mean": 0.15714285714285714,
+   "pos_last_mean": 0.08571428571428572,
+   "nige_rate": 0.5,
+   "senko_rate": 1.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.1875
   },
-  "pred": 0.3670932129497557
+  "pred": 0.3729322858187678
  },
  {
   "race_id": "202603030401",
@@ -220,9 +268,21 @@
    "jockey_venue_n": 51,
    "jockey_venue_top3": 0.2549019607843137,
    "jockey_course_n": 2,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.23841575091575093,
+   "pos_last_mean": 0.29354395604395606,
+   "nige_rate": 0.25,
+   "senko_rate": 0.75,
+   "hp_n": 2,
+   "hp_top3": 0.0,
+   "sp_n": 1,
+   "sp_top3": 1.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.3125
   },
-  "pred": 0.2832569568273602
+  "pred": 0.31374343100810803
  },
  {
   "race_id": "202603030401",
@@ -265,9 +325,21 @@
    "jockey_venue_n": 37,
    "jockey_venue_top3": 0.2972972972972973,
    "jockey_course_n": 5,
-   "jockey_course_top3": 0.6
+   "jockey_course_top3": 0.6,
+   "pos_first_mean": 0.2880952380952381,
+   "pos_last_mean": 0.26726190476190476,
+   "nige_rate": 0.0,
+   "senko_rate": 0.6666666666666666,
+   "hp_n": 3,
+   "hp_top3": 0.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.4375
   },
-  "pred": 0.17477326542253585
+  "pred": 0.1954297458114823
  },
  {
   "race_id": "202603030401",
@@ -310,9 +382,21 @@
    "jockey_venue_n": 31,
    "jockey_venue_top3": 0.2903225806451613,
    "jockey_course_n": 7,
-   "jockey_course_top3": 0.42857142857142855
+   "jockey_course_top3": 0.42857142857142855,
+   "pos_first_mean": 0.3833333333333333,
+   "pos_last_mean": 0.43333333333333335,
+   "nige_rate": 0.0,
+   "senko_rate": 0.5,
+   "hp_n": 1,
+   "hp_top3": 0.0,
+   "sp_n": 1,
+   "sp_top3": 1.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.5625
   },
-  "pred": 0.18153298595714581
+  "pred": 0.17163702339066442
  },
  {
   "race_id": "202603030401",
@@ -355,9 +439,21 @@
    "jockey_venue_n": 89,
    "jockey_venue_top3": 0.1348314606741573,
    "jockey_course_n": 16,
-   "jockey_course_top3": 0.1875
+   "jockey_course_top3": 0.1875,
+   "pos_first_mean": 0.2134920634920635,
+   "pos_last_mean": 0.18968253968253967,
+   "nige_rate": 0.3333333333333333,
+   "senko_rate": 0.6666666666666666,
+   "hp_n": 2,
+   "hp_top3": 0.0,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.25
   },
-  "pred": 0.07483260273254883
+  "pred": 0.12281721770526126
  },
  {
   "race_id": "202603030401",
@@ -400,9 +496,21 @@
    "jockey_venue_n": 19,
    "jockey_venue_top3": 0.05263157894736842,
    "jockey_course_n": 3,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.14285714285714285,
+   "pos_last_mean": 0.16666666666666666,
+   "nige_rate": 0.3333333333333333,
+   "senko_rate": 1.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 2,
+   "sp_top3": 0.5,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.125
   },
-  "pred": 0.22563553104526413
+  "pred": 0.2313981186098673
  },
  {
   "race_id": "202603030401",
@@ -445,9 +553,21 @@
    "jockey_venue_n": 38,
    "jockey_venue_top3": 0.18421052631578946,
    "jockey_course_n": 6,
-   "jockey_course_top3": 0.16666666666666666
+   "jockey_course_top3": 0.16666666666666666,
+   "pos_first_mean": 0.6,
+   "pos_last_mean": 0.9333333333333333,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 1,
+   "hp_top3": 0.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.6875
   },
-  "pred": 0.06351690093498295
+  "pred": 0.04234143855447586
  },
  {
   "race_id": "202603030401",
@@ -490,9 +610,21 @@
    "jockey_venue_n": 39,
    "jockey_venue_top3": 0.07692307692307693,
    "jockey_course_n": 6,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.8636363636363636,
+   "pos_last_mean": 0.8181818181818181,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 1,
+   "hp_top3": 0.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.8125
   },
-  "pred": 0.01953214688429755
+  "pred": 0.015359960610824112
  },
  {
   "race_id": "202603030401",
@@ -535,9 +667,21 @@
    "jockey_venue_n": 21,
    "jockey_venue_top3": 0.23809523809523808,
    "jockey_course_n": 1,
-   "jockey_course_top3": 1.0
+   "jockey_course_top3": 1.0,
+   "pos_first_mean": 0.3373397435897436,
+   "pos_last_mean": 0.4345619658119658,
+   "nige_rate": 0.0,
+   "senko_rate": 0.75,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 2,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.5
   },
-  "pred": 0.1718334762814964
+  "pred": 0.1999404642539764
  },
  {
   "race_id": "202603030401",
@@ -580,9 +724,21 @@
    "jockey_venue_n": 85,
    "jockey_venue_top3": 0.25882352941176473,
    "jockey_course_n": 8,
-   "jockey_course_top3": 0.25
+   "jockey_course_top3": 0.25,
+   "pos_first_mean": null,
+   "pos_last_mean": null,
+   "nige_rate": null,
+   "senko_rate": null,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": null
   },
-  "pred": 0.11465186363464291
+  "pred": 0.06973098806206178
  },
  {
   "race_id": "202603030401",
@@ -625,9 +781,21 @@
    "jockey_venue_n": 20,
    "jockey_venue_top3": 0.05,
    "jockey_course_n": 5,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.26666666666666666,
+   "pos_last_mean": 0.2,
+   "nige_rate": 0.0,
+   "senko_rate": 1.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.375
   },
-  "pred": 0.016941492254519172
+  "pred": 0.03507011442909312
  },
  {
   "race_id": "202603030401",
@@ -670,9 +838,21 @@
    "jockey_venue_n": 7,
    "jockey_venue_top3": 0.0,
    "jockey_course_n": 1,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": null,
+   "pos_last_mean": null,
+   "nige_rate": null,
+   "senko_rate": null,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": null
   },
-  "pred": 0.029227787166251927
+  "pred": 0.026290411044741887
  },
  {
   "race_id": "202603030401",
@@ -715,9 +895,21 @@
    "jockey_venue_n": 156,
    "jockey_venue_top3": 0.20512820512820512,
    "jockey_course_n": 24,
-   "jockey_course_top3": 0.25
+   "jockey_course_top3": 0.25,
+   "pos_first_mean": null,
+   "pos_last_mean": null,
+   "nige_rate": null,
+   "senko_rate": null,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": null
   },
-  "pred": 0.12040656442239267
+  "pred": 0.0759293400738359
  },
  {
   "race_id": "202603030402",
@@ -760,9 +952,21 @@
    "jockey_venue_n": 58,
    "jockey_venue_top3": 0.1724137931034483,
    "jockey_course_n": 7,
-   "jockey_course_top3": 0.14285714285714285
+   "jockey_course_top3": 0.14285714285714285,
+   "pos_first_mean": 0.35833333333333334,
+   "pos_last_mean": 0.26666666666666666,
+   "nige_rate": 0.0,
+   "senko_rate": 0.5,
+   "hp_n": 1,
+   "hp_top3": 1.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.5
   },
-  "pred": 0.3052698187629748
+  "pred": 0.264031794506348
  },
  {
   "race_id": "202603030402",
@@ -805,9 +1009,21 @@
    "jockey_venue_n": 64,
    "jockey_venue_top3": 0.21875,
    "jockey_course_n": 13,
-   "jockey_course_top3": 0.23076923076923078
+   "jockey_course_top3": 0.23076923076923078,
+   "pos_first_mean": 0.3958333333333333,
+   "pos_last_mean": 0.6041666666666666,
+   "nige_rate": 0.0,
+   "senko_rate": 0.5,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.5625
   },
-  "pred": 0.22352443367281824
+  "pred": 0.2404050574993645
  },
  {
   "race_id": "202603030402",
@@ -850,9 +1066,21 @@
    "jockey_venue_n": 81,
    "jockey_venue_top3": 0.19753086419753085,
    "jockey_course_n": 11,
-   "jockey_course_top3": 0.2727272727272727
+   "jockey_course_top3": 0.2727272727272727,
+   "pos_first_mean": 0.28125,
+   "pos_last_mean": 0.3125,
+   "nige_rate": 0.0,
+   "senko_rate": 0.5,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.25
   },
-  "pred": 0.13097576549426862
+  "pred": 0.123626885825214
  },
  {
   "race_id": "202603030402",
@@ -895,9 +1123,21 @@
    "jockey_venue_n": 65,
    "jockey_venue_top3": 0.24615384615384617,
    "jockey_course_n": 8,
-   "jockey_course_top3": 0.5
+   "jockey_course_top3": 0.5,
+   "pos_first_mean": 0.5,
+   "pos_last_mean": 0.4,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 1.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.625
   },
-  "pred": 0.35860142702934583
+  "pred": 0.357439282599718
  },
  {
   "race_id": "202603030402",
@@ -940,9 +1180,21 @@
    "jockey_venue_n": 9,
    "jockey_venue_top3": 0.3333333333333333,
    "jockey_course_n": 1,
-   "jockey_course_top3": 1.0
+   "jockey_course_top3": 1.0,
+   "pos_first_mean": 0.23529411764705882,
+   "pos_last_mean": 0.29411764705882354,
+   "nige_rate": 0.0,
+   "senko_rate": 1.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 1.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.1875
   },
-  "pred": 0.4611179225262016
+  "pred": 0.4968019212494705
  },
  {
   "race_id": "202603030402",
@@ -985,9 +1237,21 @@
    "jockey_venue_n": 51,
    "jockey_venue_top3": 0.13725490196078433,
    "jockey_course_n": 5,
-   "jockey_course_top3": 0.2
+   "jockey_course_top3": 0.2,
+   "pos_first_mean": 0.2857142857142857,
+   "pos_last_mean": 0.42857142857142855,
+   "nige_rate": 0.0,
+   "senko_rate": 1.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.3125
   },
-  "pred": 0.04274137021508075
+  "pred": 0.05102866161228737
  },
  {
   "race_id": "202603030402",
@@ -1030,9 +1294,21 @@
    "jockey_venue_n": 51,
    "jockey_venue_top3": 0.2549019607843137,
    "jockey_course_n": 7,
-   "jockey_course_top3": 0.14285714285714285
+   "jockey_course_top3": 0.14285714285714285,
+   "pos_first_mean": 0.07142857142857142,
+   "pos_last_mean": 0.07142857142857142,
+   "nige_rate": 1.0,
+   "senko_rate": 1.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 1.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.0625
   },
-  "pred": 0.31195050154940934
+  "pred": 0.31240779264215723
  },
  {
   "race_id": "202603030402",
@@ -1075,9 +1351,21 @@
    "jockey_venue_n": 0,
    "jockey_venue_top3": null,
    "jockey_course_n": 0,
-   "jockey_course_top3": null
+   "jockey_course_top3": null,
+   "pos_first_mean": 0.7556818181818181,
+   "pos_last_mean": 0.7727272727272727,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 1,
+   "hp_top3": 0.0,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 1.0
   },
-  "pred": 0.029383890824936636
+  "pred": 0.02012002280088506
  },
  {
   "race_id": "202603030402",
@@ -1120,9 +1408,21 @@
    "jockey_venue_n": 156,
    "jockey_venue_top3": 0.20512820512820512,
    "jockey_course_n": 21,
-   "jockey_course_top3": 0.3333333333333333
+   "jockey_course_top3": 0.3333333333333333,
+   "pos_first_mean": 0.20416666666666666,
+   "pos_last_mean": 0.15833333333333333,
+   "nige_rate": 0.25,
+   "senko_rate": 1.0,
+   "hp_n": 1,
+   "hp_top3": 1.0,
+   "sp_n": 2,
+   "sp_top3": 0.5,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.125
   },
-  "pred": 0.22228767895871246
+  "pred": 0.2087648126506599
  },
  {
   "race_id": "202603030402",
@@ -1165,9 +1465,21 @@
    "jockey_venue_n": 60,
    "jockey_venue_top3": 0.1,
    "jockey_course_n": 7,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.5714285714285714,
+   "pos_last_mean": 0.6428571428571429,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.75
   },
-  "pred": 0.10908980373147527
+  "pred": 0.0999730560129878
  },
  {
   "race_id": "202603030402",
@@ -1210,9 +1522,21 @@
    "jockey_venue_n": 48,
    "jockey_venue_top3": 0.3541666666666667,
    "jockey_course_n": 3,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.6716533466533466,
+   "pos_last_mean": 0.6526057276057277,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 2,
+   "hp_top3": 0.0,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.875
   },
-  "pred": 0.2546918716587437
+  "pred": 0.1899786516751631
  },
  {
   "race_id": "202603030402",
@@ -1255,9 +1579,21 @@
    "jockey_venue_n": 19,
    "jockey_venue_top3": 0.05263157894736842,
    "jockey_course_n": 3,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.2857142857142857,
+   "pos_last_mean": 0.14285714285714285,
+   "nige_rate": 0.0,
+   "senko_rate": 1.0,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 1,
+   "sp_top3": 0.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.3125
   },
-  "pred": 0.1546290401807442
+  "pred": 0.15177204098016062
  },
  {
   "race_id": "202603030402",
@@ -1300,9 +1636,21 @@
    "jockey_venue_n": 51,
    "jockey_venue_top3": 0.0392156862745098,
    "jockey_course_n": 10,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.30808080808080807,
+   "pos_last_mean": 0.2803030303030303,
+   "nige_rate": 0.6666666666666666,
+   "senko_rate": 0.6666666666666666,
+   "hp_n": 1,
+   "hp_top3": 0.0,
+   "sp_n": 1,
+   "sp_top3": 1.0,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.4375
   },
-  "pred": 0.22908225851770525
+  "pred": 0.21164396118276824
  },
  {
   "race_id": "202603030402",
@@ -1345,9 +1693,21 @@
    "jockey_venue_n": 31,
    "jockey_venue_top3": 0.2903225806451613,
    "jockey_course_n": 1,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.6428571428571429,
+   "pos_last_mean": 0.6428571428571429,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 1,
+   "hp_top3": 0.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.8125
   },
-  "pred": 0.05513453033343312
+  "pred": 0.043886747852240365
  },
  {
   "race_id": "202603030402",
@@ -1390,9 +1750,21 @@
    "jockey_venue_n": 89,
    "jockey_venue_top3": 0.1348314606741573,
    "jockey_course_n": 9,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.6845238095238095,
+   "pos_last_mean": 0.8511904761904762,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 1,
+   "hp_top3": 0.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.9375
   },
-  "pred": 0.023194409279919812
+  "pred": 0.021571733062527656
  },
  {
   "race_id": "202603030402",
@@ -1435,9 +1807,21 @@
    "jockey_venue_n": 2,
    "jockey_venue_top3": 0.0,
    "jockey_course_n": 0,
-   "jockey_course_top3": null
+   "jockey_course_top3": null,
+   "pos_first_mean": 0.5416666666666666,
+   "pos_last_mean": 0.625,
+   "nige_rate": 0.0,
+   "senko_rate": 0.5,
+   "hp_n": 0,
+   "hp_top3": null,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 2,
+   "field_front": 7,
+   "field_front_ratio": 0.4375,
+   "rel_pos_rank": 0.6875
   },
-  "pred": 0.029086514771802754
+  "pred": 0.026593098129094543
  },
  {
   "race_id": "202603030403",
@@ -1480,9 +1864,21 @@
    "jockey_venue_n": 9,
    "jockey_venue_top3": 0.3333333333333333,
    "jockey_course_n": 2,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.2611538461538462,
+   "pos_last_mean": 0.37461538461538463,
+   "nige_rate": 0.4,
+   "senko_rate": 0.8,
+   "hp_n": 3,
+   "hp_top3": 0.6666666666666666,
+   "sp_n": 2,
+   "sp_top3": 0.0,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.2
   },
-  "pred": 0.5626188415634816
+  "pred": 0.5751350788699063
  },
  {
   "race_id": "202603030403",
@@ -1525,9 +1921,21 @@
    "jockey_venue_n": 38,
    "jockey_venue_top3": 0.18421052631578946,
    "jockey_course_n": 13,
-   "jockey_course_top3": 0.23076923076923078
+   "jockey_course_top3": 0.23076923076923078,
+   "pos_first_mean": 0.19761904761904764,
+   "pos_last_mean": 0.24523809523809526,
+   "nige_rate": 0.6,
+   "senko_rate": 0.8,
+   "hp_n": 2,
+   "hp_top3": 0.5,
+   "sp_n": 2,
+   "sp_top3": 1.0,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.13333333333333333
   },
-  "pred": 0.4477818664884064
+  "pred": 0.4621710539006151
  },
  {
   "race_id": "202603030403",
@@ -1570,9 +1978,21 @@
    "jockey_venue_n": 2,
    "jockey_venue_top3": 1.0,
    "jockey_course_n": 1,
-   "jockey_course_top3": 1.0
+   "jockey_course_top3": 1.0,
+   "pos_first_mean": 0.3466666666666667,
+   "pos_last_mean": 0.4658333333333333,
+   "nige_rate": 0.2,
+   "senko_rate": 0.6,
+   "hp_n": 2,
+   "hp_top3": 0.0,
+   "sp_n": 3,
+   "sp_top3": 0.6666666666666666,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.3333333333333333
   },
-  "pred": 0.13547561007315004
+  "pred": 0.18555099094707303
  },
  {
   "race_id": "202603030403",
@@ -1615,9 +2035,21 @@
    "jockey_venue_n": 74,
    "jockey_venue_top3": 0.13513513513513514,
    "jockey_course_n": 23,
-   "jockey_course_top3": 0.2608695652173913
+   "jockey_course_top3": 0.2608695652173913,
+   "pos_first_mean": 0.41833333333333333,
+   "pos_last_mean": 0.42333333333333334,
+   "nige_rate": 0.0,
+   "senko_rate": 0.6,
+   "hp_n": 4,
+   "hp_top3": 0.5,
+   "sp_n": 3,
+   "sp_top3": 1.0,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.4666666666666667
   },
-  "pred": 0.1585017421756591
+  "pred": 0.19251010672362712
  },
  {
   "race_id": "202603030403",
@@ -1660,9 +2092,21 @@
    "jockey_venue_n": 156,
    "jockey_venue_top3": 0.20512820512820512,
    "jockey_course_n": 43,
-   "jockey_course_top3": 0.13953488372093023
+   "jockey_course_top3": 0.13953488372093023,
+   "pos_first_mean": 0.425,
+   "pos_last_mean": 0.2409090909090909,
+   "nige_rate": 0.0,
+   "senko_rate": 0.2,
+   "hp_n": 2,
+   "hp_top3": 1.0,
+   "sp_n": 3,
+   "sp_top3": 0.3333333333333333,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.5333333333333333
   },
-  "pred": 0.2264317058988181
+  "pred": 0.24577011360991047
  },
  {
   "race_id": "202603030403",
@@ -1705,9 +2149,21 @@
    "jockey_venue_n": 21,
    "jockey_venue_top3": 0.23809523809523808,
    "jockey_course_n": 7,
-   "jockey_course_top3": 0.2857142857142857
+   "jockey_course_top3": 0.2857142857142857,
+   "pos_first_mean": 0.15705128205128205,
+   "pos_last_mean": 0.23205128205128203,
+   "nige_rate": 0.6,
+   "senko_rate": 0.8,
+   "hp_n": 1,
+   "hp_top3": 0.0,
+   "sp_n": 4,
+   "sp_top3": 0.25,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.06666666666666667
   },
-  "pred": 0.18065380208825596
+  "pred": 0.18861657371743362
  },
  {
   "race_id": "202603030403",
@@ -1750,9 +2206,21 @@
    "jockey_venue_n": 60,
    "jockey_venue_top3": 0.1,
    "jockey_course_n": 14,
-   "jockey_course_top3": 0.07142857142857142
+   "jockey_course_top3": 0.07142857142857142,
+   "pos_first_mean": 0.7028571428571428,
+   "pos_last_mean": 0.5094047619047619,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 4,
+   "hp_top3": 0.5,
+   "sp_n": 3,
+   "sp_top3": 0.0,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.7333333333333333
   },
-  "pred": 0.22814323480071447
+  "pred": 0.19977327688586713
  },
  {
   "race_id": "202603030403",
@@ -1795,9 +2263,21 @@
    "jockey_venue_n": 89,
    "jockey_venue_top3": 0.1348314606741573,
    "jockey_course_n": 26,
-   "jockey_course_top3": 0.11538461538461539
+   "jockey_course_top3": 0.11538461538461539,
+   "pos_first_mean": 0.7904545454545454,
+   "pos_last_mean": 0.7231060606060605,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 10,
+   "hp_top3": 0.6,
+   "sp_n": 6,
+   "sp_top3": 0.3333333333333333,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.8666666666666667
   },
-  "pred": 0.3891978419708723
+  "pred": 0.38323448668533916
  },
  {
   "race_id": "202603030403",
@@ -1840,9 +2320,21 @@
    "jockey_venue_n": 85,
    "jockey_venue_top3": 0.25882352941176473,
    "jockey_course_n": 18,
-   "jockey_course_top3": 0.3888888888888889
+   "jockey_course_top3": 0.3888888888888889,
+   "pos_first_mean": 0.8676282051282052,
+   "pos_last_mean": 0.7844230769230769,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 9,
+   "hp_top3": 0.1111111111111111,
+   "sp_n": 4,
+   "sp_top3": 0.0,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 1.0
   },
-  "pred": 0.018882447910219778
+  "pred": 0.014973244522268623
  },
  {
   "race_id": "202603030403",
@@ -1885,9 +2377,21 @@
    "jockey_venue_n": 37,
    "jockey_venue_top3": 0.2972972972972973,
    "jockey_course_n": 8,
-   "jockey_course_top3": 0.375
+   "jockey_course_top3": 0.375,
+   "pos_first_mean": 0.34750000000000003,
+   "pos_last_mean": 0.3242857142857143,
+   "nige_rate": 0.4,
+   "senko_rate": 0.6,
+   "hp_n": 1,
+   "hp_top3": 1.0,
+   "sp_n": 7,
+   "sp_top3": 0.14285714285714285,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.4
   },
-  "pred": 0.21080021862165776
+  "pred": 0.23594064530558512
  },
  {
   "race_id": "202603030403",
@@ -1930,9 +2434,21 @@
    "jockey_venue_n": 48,
    "jockey_venue_top3": 0.3541666666666667,
    "jockey_course_n": 15,
-   "jockey_course_top3": 0.7333333333333333
+   "jockey_course_top3": 0.7333333333333333,
+   "pos_first_mean": 0.3246878121878122,
+   "pos_last_mean": 0.4717990342990343,
+   "nige_rate": 0.2,
+   "senko_rate": 0.8,
+   "hp_n": 5,
+   "hp_top3": 0.4,
+   "sp_n": 11,
+   "sp_top3": 0.36363636363636365,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.26666666666666666
   },
-  "pred": 0.2005885087310028
+  "pred": 0.23822422504435514
  },
  {
   "race_id": "202603030403",
@@ -1975,9 +2491,21 @@
    "jockey_venue_n": 51,
    "jockey_venue_top3": 0.13725490196078433,
    "jockey_course_n": 12,
-   "jockey_course_top3": 0.08333333333333333
+   "jockey_course_top3": 0.08333333333333333,
+   "pos_first_mean": 0.6666666666666667,
+   "pos_last_mean": 0.6041666666666667,
+   "nige_rate": 0.0,
+   "senko_rate": 0.2,
+   "hp_n": 5,
+   "hp_top3": 0.0,
+   "sp_n": 7,
+   "sp_top3": 0.14285714285714285,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.6666666666666666
   },
-  "pred": 0.16870382416838126
+  "pred": 0.1449173876845639
  },
  {
   "race_id": "202603030403",
@@ -2020,9 +2548,21 @@
    "jockey_venue_n": 51,
    "jockey_venue_top3": 0.2549019607843137,
    "jockey_course_n": 12,
-   "jockey_course_top3": 0.4166666666666667
+   "jockey_course_top3": 0.4166666666666667,
+   "pos_first_mean": 0.6076388888888888,
+   "pos_last_mean": 0.6857638888888888,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 6,
+   "hp_top3": 0.0,
+   "sp_n": 7,
+   "sp_top3": 0.14285714285714285,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.6
   },
-  "pred": 0.04270728431804022
+  "pred": 0.037444467526307486
  },
  {
   "race_id": "202603030403",
@@ -2065,9 +2605,21 @@
    "jockey_venue_n": 31,
    "jockey_venue_top3": 0.2903225806451613,
    "jockey_course_n": 6,
-   "jockey_course_top3": 0.5
+   "jockey_course_top3": 0.5,
+   "pos_first_mean": 0.7562745098039215,
+   "pos_last_mean": 0.7688725490196078,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 3,
+   "hp_top3": 0.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.8
   },
-  "pred": 0.07003857618263466
+  "pred": 0.057568262737296996
  },
  {
   "race_id": "202603030403",
@@ -2110,8 +2662,20 @@
    "jockey_venue_n": 8,
    "jockey_venue_top3": 0.0,
    "jockey_course_n": 2,
-   "jockey_course_top3": 0.0
+   "jockey_course_top3": 0.0,
+   "pos_first_mean": 0.8547619047619047,
+   "pos_last_mean": 0.8148809523809524,
+   "nige_rate": 0.0,
+   "senko_rate": 0.0,
+   "hp_n": 5,
+   "hp_top3": 0.0,
+   "sp_n": 0,
+   "sp_top3": null,
+   "field_nige_cands": 4,
+   "field_front": 4,
+   "field_front_ratio": 0.26666666666666666,
+   "rel_pos_rank": 0.9333333333333333
   },
-  "pred": 0.025397947343192517
+  "pred": 0.021604868859993357
  }
 ]

@@ -3,8 +3,9 @@
 
 export type Store = {
   lastDate: string;
-  // [date, venue, surface, distance, going(-1=不明), field, finish(-1=中止), timeDiff(-1=不明)]
-  horses: Record<string, [string, number, number, number | null, number, number, number, number][]>;
+  // [date, venue, surface, distance, going(-1=不明), field, finish(-1=中止), timeDiff(-1=不明),
+  //  pace(0=スロー 1=ミドル 2=ハイ -1=不明), posFirst(最初のコーナーの位置, -1=不明), posLast]
+  horses: Record<string, [string, number, number, number | null, number, number, number, number, number, number, number][]>;
   // [date, venue, surface, distance, top3]
   jockeys: Record<string, [string, number, number, number | null, number][]>;
 };
@@ -30,6 +31,8 @@ export type RunnerInput = {
 export type Features = Record<string, number>;
 
 export const FORM_RUNS = 5;
+export const NIGE_CAND_RATE = 0.4; // 近5走で最初のコーナー1番手が4割以上 → 逃げ候補
+export const FRONT_RATIO = 1 / 3; // 最初のコーナーで前3分の1 → 先行
 export const TIME_DIFF_SCALE = 2;
 const SEX: Record<string, number> = { "牡": 0, "牝": 1, "セ": 2 };
 
@@ -71,6 +74,7 @@ function horseFeatures(store: Store, race: RaceInput, horse: string): Features {
       date: r[0], venue: r[1], surface: r[2], distance: r[3],
       going: r[4] < 0 ? null : r[4], field: r[5],
       finish: r[6] < 0 ? null : r[6], timeDiff: r[7] < 0 ? null : r[7],
+      pace: r[8] < 0 ? null : r[8], posFirst: r[9] > 0 ? r[9] : null, posLast: r[10] > 0 ? r[10] : null,
     }));
   const f: Features = { n_prior: runs.length };
   if (runs.length) {
@@ -98,6 +102,23 @@ function horseFeatures(store: Store, race: RaceInput, horse: string): Features {
   agg("dist", (r) => r.surface === s && d !== null && r.distance !== null && Math.abs(r.distance - d) <= 200);
   agg("venue", (r) => r.surface === s && r.venue === race.venue);
   agg("heavy", (r) => r.surface === s && r.going !== null && r.going >= 2);
+  agg("hp", (r) => r.pace === 2);
+  agg("sp", (r) => r.pace === 0);
+
+  // 脚質・位置取り（近5走のうち通過順位がある走）
+  const pos = runs.slice(-FORM_RUNS).filter((r) => r.posFirst && r.posLast && r.field);
+  if (pos.length) {
+    let first = 0;
+    let last = 0;
+    for (const r of pos) first += r.posFirst! / r.field;
+    for (const r of pos) last += r.posLast! / r.field;
+    f.pos_first_mean = first / pos.length;
+    f.pos_last_mean = last / pos.length;
+    f.nige_rate = pos.filter((r) => r.posFirst === 1).length / pos.length;
+    f.senko_rate = pos.filter((r) => r.posFirst! / r.field <= FRONT_RATIO).length / pos.length;
+  } else {
+    for (const k of ["pos_first_mean", "pos_last_mean", "nige_rate", "senko_rate"]) f[k] = NaN;
+  }
   return f;
 }
 
@@ -141,6 +162,36 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
     jockey_course_n: j.courseN, jockey_course_top3: rate(j.courseTop3, j.courseN),
   });
   return f;
+}
+
+/** 出走馬全体の先行力（逃げ候補・先行馬の頭数）と、その中での位置取りの順位. */
+export function addFieldFeatures(rows: Features[]): void {
+  const nige = rows.filter((r) => !Number.isNaN(r.nige_rate) && r.nige_rate >= NIGE_CAND_RATE).length;
+  const front = rows.filter((r) => !Number.isNaN(r.pos_first_mean) && r.pos_first_mean <= FRONT_RATIO).length;
+  const known = rows.map((r) => r.pos_first_mean).filter((v) => !Number.isNaN(v));
+  for (const r of rows) {
+    r.field_nige_cands = nige;
+    r.field_front = front;
+    r.field_front_ratio = front / rows.length;
+    const v = r.pos_first_mean;
+    r.rel_pos_rank = Number.isNaN(v) ? NaN : (1 + known.filter((x) => x < v).length) / rows.length;
+  }
+}
+
+/** 想定ペース（表示用）。モデルには頭数・割合の数値を入れている. */
+export function expectedPace(nigeCands: number, frontRatio: number): "ハイ" | "ミドル" | "スロー" {
+  if (nigeCands >= 2 || frontRatio >= 0.4) return "ハイ";
+  if (nigeCands === 0 && frontRatio < 0.25) return "スロー";
+  return "ミドル";
+}
+
+/** 脚質（表示用）. */
+export function runningStyle(f: Features): string | null {
+  if (Number.isNaN(f.pos_first_mean)) return null;
+  if (f.nige_rate >= NIGE_CAND_RATE) return "逃げ";
+  if (f.pos_first_mean <= FRONT_RATIO) return "先行";
+  if (f.pos_first_mean <= 2 / 3) return "差し";
+  return "追込";
 }
 
 /** 同じレースの出走馬の中で form_raw を偏差値化（平均50・標準偏差10, 母標準偏差）. */

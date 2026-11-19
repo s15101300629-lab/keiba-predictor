@@ -29,7 +29,14 @@ FEATURES = [
     # 騎手（今年）
     "jockey_n", "jockey_top3", "jockey_venue_n", "jockey_venue_top3",
     "jockey_course_n", "jockey_course_top3",
+    # 展開（脚質・位置取り・ペース適性・出走馬全体の先行力）
+    "pos_first_mean", "pos_last_mean", "nige_rate", "senko_rate",
+    "hp_n", "hp_top3", "sp_n", "sp_top3",
+    "field_nige_cands", "field_front", "field_front_ratio", "rel_pos_rank",
 ]
+
+NIGE_CAND_RATE = 0.4  # 近5走で最初のコーナー1番手が4割以上 → 逃げ候補
+FRONT_RATIO = 1 / 3  # 最初のコーナーで前3分の1 → 先行
 
 GOING = {"良": 0, "稍重": 1, "重": 2, "不良": 3}
 SURFACE = {"芝": 0, "ダート": 1}
@@ -67,6 +74,38 @@ def run_components(finish: int | None, field: int, time_diff: float | None) -> t
     return finish_c, min(1.0, max(0.0, 1.0 - time_diff / TIME_DIFF_SCALE))
 
 
+def lap_list(laps) -> list[float]:
+    if not laps:
+        return []
+    if isinstance(laps, str):
+        laps = laps.split("-")
+    out = []
+    for x in laps:
+        try:
+            out.append(float(x))
+        except (TypeError, ValueError):
+            return []
+    return out
+
+
+def pace_index(laps, distance) -> float | None:
+    """後半3F の平均ラップ − それより前の平均ラップ（200m あたり秒）。大きいほど前半が速い = ハイペース.
+    距離が200で割り切れない場合の最初の端数ラップは除く."""
+    xs = lap_list(laps)
+    if distance and distance % 200 != 0 and xs:
+        xs = xs[1:]
+    if len(xs) < 5:
+        return None
+    front, back = xs[:-3], xs[-3:]
+    return sum(back) / 3 - sum(front) / len(front)
+
+
+def pace_group(surface: int, distance) -> str:
+    d = distance or 0
+    band = 0 if d <= 1400 else 1 if d <= 1800 else 2 if d <= 2200 else 3
+    return f"{surface}-{band}"
+
+
 def rate(top3: int, n: int) -> float:
     return top3 / n if n else NAN
 
@@ -91,12 +130,25 @@ def load_races(data_root: Path) -> list[dict]:
                     td = max(0.0, round(h["time_sec"] - win_time, 1))
                 runners.append({**h, "finish": finish, "time_diff": td})
             races.append({
+                "pace_index": pace_index(r.get("laps"), r.get("distance")),
                 "race_id": r["race_id"], "date": r["date"], "venue": int(day["venue_code"]),
                 "surface": SURFACE[r["surface"]], "distance": r.get("distance"),
                 "going": norm_going(r.get("going")), "prize_1st": (r.get("prize") or [None])[0],
                 "field_size": len(starters), "runners": runners,
             })
     races.sort(key=lambda x: (x["date"], x["race_id"]))
+    # ペース判定: 芝ダ×距離帯ごとに pace_index を3等分（0=スロー 1=ミドル 2=ハイ）。結果(着順)は使わない
+    groups: dict[str, list[float]] = defaultdict(list)
+    for r in races:
+        if r["pace_index"] is not None:
+            groups[pace_group(r["surface"], r["distance"])].append(r["pace_index"])
+    cuts = {}
+    for g, vals in groups.items():
+        vals.sort()
+        cuts[g] = (vals[len(vals) // 3], vals[2 * len(vals) // 3])
+    for r in races:
+        c = cuts.get(pace_group(r["surface"], r["distance"]))
+        r["pace"] = None if r["pace_index"] is None or c is None else (0 if r["pace_index"] < c[0] else 2 if r["pace_index"] > c[1] else 1)
     return races
 
 
@@ -112,7 +164,9 @@ class History:
             run = {
                 "date": race["date"], "venue": race["venue"], "surface": race["surface"],
                 "distance": race["distance"], "going": race["going"], "field": race["field_size"],
-                "finish": h["finish"], "time_diff": h["time_diff"],
+                "finish": h["finish"], "time_diff": h["time_diff"], "pace": race["pace"],
+                "pos_first": next((x for x in (h.get("corner_positions") or []) if x), None),
+                "pos_last": next((x for x in reversed(h.get("corner_positions") or []) if x), None),
             }
             self.horses[h["horse"]].append(run)
             jk = norm_jockey(h.get("jockey"))
@@ -152,6 +206,19 @@ def horse_features(runs: list[dict], race: dict) -> dict:
     agg("dist", lambda r: r["surface"] == s and d is not None and r["distance"] is not None and abs(r["distance"] - d) <= 200)
     agg("venue", lambda r: r["surface"] == s and r["venue"] == race["venue"])
     agg("heavy", lambda r: r["surface"] == s and r["going"] is not None and r["going"] >= 2)
+    agg("hp", lambda r: r["pace"] == 2)
+    agg("sp", lambda r: r["pace"] == 0)
+
+    # 脚質・位置取り（近5走のうち通過順位がある走）
+    pos = [r for r in runs[-FORM_RUNS:] if r["pos_first"] and r["pos_last"] and r["field"]]
+    if pos:
+        f["pos_first_mean"] = sum(r["pos_first"] / r["field"] for r in pos) / len(pos)
+        f["pos_last_mean"] = sum(r["pos_last"] / r["field"] for r in pos) / len(pos)
+        f["nige_rate"] = sum(1 for r in pos if r["pos_first"] == 1) / len(pos)
+        f["senko_rate"] = sum(1 for r in pos if r["pos_first"] / r["field"] <= FRONT_RATIO) / len(pos)
+    else:
+        for k in ("pos_first_mean", "pos_last_mean", "nige_rate", "senko_rate"):
+            f[k] = NAN
     return f
 
 
@@ -190,6 +257,19 @@ def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rid
     return f
 
 
+def add_field_features(rows: list[dict]) -> None:
+    """出走馬全体の先行力（逃げ候補・先行馬の頭数）と、その中での位置取りの順位."""
+    nige = sum(1 for r in rows if not math.isnan(r["nige_rate"]) and r["nige_rate"] >= NIGE_CAND_RATE)
+    front = sum(1 for r in rows if not math.isnan(r["pos_first_mean"]) and r["pos_first_mean"] <= FRONT_RATIO)
+    known = sorted(r["pos_first_mean"] for r in rows if not math.isnan(r["pos_first_mean"]))
+    for r in rows:
+        r["field_nige_cands"] = nige
+        r["field_front"] = front
+        r["field_front_ratio"] = front / len(rows)
+        v = r["pos_first_mean"]
+        r["rel_pos_rank"] = NAN if math.isnan(v) else (1 + sum(1 for x in known if x < v)) / len(rows)
+
+
 def add_form_deviation(rows: list[dict]) -> None:
     """同じレースの出走馬の中で form_raw を偏差値化 (平均50, 標準偏差10)."""
     vals = [r["form_raw"] for r in rows if not math.isnan(r["form_raw"])]
@@ -226,6 +306,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                 })
                 race_rows.append(f)
             add_form_deviation(race_rows)
+            add_field_features(race_rows)
             rows.extend(race_rows)
         for race in same_day:  # 当日のレースは翌日以降の履歴としてだけ使う
             hist.add_race(race)

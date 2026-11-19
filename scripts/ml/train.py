@@ -101,7 +101,9 @@ def build_store(hist, last_date: str) -> dict:
             horses[name] = [[r["date"], r["venue"], r["surface"], r["distance"],
                              -1 if r["going"] is None else r["going"], r["field"],
                              -1 if r["finish"] is None else r["finish"],
-                             -1 if r["time_diff"] is None else r["time_diff"]] for r in runs]
+                             -1 if r["time_diff"] is None else r["time_diff"],
+                             -1 if r["pace"] is None else r["pace"],
+                             r["pos_first"] or -1, r["pos_last"] or -1] for r in runs]
     year_start = last_date[:4] + "-01-01"
     prev_year_start = str(int(last_date[:4]) - 1) + "-01-01"
     jockeys = {}
@@ -111,7 +113,7 @@ def build_store(hist, last_date: str) -> dict:
         if sel and sel[-1][0] >= prev_year_start:
             jockeys[name] = sel
     return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys,
-            "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff"],
+            "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast"],
             "rideFields": ["date", "venue", "surface", "distance", "top3"]}
 
 
