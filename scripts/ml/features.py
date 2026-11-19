@@ -25,7 +25,7 @@ FEATURES = [
     "form_finish_mean", "form_time_mean",
     # 適性
     "surface_n", "surface_top3", "dist_n", "dist_top3", "venue_n", "venue_top3",
-    "heavy_n", "heavy_top3",
+    "wet_n", "wet_top3",  # 稍重以上（重・不良のみより年別比較で良かった。heavy_n は道悪補正の判定用に計算だけ残す）
     # 騎手（今年）
     "jockey_n", "jockey_top3", "jockey_venue_n", "jockey_venue_top3",
     "jockey_course_n", "jockey_course_top3",
@@ -206,7 +206,7 @@ def horse_features(runs: list[dict], race: dict) -> dict:
     agg("dist", lambda r: r["surface"] == s and d is not None and r["distance"] is not None and abs(r["distance"] - d) <= 200)
     agg("venue", lambda r: r["surface"] == s and r["venue"] == race["venue"])
     agg("heavy", lambda r: r["surface"] == s and r["going"] is not None and r["going"] >= 2)
-    agg("wet", lambda r: r["surface"] == s and r["going"] is not None and r["going"] >= 1)  # 稍重以上（比較用）
+    agg("wet", lambda r: r["surface"] == s and r["going"] is not None and r["going"] >= 1)  # 稍重以上
     agg("hp", lambda r: r["pace"] == 2)
     agg("sp", lambda r: r["pace"] == 0)
 

@@ -101,7 +101,8 @@ function horseFeatures(store: Store, race: RaceInput, horse: string): Features {
   agg("surface", (r) => r.surface === s);
   agg("dist", (r) => r.surface === s && d !== null && r.distance !== null && Math.abs(r.distance - d) <= 200);
   agg("venue", (r) => r.surface === s && r.venue === race.venue);
-  agg("heavy", (r) => r.surface === s && r.going !== null && r.going >= 2);
+  agg("heavy", (r) => r.surface === s && r.going !== null && r.going >= 2); // 道悪補正の判定用（モデルの入力ではない）
+  agg("wet", (r) => r.surface === s && r.going !== null && r.going >= 1); // 稍重以上（モデルの入力）
   agg("hp", (r) => r.pace === 2);
   agg("sp", (r) => r.pace === 0);
 

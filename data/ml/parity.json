@@ -33,8 +33,8 @@
    "dist_top3": 1.0,
    "venue_n": 1,
    "venue_top3": 1.0,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 2,
+   "wet_top3": 1.0,
    "jockey_n": 426,
    "jockey_top3": 0.23708920187793428,
    "jockey_venue_n": 48,
@@ -54,7 +54,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.625
   },
-  "pred": 0.6183864733697042
+  "pred": 0.5981026851140675
  },
  {
   "race_id": "202603030401",
@@ -90,8 +90,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 380,
    "jockey_top3": 0.1368421052631579,
    "jockey_venue_n": 14,
@@ -111,7 +111,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.75
   },
-  "pred": 0.04023080472744299
+  "pred": 0.04106579610381244
  },
  {
   "race_id": "202603030401",
@@ -147,8 +147,8 @@
    "dist_top3": 1.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 403,
    "jockey_top3": 0.15632754342431762,
    "jockey_venue_n": 74,
@@ -168,7 +168,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.0625
   },
-  "pred": 0.5182872865992734
+  "pred": 0.5601385148859737
  },
  {
   "race_id": "202603030401",
@@ -204,8 +204,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 1,
+   "wet_top3": 0.0,
    "jockey_n": 620,
    "jockey_top3": 0.2435483870967742,
    "jockey_venue_n": 65,
@@ -225,7 +225,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.1875
   },
-  "pred": 0.3729322858187678
+  "pred": 0.3616951329102228
  },
  {
   "race_id": "202603030401",
@@ -261,8 +261,8 @@
    "dist_top3": 0.25,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 2,
-   "heavy_top3": 0.5,
+   "wet_n": 3,
+   "wet_top3": 0.3333333333333333,
    "jockey_n": 225,
    "jockey_top3": 0.16,
    "jockey_venue_n": 51,
@@ -282,7 +282,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.3125
   },
-  "pred": 0.31374343100810803
+  "pred": 0.3361257297982823
  },
  {
   "race_id": "202603030401",
@@ -318,8 +318,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 1,
-   "heavy_top3": 0.0,
+   "wet_n": 3,
+   "wet_top3": 0.0,
    "jockey_n": 440,
    "jockey_top3": 0.20681818181818182,
    "jockey_venue_n": 37,
@@ -339,7 +339,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.4375
   },
-  "pred": 0.1954297458114823
+  "pred": 0.2187391052672973
  },
  {
   "race_id": "202603030401",
@@ -375,8 +375,8 @@
    "dist_top3": 0.5,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 294,
    "jockey_top3": 0.12585034013605442,
    "jockey_venue_n": 31,
@@ -396,7 +396,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.5625
   },
-  "pred": 0.17163702339066442
+  "pred": 0.15844455607063007
  },
  {
   "race_id": "202603030401",
@@ -432,8 +432,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 1,
+   "wet_top3": 0.0,
    "jockey_n": 405,
    "jockey_top3": 0.09876543209876543,
    "jockey_venue_n": 89,
@@ -453,7 +453,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.25
   },
-  "pred": 0.12281721770526126
+  "pred": 0.10789950511354882
  },
  {
   "race_id": "202603030401",
@@ -489,8 +489,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 197,
    "jockey_top3": 0.07614213197969544,
    "jockey_venue_n": 19,
@@ -510,7 +510,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.125
   },
-  "pred": 0.2313981186098673
+  "pred": 0.2374688375711175
  },
  {
   "race_id": "202603030401",
@@ -546,8 +546,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 302,
    "jockey_top3": 0.12582781456953643,
    "jockey_venue_n": 38,
@@ -567,7 +567,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.6875
   },
-  "pred": 0.04234143855447586
+  "pred": 0.05191065267623867
  },
  {
   "race_id": "202603030401",
@@ -603,8 +603,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 263,
    "jockey_top3": 0.07224334600760456,
    "jockey_venue_n": 39,
@@ -624,7 +624,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.8125
   },
-  "pred": 0.015359960610824112
+  "pred": 0.01689579087100758
  },
  {
   "race_id": "202603030401",
@@ -660,8 +660,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 1,
-   "heavy_top3": 0.0,
+   "wet_n": 1,
+   "wet_top3": 0.0,
    "jockey_n": 289,
    "jockey_top3": 0.1522491349480969,
    "jockey_venue_n": 21,
@@ -681,7 +681,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.5
   },
-  "pred": 0.1999404642539764
+  "pred": 0.1879463573261689
  },
  {
   "race_id": "202603030401",
@@ -717,8 +717,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 406,
    "jockey_top3": 0.15763546798029557,
    "jockey_venue_n": 85,
@@ -738,7 +738,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": null
   },
-  "pred": 0.06973098806206178
+  "pred": 0.07562848751860463
  },
  {
   "race_id": "202603030401",
@@ -774,8 +774,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 353,
    "jockey_top3": 0.09915014164305949,
    "jockey_venue_n": 20,
@@ -795,7 +795,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.375
   },
-  "pred": 0.03507011442909312
+  "pred": 0.031345378599661515
  },
  {
   "race_id": "202603030401",
@@ -831,8 +831,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 302,
    "jockey_top3": 0.0728476821192053,
    "jockey_venue_n": 7,
@@ -852,7 +852,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": null
   },
-  "pred": 0.026290411044741887
+  "pred": 0.02679137751951223
  },
  {
   "race_id": "202603030401",
@@ -888,8 +888,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 768,
    "jockey_top3": 0.17838541666666666,
    "jockey_venue_n": 156,
@@ -909,7 +909,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": null
   },
-  "pred": 0.0759293400738359
+  "pred": 0.0859680789227637
  },
  {
   "race_id": "202603030402",
@@ -945,8 +945,8 @@
    "dist_top3": 0.5,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 494,
    "jockey_top3": 0.15991902834008098,
    "jockey_venue_n": 58,
@@ -966,7 +966,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.5
   },
-  "pred": 0.264031794506348
+  "pred": 0.2516797561461274
  },
  {
   "race_id": "202603030402",
@@ -1002,8 +1002,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 1,
-   "heavy_top3": 0.0,
+   "wet_n": 1,
+   "wet_top3": 0.0,
    "jockey_n": 383,
    "jockey_top3": 0.23237597911227154,
    "jockey_venue_n": 64,
@@ -1023,7 +1023,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.5625
   },
-  "pred": 0.2404050574993645
+  "pred": 0.2490324893740625
  },
  {
   "race_id": "202603030402",
@@ -1059,8 +1059,8 @@
    "dist_top3": 0.0,
    "venue_n": 1,
    "venue_top3": 0.0,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 1,
+   "wet_top3": 0.0,
    "jockey_n": 385,
    "jockey_top3": 0.14285714285714285,
    "jockey_venue_n": 81,
@@ -1080,7 +1080,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.25
   },
-  "pred": 0.123626885825214
+  "pred": 0.11499364009427922
  },
  {
   "race_id": "202603030402",
@@ -1116,8 +1116,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 620,
    "jockey_top3": 0.2435483870967742,
    "jockey_venue_n": 65,
@@ -1137,7 +1137,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.625
   },
-  "pred": 0.357439282599718
+  "pred": 0.3415821605200099
  },
  {
   "race_id": "202603030402",
@@ -1173,8 +1173,8 @@
    "dist_top3": 1.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 598,
    "jockey_top3": 0.25418060200668896,
    "jockey_venue_n": 9,
@@ -1194,7 +1194,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.1875
   },
-  "pred": 0.4968019212494705
+  "pred": 0.46151626821860164
  },
  {
   "race_id": "202603030402",
@@ -1230,8 +1230,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 389,
    "jockey_top3": 0.15424164524421594,
    "jockey_venue_n": 51,
@@ -1251,7 +1251,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.3125
   },
-  "pred": 0.05102866161228737
+  "pred": 0.05863319472727471
  },
  {
   "race_id": "202603030402",
@@ -1287,8 +1287,8 @@
    "dist_top3": 1.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 1,
-   "heavy_top3": 1.0,
+   "wet_n": 1,
+   "wet_top3": 1.0,
    "jockey_n": 225,
    "jockey_top3": 0.16,
    "jockey_venue_n": 51,
@@ -1308,7 +1308,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.0625
   },
-  "pred": 0.31240779264215723
+  "pred": 0.33957488230955624
  },
  {
   "race_id": "202603030402",
@@ -1344,8 +1344,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 451,
    "jockey_top3": 0.1352549889135255,
    "jockey_venue_n": 0,
@@ -1365,7 +1365,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 1.0
   },
-  "pred": 0.02012002280088506
+  "pred": 0.023607721274090457
  },
  {
   "race_id": "202603030402",
@@ -1401,8 +1401,8 @@
    "dist_top3": 0.5,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 1,
-   "heavy_top3": 1.0,
+   "wet_n": 1,
+   "wet_top3": 1.0,
    "jockey_n": 768,
    "jockey_top3": 0.17838541666666666,
    "jockey_venue_n": 156,
@@ -1422,7 +1422,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.125
   },
-  "pred": 0.2087648126506599
+  "pred": 0.21636928793738577
  },
  {
   "race_id": "202603030402",
@@ -1458,8 +1458,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 520,
    "jockey_top3": 0.1423076923076923,
    "jockey_venue_n": 60,
@@ -1479,7 +1479,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.75
   },
-  "pred": 0.0999730560129878
+  "pred": 0.1067515340226086
  },
  {
   "race_id": "202603030402",
@@ -1515,8 +1515,8 @@
    "dist_top3": 0.0,
    "venue_n": 2,
    "venue_top3": 0.0,
-   "heavy_n": 2,
-   "heavy_top3": 0.0,
+   "wet_n": 2,
+   "wet_top3": 0.0,
    "jockey_n": 426,
    "jockey_top3": 0.23708920187793428,
    "jockey_venue_n": 48,
@@ -1536,7 +1536,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.875
   },
-  "pred": 0.1899786516751631
+  "pred": 0.2012808511007184
  },
  {
   "race_id": "202603030402",
@@ -1572,8 +1572,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 197,
    "jockey_top3": 0.07614213197969544,
    "jockey_venue_n": 19,
@@ -1593,7 +1593,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.3125
   },
-  "pred": 0.15177204098016062
+  "pred": 0.15333936654866115
  },
  {
   "race_id": "202603030402",
@@ -1629,8 +1629,8 @@
    "dist_top3": 0.6666666666666666,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 2,
+   "wet_top3": 0.5,
    "jockey_n": 346,
    "jockey_top3": 0.07514450867052024,
    "jockey_venue_n": 51,
@@ -1650,7 +1650,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.4375
   },
-  "pred": 0.21164396118276824
+  "pred": 0.22529023540303253
  },
  {
   "race_id": "202603030402",
@@ -1686,8 +1686,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 1,
+   "wet_top3": 0.0,
    "jockey_n": 294,
    "jockey_top3": 0.12585034013605442,
    "jockey_venue_n": 31,
@@ -1707,7 +1707,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.8125
   },
-  "pred": 0.043886747852240365
+  "pred": 0.041752275399755095
  },
  {
   "race_id": "202603030402",
@@ -1743,8 +1743,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 1,
-   "heavy_top3": 0.0,
+   "wet_n": 1,
+   "wet_top3": 0.0,
    "jockey_n": 405,
    "jockey_top3": 0.09876543209876543,
    "jockey_venue_n": 89,
@@ -1764,7 +1764,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.9375
   },
-  "pred": 0.021571733062527656
+  "pred": 0.01873793259129853
  },
  {
   "race_id": "202603030402",
@@ -1800,8 +1800,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 297,
    "jockey_top3": 0.08754208754208755,
    "jockey_venue_n": 2,
@@ -1821,7 +1821,7 @@
    "field_front_ratio": 0.4375,
    "rel_pos_rank": 0.6875
   },
-  "pred": 0.026593098129094543
+  "pred": 0.026769245296554705
  },
  {
   "race_id": "202603030403",
@@ -1857,8 +1857,8 @@
    "dist_top3": 0.5,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 1,
+   "wet_top3": 0.0,
    "jockey_n": 598,
    "jockey_top3": 0.25418060200668896,
    "jockey_venue_n": 9,
@@ -1878,7 +1878,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.2
   },
-  "pred": 0.5751350788699063
+  "pred": 0.5627827122457555
  },
  {
   "race_id": "202603030403",
@@ -1914,8 +1914,8 @@
    "dist_top3": 0.375,
    "venue_n": 1,
    "venue_top3": 1.0,
-   "heavy_n": 1,
-   "heavy_top3": 1.0,
+   "wet_n": 2,
+   "wet_top3": 0.5,
    "jockey_n": 302,
    "jockey_top3": 0.12582781456953643,
    "jockey_venue_n": 38,
@@ -1935,7 +1935,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.13333333333333333
   },
-  "pred": 0.4621710539006151
+  "pred": 0.4540287689874136
  },
  {
   "race_id": "202603030403",
@@ -1971,8 +1971,8 @@
    "dist_top3": 0.3333333333333333,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 2,
-   "heavy_top3": 0.5,
+   "wet_n": 2,
+   "wet_top3": 0.5,
    "jockey_n": 370,
    "jockey_top3": 0.16486486486486487,
    "jockey_venue_n": 2,
@@ -1992,7 +1992,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.3333333333333333
   },
-  "pred": 0.18555099094707303
+  "pred": 0.15410103176452453
  },
  {
   "race_id": "202603030403",
@@ -2028,8 +2028,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 403,
    "jockey_top3": 0.15632754342431762,
    "jockey_venue_n": 74,
@@ -2049,7 +2049,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.4666666666666667
   },
-  "pred": 0.19251010672362712
+  "pred": 0.17806775130069874
  },
  {
   "race_id": "202603030403",
@@ -2085,8 +2085,8 @@
    "dist_top3": 0.42857142857142855,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 4,
-   "heavy_top3": 0.75,
+   "wet_n": 4,
+   "wet_top3": 0.75,
    "jockey_n": 768,
    "jockey_top3": 0.17838541666666666,
    "jockey_venue_n": 156,
@@ -2106,7 +2106,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.5333333333333333
   },
-  "pred": 0.24577011360991047
+  "pred": 0.2406358358685354
  },
  {
   "race_id": "202603030403",
@@ -2142,8 +2142,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 289,
    "jockey_top3": 0.1522491349480969,
    "jockey_venue_n": 21,
@@ -2163,7 +2163,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.06666666666666667
   },
-  "pred": 0.18861657371743362
+  "pred": 0.19156884963793563
  },
  {
   "race_id": "202603030403",
@@ -2199,8 +2199,8 @@
    "dist_top3": 0.375,
    "venue_n": 1,
    "venue_top3": 1.0,
-   "heavy_n": 2,
-   "heavy_top3": 0.5,
+   "wet_n": 4,
+   "wet_top3": 0.25,
    "jockey_n": 520,
    "jockey_top3": 0.1423076923076923,
    "jockey_venue_n": 60,
@@ -2220,7 +2220,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.7333333333333333
   },
-  "pred": 0.19977327688586713
+  "pred": 0.19670108095859692
  },
  {
   "race_id": "202603030403",
@@ -2256,8 +2256,8 @@
    "dist_top3": 0.42857142857142855,
    "venue_n": 1,
    "venue_top3": 0.0,
-   "heavy_n": 1,
-   "heavy_top3": 1.0,
+   "wet_n": 5,
+   "wet_top3": 0.6,
    "jockey_n": 405,
    "jockey_top3": 0.09876543209876543,
    "jockey_venue_n": 89,
@@ -2277,7 +2277,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.8666666666666667
   },
-  "pred": 0.38323448668533916
+  "pred": 0.4009409219979575
  },
  {
   "race_id": "202603030403",
@@ -2313,8 +2313,8 @@
    "dist_top3": 0.09090909090909091,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 3,
-   "heavy_top3": 0.0,
+   "wet_n": 7,
+   "wet_top3": 0.14285714285714285,
    "jockey_n": 406,
    "jockey_top3": 0.15763546798029557,
    "jockey_venue_n": 85,
@@ -2334,7 +2334,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 1.0
   },
-  "pred": 0.014973244522268623
+  "pred": 0.01843116400698747
  },
  {
   "race_id": "202603030403",
@@ -2370,8 +2370,8 @@
    "dist_top3": 0.4166666666666667,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 1,
-   "heavy_top3": 1.0,
+   "wet_n": 3,
+   "wet_top3": 0.6666666666666666,
    "jockey_n": 440,
    "jockey_top3": 0.20681818181818182,
    "jockey_venue_n": 37,
@@ -2391,7 +2391,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.4
   },
-  "pred": 0.23594064530558512
+  "pred": 0.23851386988640177
  },
  {
   "race_id": "202603030403",
@@ -2427,8 +2427,8 @@
    "dist_top3": 0.46153846153846156,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 2,
-   "heavy_top3": 0.0,
+   "wet_n": 3,
+   "wet_top3": 0.3333333333333333,
    "jockey_n": 426,
    "jockey_top3": 0.23708920187793428,
    "jockey_venue_n": 48,
@@ -2448,7 +2448,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.26666666666666666
   },
-  "pred": 0.23822422504435514
+  "pred": 0.24751099182956535
  },
  {
   "race_id": "202603030403",
@@ -2484,8 +2484,8 @@
    "dist_top3": 0.2222222222222222,
    "venue_n": 1,
    "venue_top3": 1.0,
-   "heavy_n": 4,
-   "heavy_top3": 0.0,
+   "wet_n": 8,
+   "wet_top3": 0.125,
    "jockey_n": 389,
    "jockey_top3": 0.15424164524421594,
    "jockey_venue_n": 51,
@@ -2505,7 +2505,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.6666666666666666
   },
-  "pred": 0.1449173876845639
+  "pred": 0.15618230703420954
  },
  {
   "race_id": "202603030403",
@@ -2541,8 +2541,8 @@
    "dist_top3": 0.16666666666666666,
    "venue_n": 1,
    "venue_top3": 0.0,
-   "heavy_n": 1,
-   "heavy_top3": 0.0,
+   "wet_n": 2,
+   "wet_top3": 0.0,
    "jockey_n": 225,
    "jockey_top3": 0.16,
    "jockey_venue_n": 51,
@@ -2562,7 +2562,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.6
   },
-  "pred": 0.037444467526307486
+  "pred": 0.037456436231856655
  },
  {
   "race_id": "202603030403",
@@ -2598,8 +2598,8 @@
    "dist_top3": null,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 0,
-   "heavy_top3": null,
+   "wet_n": 0,
+   "wet_top3": null,
    "jockey_n": 294,
    "jockey_top3": 0.12585034013605442,
    "jockey_venue_n": 31,
@@ -2619,7 +2619,7 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.8
   },
-  "pred": 0.057568262737296996
+  "pred": 0.07003211355168301
  },
  {
   "race_id": "202603030403",
@@ -2655,8 +2655,8 @@
    "dist_top3": 0.0,
    "venue_n": 0,
    "venue_top3": null,
-   "heavy_n": 2,
-   "heavy_top3": 0.0,
+   "wet_n": 3,
+   "wet_top3": 0.0,
    "jockey_n": 200,
    "jockey_top3": 0.095,
    "jockey_venue_n": 8,
@@ -2676,6 +2676,6 @@
    "field_front_ratio": 0.26666666666666666,
    "rel_pos_rank": 0.9333333333333333
   },
-  "pred": 0.021604868859993357
+  "pred": 0.020281568822155295
  }
 ]

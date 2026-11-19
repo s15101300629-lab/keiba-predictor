@@ -25,9 +25,9 @@ SETS_BY_NAME = {
     "pace": {"without_pace": [f for f in FEATURES if f not in PACE], "with_pace": FEATURES},
     # 道悪の経験: 重・不良のみ（今）/ 稍重以上に置き換え / 両方
     "wet": {
-        "heavy_only": FEATURES,
-        "wet_replace": [{"heavy_n": "wet_n", "heavy_top3": "wet_top3"}.get(f, f) for f in FEATURES],
-        "heavy_and_wet": [*FEATURES, "wet_n", "wet_top3"],
+        "heavy_only": [{"wet_n": "heavy_n", "wet_top3": "heavy_top3"}.get(f, f) for f in FEATURES],
+        "wet_replace": FEATURES,  # 採用済み
+        "heavy_and_wet": [*FEATURES, "heavy_n", "heavy_top3"],
     },
 }
 SETS = SETS_BY_NAME[sys.argv[1] if len(sys.argv) > 1 else "pace"]
