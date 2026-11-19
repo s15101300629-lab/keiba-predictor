@@ -142,6 +142,12 @@ function saveCachedRace(id: string, data: ResponseData, savedAt: number) {
 function display(value: string | number | null | undefined) {
   return value === null || value === undefined || value === "" ? "" : String(value);
 }
+function formatRaceDate(date: string | null) {
+  const m = date?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return display(date);
+  const weekday = ["日", "月", "火", "水", "木", "金", "土"][new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()];
+  return `${+m[2]}/${+m[3]}（${weekday}）`;
+}
 function formatSavedAt(timestamp: number | null) {
   if (!timestamp) return "保存データなし";
   return "保存データ：" + new Date(timestamp).toLocaleString("ja-JP", {
@@ -403,69 +409,90 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
   horse: Horse; mark: string; onMarkChange: (horseId: string, mark: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [showAllRuns, setShowAllRuns] = useState(false);
   const entry = horse.raceEntry;
   const profile = horse.profile ?? [];
   const profileValue = (label: string) => profile.find((item) => item.label.includes(label))?.value;
   const histories = horse.performances ?? [];
   const pedigree = horse.pedigree;
+  const sire = pedigree?.sire ?? profileValue("父") ?? "";
+  const damsire = pedigree?.damsire ?? "";
   const facts: [string, string][] = ([
-    ["枠番", entry?.frameNumber == null ? "" : String(entry.frameNumber)],
     ["馬体重", entry?.bodyWeight == null ? "" : String(entry.bodyWeight) + "kg"],
-    ["人気", entry?.popularity == null ? "" : String(entry.popularity)],
+    ["人気", entry?.popularity == null ? "" : String(entry.popularity) + "番人気"],
     ["調教師", entry?.trainer ?? ""],
-    ["父", pedigree?.sire ?? profileValue("父") ?? ""],
+    ["獲得賞金", profileValue("中央獲得賞金") ?? ""],
+    ["主な勝ち鞍", profileValue("主な勝ち鞍") ?? ""],
     ["父系統", pedigree?.sireLine ?? ""],
-    ["母", pedigree?.dam ?? profileValue("母") ?? ""],
-    ["母父", pedigree?.damsire ?? profileValue("母父") ?? ""],
-    ["母母", pedigree?.damdam ?? ""],
+    ["母", pedigree?.dam ?? ""],
     ["クロス", (pedigree?.crosses ?? []).map((cross) =>
       `${cross.name} ${cross.generations}${cross.percentage === null ? "" : `（${cross.percentage}%）`}`).join("、")],
-  ] as [string, string][]).filter(([, value]) => value !== "");
+  ] as [string, string][]).filter(([, value]) => value !== "" && value !== "-");
   const pedigreeRows = (pedigree?.ancestors ?? []).filter((ancestor) => ancestor.generation <= 3);
-  return <details className="horse-detail" onToggle={(event) => setExpanded(event.currentTarget.open)}>
+  const runs = showAllRuns ? histories : histories.slice(0, 5);
+  const v = (run: { values: Record<string, string> }, key: string) => run.values[key] ?? "";
+  return <div className="horse-detail-wrap">
+  <details className="horse-detail" onToggle={(event) => setExpanded(event.currentTarget.open)}>
     <summary className="horse-summary">
       <HorseNumberBadge entry={entry} />
       <span className="horse-main">
         <b>{horse.name}</b>
-        {[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).length > 0 &&
-          <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>}
+        <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
+        {sire && <small className="horse-blood">{sire}{damsire && <> <i>×</i> 母父{damsire}</>}</small>}
       </span>
       <span className="horse-expand">{expanded ? "－" : "＋"}</span>
     </summary>
-    <select className="horse-mark-select" aria-label={horse.name + "の印"} value={mark}
-      onChange={(event) => onMarkChange(horse.horseId, event.target.value)}>
-      {MARK_OPTIONS.map((option) => <option key={option || "none"} value={option}>{option || "印なし"}</option>)}
-    </select>
     {expanded && <div className="horse-body">
-      {facts.length > 0 && <div className="horse-facts">
-        {facts.map(([label, value]) => <div className="horse-fact" key={label}><span>{label}：</span>{value}</div>)}
+      {facts.length > 0 && <dl className="fact-list">
+        {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+      </dl>}
+      {histories.length > 0 && <div className="detail-block">
+        <h4>戦績（{histories.length}走）</h4>
+        <div className="history-table-wrap">
+          <table className="history-table run-table">
+            <thead><tr><th>日付</th><th>レース</th><th>着順</th><th>人気</th><th>距離</th><th>馬場</th><th>タイム</th><th>着差</th><th>通過</th><th>上り</th><th>騎手</th><th>斤量</th><th>馬体重</th></tr></thead>
+            <tbody>{runs.map((run, index) => {
+              const finish = Number(v(run, "着順"));
+              return <tr key={index}>
+                <td>{v(run, "日付").slice(2)}</td>
+                <td className="run-race"><span>{v(run, "開催")}</span>{v(run, "レース名")}</td>
+                <td className={"run-finish" + (finish >= 1 && finish <= 3 ? " place-" + finish : "")}>{v(run, "着順")}<small>/{v(run, "頭数")}</small></td>
+                <td>{v(run, "人気")}</td><td>{v(run, "距離")}</td><td>{v(run, "馬場")}</td><td>{v(run, "タイム")}</td>
+                <td>{v(run, "着差")}</td><td>{v(run, "通過")}</td><td>{v(run, "上り")}</td><td>{v(run, "騎手")}</td>
+                <td>{v(run, "斤量")}</td><td>{v(run, "馬体重")}</td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+        {histories.length > 5 && <button type="button" className="more-button" onClick={() => setShowAllRuns((s) => !s)}>
+          {showAllRuns ? "近5走だけ表示" : `全${histories.length}走を表示`}
+        </button>}
       </div>}
-      {pedigreeRows.length > 0 && <div className="history-table-wrap">
-        <b style={{ fontSize: 12 }}>血統（3代）</b>
-        <table className="history-table pedigree-table">
-          <tbody>{pedigreeRows.filter((ancestor) => ancestor.generation === 3).map((ancestor) => {
-            const parent = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 2));
-            const grand = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 1));
-            const first = ancestor.position.endsWith("F");
-            return <tr key={ancestor.position}>
-              {ancestor.position.slice(1) === "FF" && grand && <td rowSpan={4}><b>{grand.name}</b></td>}
-              {first && parent && <td rowSpan={2}>{parent.name}</td>}
-              <td>{ancestor.name}{ancestor.country ? `（${ancestor.country}）` : ""}</td>
-            </tr>;
-          })}</tbody>
-        </table>
-      </div>}
-      {histories.length > 0 && <div className="history-table-wrap">
-        <b style={{ fontSize: 12 }}>過去の戦績（{histories.length}走）</b>
-        <table className="history-table">
-          <thead><tr>{Object.keys(histories[0].values).map((key) => <th key={key}>{key}</th>)}</tr></thead>
-          <tbody>{histories.map((history, index) => <tr key={index}>
-            {Object.keys(histories[0].values).map((key) => <td key={key}>{history.values[key] ?? ""}</td>)}
-          </tr>)}</tbody>
-        </table>
+      {pedigreeRows.length > 0 && <div className="detail-block">
+        <h4>血統（3代）</h4>
+        <div className="history-table-wrap">
+          <table className="pedigree-table">
+            <tbody>{pedigreeRows.filter((ancestor) => ancestor.generation === 3).map((ancestor) => {
+              const parent = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 2));
+              const grand = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 1));
+              const first = ancestor.position.endsWith("F");
+              const side = ancestor.position.startsWith("F") ? "sire-side" : "dam-side";
+              return <tr key={ancestor.position} className={side}>
+                {ancestor.position.slice(1) === "FF" && grand && <td rowSpan={4} className="ped-1"><b>{grand.name}</b></td>}
+                {first && parent && <td rowSpan={2} className="ped-2">{parent.name}</td>}
+                <td className="ped-3">{ancestor.name}{ancestor.country ? `（${ancestor.country}）` : ""}</td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
       </div>}
     </div>}
-  </details>;
+  </details>
+    <select className={"horse-mark-select" + (mark ? " marked" : "")} aria-label={horse.name + "の印"} value={mark}
+    onChange={(event) => onMarkChange(horse.horseId, event.target.value)}>
+    {MARK_OPTIONS.map((option) => <option key={option || "none"} value={option}>{option || "印"}</option>)}
+  </select>
+  </div>;
 }
 
 const CATEGORY_GROUPS = [
@@ -671,23 +698,32 @@ export default function RaceDetailPage() {
   };
 
   return <main className="race-detail-shell">
-    <Link href="/" className="back-link">← 開催レース一覧へ戻る</Link>
+    <Link href="/" className="back-link">← レース一覧</Link>
     {loading && cacheChecked && !data && <div className="state-panel loading-panel">
       <span className="loading-spinner" aria-hidden="true" /><span>初回データを取得しています…</span>
     </div>}
     {!data && !loading && error && <div className="state-panel error-panel"><b>レース情報を取得できませんでした</b><p>{error}</p></div>}
     {data && conditions && <>
       <header className="detail-hero">
-        <p className="eyebrow">RACE DETAIL</p><h1>{conditions.raceName || "レース詳細"}</h1>
-        <p className="detail-meta">{display(conditions.date)} ・ {display(conditions.venue)}競馬場 ・ {display(conditions.raceNumber)}R
-          <br />{display(conditions.startTime)} 発走</p>
+        <p className="detail-kicker">{formatRaceDate(conditions.date)} {display(conditions.venue)}{display(conditions.raceNumber)}R{conditions.startTime ? ` ・ ${conditions.startTime}発走` : ""}</p>
+        <h1>{conditions.raceName || "レース詳細"}</h1>
+        <div className="condition-chips">
+          {[
+            [conditions.surface, conditions.distanceMeters ? conditions.distanceMeters + "m" : null].filter(Boolean).join(""),
+            [conditions.direction, conditions.courseLayout, conditions.courseLetter ? conditions.courseLetter + "コース" : null].filter(Boolean).join(" "),
+            data.horseCount ? data.horseCount + "頭" : "",
+            "天候 " + (conditions.weather ?? "未発表"),
+            "馬場 " + (data.ml?.goingSource === "user" ? "未発表" : conditions.going ?? "未発表"),
+          ].filter((value) => value !== "").map((value) => <span className="condition-chip" key={value}>{value}</span>)}
+        </div>
+        <div className="refresh-row">
+          <span>{formatSavedAt(cachedAt)}{refreshing && " ・ 更新を確認中"}</span>
+          <button type="button" className="refresh-button" onClick={() => void load(true, false, assumedGoing)} disabled={refreshing || loading}>
+            {refreshing ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} 更新
+          </button>
+        </div>
+        {error && <p className="detail-meta" role="status">{error}</p>}
       </header>
-      <button type="button" className="refresh-button" onClick={() => void load(true, false, assumedGoing)} disabled={refreshing || loading}>
-        {refreshing && <span className="loading-spinner" aria-hidden="true" />}
-        {refreshing ? "最新情報を取得中…" : "最新情報に更新"}
-      </button>
-      <p className="detail-meta">{formatSavedAt(cachedAt)}{refreshing && " ・ バックグラウンドで最新情報を確認中"}</p>
-      {error && <p className="detail-meta" role="status">{error}</p>}
       <div className="race-tabs" role="tablist" aria-label="レース情報">
         <button type="button" role="tab" aria-selected={activeTab === "detail"} className={"race-tab" + (activeTab === "detail" ? " active" : "")}
           onClick={() => setActiveTab("detail")}>レース詳細</button>
@@ -696,17 +732,6 @@ export default function RaceDetailPage() {
       </div>
       {activeTab === "detail" && <div role="tabpanel">
         <section className="detail-section">
-          <h2>レース条件</h2><div className="condition-grid">
-            {([
-              ["コース", [conditions.surface, conditions.distanceMeters ? String(conditions.distanceMeters) + "m" : null].filter(Boolean).join(" ")],
-              ["回り・コース", [conditions.direction, conditions.courseLayout, conditions.courseLetter].filter(Boolean).join(" ")],
-              ["天候", conditions.weather ?? ""], ["馬場状態", conditions.going ?? ""],
-            ] as [string, string][]).filter(([, value]) => value !== "").map(([label, value]) =>
-              <div className="condition-item" key={label}><small>{label}</small><b>{value}</b></div>)}
-          </div>
-        </section>
-        <section className="detail-section">
-          <h2>出走馬 <span style={{ color: "var(--muted)", fontSize: 12 }}>（{data.horseCount}頭）</span></h2>
           {horses.map((horse) => <HorseDetailCard key={horse.horseId} horse={horse}
             mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />)}
         </section>

@@ -340,3 +340,54 @@ footer span { letter-spacing:0; }
 .result-category-summary .result-category-heading { display: flex; padding: 0; }
 .result-category-card .result-category-summary .category-score-track { display: block; margin: 7px 0 0; }
 .category-score-fill { display: block; }
+
+/* ===== レース詳細タブ・ヘッダー（2026-11 UI改善） ===== */
+.back-link { margin: 14px 0 0; }
+.detail-hero { padding: 10px 0 4px; }
+.detail-kicker { margin: 0 0 4px; color: var(--accent); font-size: 12px; font-weight: 700; }
+.detail-hero h1 { font-size: clamp(24px, 6.5vw, 34px); line-height: 1.25; }
+.condition-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.condition-chip { padding: 4px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: #cbd7e8; font-size: 11px; font-weight: 600; }
+.refresh-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 11px; }
+.refresh-row .refresh-button { margin: 0; padding: 6px 11px; gap: 4px; font-size: 11px; }
+.refresh-row .refresh-button .loading-spinner { margin: 0; width: 12px; height: 12px; flex-basis: 12px; }
+.race-tabs { position: sticky; top: 0; z-index: 5; display: grid; gap: 0; margin: 14px -16px 0; padding: 8px 16px; border: 0; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.race-tab { padding: 9px 8px; border: 1px solid var(--line); border-radius: 0; background: var(--panel); font-size: 13px; }
+.race-tab:first-child { border-radius: 10px 0 0 10px; }
+.race-tab:last-child { border-radius: 0 10px 10px 0; border-left: 0; }
+.race-tab.active { border-color: var(--accent); background: #193b3b; }
+.race-tab:last-child.active { border-left: 1px solid var(--accent); }
+.prediction-panel { margin-top: 4px; }
+.detail-section { margin-top: 6px; }
+.horse-detail { margin-top: 7px; }
+.horse-summary { padding: 10px 92px 10px 10px; gap: 10px; }
+.horse-main b { font-size: 14px; }
+.horse-blood { color: #9fb0c7 !important; }
+.horse-blood i { font-style: normal; color: var(--muted); margin: 0 2px; }
+.horse-mark-select { top: 50%; transform: translateY(-50%); width: 54px; text-align: center; color: var(--muted); font-size: 15px; }
+.horse-mark-select.marked { color: var(--gold); border-color: #8a7444; background: #2b2416; }
+
+.horse-body { padding: 4px 10px 12px; }
+.detail-block { margin-top: 14px; }
+.detail-block h4 { margin: 0 0 6px; font-size: 13px; }
+.history-table-wrap { margin-top: 0; border: 1px solid var(--line); border-radius: 9px; }
+.run-table { font-size: 11px; }
+.run-table th, .run-table td { padding: 7px 8px; }
+.run-table th { position: sticky; top: 0; background: var(--panel-2); color: var(--muted); font-weight: 600; }
+.run-table tbody tr:nth-child(even) { background: #ffffff05; }
+.run-race span { display: block; color: var(--muted); font-size: 9px; }
+.run-finish { font-weight: 800; font-size: 13px; }
+.run-finish small { color: var(--muted); font-weight: 400; font-size: 9px; }
+.run-finish.place-1 { color: var(--gold); }
+.run-finish.place-2 { color: #d5e3f5; }
+.run-finish.place-3 { color: #e0a878; }
+.more-button { display: block; width: 100%; margin-top: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--accent); font: inherit; font-size: 12px; font-weight: 700; }
+.pedigree-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.pedigree-table td { padding: 6px 8px; border: 1px solid var(--line); vertical-align: middle; }
+.pedigree-table .sire-side .ped-1, .pedigree-table .sire-side .ped-2 { background: #14263a; }
+.pedigree-table .dam-side .ped-1, .pedigree-table .dam-side .ped-2 { background: #2a1a24; }
+.pedigree-table .ped-1 { width: 32%; }
+.pedigree-table .ped-2 { width: 32%; }
+.horse-detail-wrap { position: relative; }
+.horse-detail { position: static; }
+.horse-detail-wrap .horse-mark-select { top: 7px; transform: none; z-index: 2; }
