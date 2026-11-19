@@ -1,0 +1,56 @@
+name: 全馬の血統取得
+
+# 成績表の全平地レースの出走馬について、netkeiba から 馬ID → 父・母父・母母父 → 産駒成績 を取得する
+# （scripts/ml/collect_all_pedigree.ts。続きから再開できる）。
+# 1つのジョブは最長6時間なので、5時間半ずつのジョブを順番に4回まで回す。15分ごとに途中結果を commit する。
+on:
+  push:
+    branches: [claude/horse-racing-pdf-conversion-ucigrq]
+    paths: [.github/workflows/pedigree-collect.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pedigree-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    strategy:
+      max-parallel: 1   # 順番に1つずつ
+      matrix:
+        part: [1, 2, 3, 4]
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      PEDIGREE_CONCURRENCY: "2"
+      PEDIGREE_WAIT_MS: "1000"
+    steps:
+      - uses: actions/checkout@v4
+      - run: git pull -q --rebase origin "${GITHUB_REF_NAME}"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Collect (resumable, commit every 15 minutes)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          save() {
+            git add data/pedigree/all data/pedigree/stallions.json
+            if git diff --cached --quiet; then return 0; fi
+            git commit -q -m "data: 全馬の血統（途中結果・part ${{ matrix.part }}）"
+            for i in 1 2 3 4; do
+              git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && return 0
+              sleep $((i * 10))
+            done
+            return 1
+          }
+          for round in $(seq 1 21); do
+            npx tsx scripts/ml/collect_all_pedigree.ts --max-minutes 15 | tee /tmp/out.log
+            save
+            if grep -q "^done" /tmp/out.log; then echo "all collected"; exit 0; fi
+          done

@@ -12,8 +12,9 @@ const ROOT = path.resolve(__dirname, "../..");
 const SEISEKI = path.join(ROOT, "data/jra-seiseki/json");
 const PED = path.join(ROOT, "data/pedigree");
 const OUT = path.join(PED, "all");
-const CONCURRENCY = 3;
-const WAIT_MS = 300;
+// netkeiba への負担を抑えるため、GitHub Actions では環境変数で同時数と間隔を絞る
+const CONCURRENCY = Number(process.env.PEDIGREE_CONCURRENCY ?? 3);
+const WAIT_MS = Number(process.env.PEDIGREE_WAIT_MS ?? 300);
 
 // race_id -> { 馬番: 馬ID }
 type RaceHorses = Record<string, Record<string, string>>;
