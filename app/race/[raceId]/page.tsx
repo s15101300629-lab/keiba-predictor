@@ -351,23 +351,48 @@ function buildCategoryRanks(
   return result;
 }
 
-function extrasText(p: Prediction): string {
-  const e = p.extras!;
-  const parts: string[] = [];
-  if (e.prizeRatioLast != null) {
-    const r = e.prizeRatioLast;
-    parts.push(`クラス：${r > 1.15 ? "昇級・格上挑戦" : r < 0.87 ? "降級・格下" : "前走と同程度"}（1着賞金 前走の${r.toFixed(2)}倍）`);
+// AI予測の補足情報を「項目名・内容」の行にする
+function predictionFacts(p: Prediction): [string, string][] {
+  const rows: [string, string][] = [];
+  const e = p.extras;
+  if (e) {
+    if (e.prizeRatioLast != null) {
+      const r = e.prizeRatioLast;
+      rows.push(["クラス", `${r > 1.15 ? "昇級・格上挑戦" : r < 0.87 ? "降級・格下" : "前走と同程度"}（1着賞金 前走の${r.toFixed(2)}倍）`]);
+    }
+    const change: string[] = [];
+    if (e.distChange) change.push(`距離${e.distChange > 0 ? "+" : ""}${e.distChange}m`);
+    if (e.surfaceChange === 1) change.push("芝ダ替わり");
+    if (e.weightChange) change.push(`斤量${e.weightChange > 0 ? "+" : ""}${e.weightChange}kg`);
+    if (e.jockeyChange === 1) change.push("乗り替わり");
+    if (e.distChange != null) rows.push(["前走から", change.length ? change.join("・") : "変化なし"]);
+    if (e.tidxMean5 != null) rows.push(["タイム指数", `近5走平均 ${e.tidxMean5.toFixed(2)}・最高 ${e.tidxBest5!.toFixed(2)}（1000mあたり基準より何秒速いか）`]);
   }
-  const change: string[] = [];
-  if (e.distChange) change.push(`距離${e.distChange > 0 ? "+" : ""}${e.distChange}m`);
-  if (e.surfaceChange === 1) change.push("芝ダ替わり");
-  if (e.weightChange) change.push(`斤量${e.weightChange > 0 ? "+" : ""}${e.weightChange}kg`);
-  if (e.jockeyChange === 1) change.push("乗り替わり");
-  if (e.distChange != null) parts.push(`前走から：${change.length ? change.join("・") : "変化なし"}`);
-  if (e.tidxMean5 != null) parts.push(`タイム指数 近5走平均${e.tidxMean5.toFixed(2)}・最高${e.tidxBest5!.toFixed(2)}（1000mあたり基準より何秒速いか）`);
-  if (p.trainer && p.trainer.n) parts.push(`調教師（${p.trainerName ?? "-"}）今年 ${p.trainer.n}頭・3着内${Math.round(p.trainer.top3 / p.trainer.n * 100)}%`);
-  if (e.wakuCourseN && e.wakuCourseDiff != null) parts.push(`この枠の同コース成績：3着内率がコース平均より${e.wakuCourseDiff >= 0 ? "+" : ""}${Math.round(e.wakuCourseDiff * 100)}pt（${e.wakuCourseN}頭）`);
-  return parts.join(" ／ ");
+  if (p.trainer && p.trainer.n) rows.push(["調教師", `${p.trainerName ?? "-"}：今年 ${p.trainer.n}頭・3着内 ${Math.round(p.trainer.top3 / p.trainer.n * 100)}%`]);
+  if (p.pace) {
+    const pc = p.pace;
+    rows.push(["脚質", (pc.style ?? "不明") + (pc.posFirstMean != null
+      ? `（最初のコーナー 平均${Math.round(pc.posFirstMean * 100)}%地点${pc.nigeRate ? `・逃げ${Math.round(pc.nigeRate * 100)}%` : ""}）` : "")]);
+    const paceText = (label: string, v: { n: number; top3: number | null }) =>
+      `${label} ${v.n}走${v.top3 != null ? `・3着内${Math.round(v.top3 * 100)}%` : ""}`;
+    rows.push(["ペース別", paceText("ハイ", pc.highPace) + " ／ " + paceText("スロー", pc.slowPace)]);
+  }
+  rows.push(["調子偏差値", `${p.modelFormDeviation == null ? "-" : p.modelFormDeviation.toFixed(1)}（成績表の近5走：着順＋タイム差）・過去走 ${p.priorRuns}走` +
+    (p.jockeyName ? "" : "・騎手を成績表で特定できず")]);
+  if (e?.wakuCourseN && e.wakuCourseDiff != null) rows.push(["枠（参考）", `同コースでこの枠の3着内率はコース平均より${e.wakuCourseDiff >= 0 ? "+" : ""}${Math.round(e.wakuCourseDiff * 100)}pt（${e.wakuCourseN}頭）`]);
+  return rows;
+}
+
+// JRA の枠の色
+const FRAME_COLORS: Record<number, [string, string]> = {
+  1: ["#f4f4f4", "#111"], 2: ["#222", "#fff"], 3: ["#d8323a", "#fff"], 4: ["#2a6ad8", "#fff"],
+  5: ["#f2cf2a", "#111"], 6: ["#2e9e4f", "#fff"], 7: ["#f08a24", "#111"], 8: ["#f39ac0", "#111"],
+};
+function HorseNumberBadge({ entry }: { entry: Entry | null }) {
+  if (entry?.horseNumber == null) return null;
+  const colors = entry.frameNumber != null ? FRAME_COLORS[entry.frameNumber] : undefined;
+  return <span className="horse-number-badge" title={entry.frameNumber != null ? entry.frameNumber + "枠" : undefined}
+    style={colors ? { background: colors[0], color: colors[1] } : undefined}>{entry.horseNumber}</span>;
 }
 
 const BAND_NAMES: Record<string, string> = { "-1400": "〜1400m", "-1800": "〜1800m", "-2200": "〜2200m", "-2600": "〜2600m", "2600-": "2600m〜" };
@@ -399,7 +424,7 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
   const pedigreeRows = (pedigree?.ancestors ?? []).filter((ancestor) => ancestor.generation <= 3);
   return <details className="horse-detail" onToggle={(event) => setExpanded(event.currentTarget.open)}>
     <summary className="horse-summary">
-      {entry?.horseNumber != null && <span className="horse-number-badge">{entry.horseNumber}番</span>}
+      <HorseNumberBadge entry={entry} />
       <span className="horse-main">
         <b>{horse.name}</b>
         {[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).length > 0 &&
@@ -450,29 +475,47 @@ const CATEGORY_GROUPS = [
   { title: "血統・調教", labels: ["血統", "種牡馬", "調教"] },
 ];
 
-function OverallHorseCard({ horse, total, categories, factors }: {
-  horse: Horse; total: number; categories: CategoryRank[]; factors: FactorScore[];
+const FACTOR_BY_CATEGORY: Record<string, string> = {
+  "コース適性": "競馬場・馬場適性",
+  "騎手": "騎手(今年)",
+  "枠順": "枠順実績",
+  "血統": "血統適性",
+};
+
+// 出走馬の中で上位3位以内 → 強み、下位3位以内 → 弱み
+function strengthsOf(categories: CategoryRank[]) {
+  const ranked = categories.filter((c) => c.rank !== null && c.total >= 4);
+  return {
+    strong: ranked.filter((c) => c.rank! <= 3).map((c) => c.label),
+    weak: ranked.filter((c) => c.rank! > 3 && c.rank! > c.total - 3).map((c) => c.label),
+  };
+}
+
+function probabilityTier(rank: number | undefined) {
+  if (rank === undefined) return "";
+  return rank <= 3 ? " tier-top" : rank <= 6 ? " tier-mid" : "";
+}
+
+function OverallHorseCard({ horse, total, categories, factors, mark }: {
+  horse: Horse; total: number; categories: CategoryRank[]; factors: FactorScore[]; mark: string;
 }) {
   const prediction = horse.prediction;
   const probability = prediction ? prediction.probability * 100 : null;
   const probabilityText = probability === null ? "算出不可" : probability.toFixed(1) + "%";
   const entry = horse.raceEntry;
-  const factorByCategory: Record<string, string> = {
-    "コース適性": "競馬場・馬場適性",
-    "騎手": "騎手(今年)",
-    "枠順": "枠順実績",
-    "血統": "血統適性",
-  };
   const factorFor = (label: string) => {
-    const factorLabel = factorByCategory[label] ?? label;
+    const factorLabel = FACTOR_BY_CATEGORY[label] ?? label;
     return factors.find((factor) => factor.label === factorLabel);
   };
+  const { strong, weak } = strengthsOf(categories);
+  const missing = categories.filter((c) => c.rank === null && !factorFor(c.label)).map((c) => c.label);
+  const heavy = prediction?.heavyNote && (prediction.heavyNote.applied || prediction.heavyNote.show) ? prediction.heavyNote : null;
 
-  return <details className="prediction-horse-details">
+  return <details className={"prediction-horse-details" + probabilityTier(prediction?.rank)}>
     <summary className="prediction-horse-summary">
-      {entry?.horseNumber != null && <span className="horse-number-badge">{entry.horseNumber}番</span>}
+      <HorseNumberBadge entry={entry} />
       <span className="horse-main">
-        <b>{horse.name}</b>
+        <b>{mark && <span className="horse-mark">{mark}</span>}{horse.name}{heavy && <span className="heavy-flag" title="道悪の注意あり">道悪注意</span>}</b>
         <small>{[entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
       </span>
       <span className="horse-inline-score">
@@ -480,77 +523,83 @@ function OverallHorseCard({ horse, total, categories, factors }: {
         <span className="horse-inline-score-track" role="img" aria-label={horse.name + " 3着以内確率 " + probabilityText}>
           <span className="horse-inline-score-fill" style={{ width: (probability === null ? 0 : Math.max(0, Math.min(100, probability))) + "%" }} />
         </span>
+        {prediction && <small className="horse-inline-rank">{prediction.rank}位</small>}
       </span>
       <span className="horse-expand">＋</span>
     </summary>
 
     <div className="horse-result-content">
       <section className="horse-result-overall">
-        <div className="result-section-heading">
-          <h4>AI予測：3着以内に入る確率</h4>
-          <p>{prediction?.pedigreeIncluded
-            ? `LightGBM（成績表で学習）の確率 ${(prediction.baseProbability * 100).toFixed(1)}% に、血統適性を加味（重賞データで学習した2段目モデル）`
-            : "LightGBM（成績表データで学習）。重・不良未経験の馬が稍重〜不良を走る場合は血統の道悪倍率で補正"}</p>
-        </div>
         <div className="horse-result-score-line">
-          <strong>{probabilityText}</strong>
+          <div><small>3着以内に入る確率</small><strong>{probabilityText}</strong></div>
           <span>{prediction ? prediction.rank + "位 / " + total + "頭" : "順位対象外"}</span>
         </div>
-        {probability !== null && <div className="overall-score-track" role="img" aria-label={"3着以内確率 " + probabilityText}>
-          <div className="overall-score-fill" style={{ width: Math.max(0, Math.min(100, probability)) + "%" }} />
+        {(strong.length > 0 || weak.length > 0) && <div className="point-chips">
+          {strong.map((label) => <span className="point-chip strong" key={label}>◎ {label}</span>)}
+          {weak.map((label) => <span className="point-chip weak" key={label}>△ {label}</span>)}
         </div>}
-        {prediction?.heavyNote && (prediction.heavyNote.applied || prediction.heavyNote.show) && <p className="heavy-note" role="note">
-          ⚠ 道悪（重・不良）未経験・血統は道悪{prediction.heavyNote.label}（血統の道悪倍率 {prediction.heavyNote.ratio.toFixed(2)}倍）。
-          {prediction.heavyNote.applied
-            ? ` 今回は${prediction.heavyNote.going ?? "重・不良"}${prediction.heavyNote.goingAssumedByUser ? "（想定）" : ""}のため、3着以内確率を ${(prediction.heavyNote.before * 100).toFixed(1)}% → ${(prediction.heavyNote.after * 100).toFixed(1)}% に補正（オッズ × 血統の道悪倍率^${prediction.heavyNote.beta.toFixed(2)}）。`
-            : prediction.heavyNote.goingKnown
+        {heavy && <p className="heavy-note" role="note">
+          ⚠ 道悪（重・不良）未経験・血統は道悪{heavy.label}（血統の道悪倍率 {heavy.ratio.toFixed(2)}倍）。
+          {heavy.applied
+            ? ` 今回は${heavy.going ?? "重・不良"}${heavy.goingAssumedByUser ? "（想定）" : ""}のため、3着以内確率を ${(heavy.before * 100).toFixed(1)}% → ${(heavy.after * 100).toFixed(1)}% に補正（オッズ × 血統の道悪倍率^${heavy.beta.toFixed(2)}）。`
+            : heavy.goingKnown
               ? " 今回は良のため補正なし。"
               : " 馬場未発表。稍重〜不良になった場合は補正対象。"}
         </p>}
-        {prediction?.extras && <p className="result-category-rank">{extrasText(prediction)}</p>}
-        {prediction?.pace && <p className="result-category-rank">
-          脚質：{prediction.pace.style ?? "不明"}
-          {prediction.pace.posFirstMean != null && `（近走の最初のコーナー 平均${Math.round(prediction.pace.posFirstMean * 100)}%地点${prediction.pace.nigeRate ? `・逃げ${Math.round(prediction.pace.nigeRate * 100)}%` : ""}）`}
-          ／ハイペース {prediction.pace.highPace.n}走{prediction.pace.highPace.top3 != null ? `・3着内${Math.round(prediction.pace.highPace.top3 * 100)}%` : ""}
-          ／スローペース {prediction.pace.slowPace.n}走{prediction.pace.slowPace.top3 != null ? `・3着内${Math.round(prediction.pace.slowPace.top3 * 100)}%` : ""}
-        </p>}
-        {prediction && <p className="result-category-rank">
-          モデル内の調子偏差値 {prediction.modelFormDeviation == null ? "-" : prediction.modelFormDeviation.toFixed(1)}
-          （成績表の近5走: 着順＋タイム差）・成績表の過去走 {prediction.priorRuns}走
-          {prediction.jockeyName ? "" : "・騎手を成績表で特定できず"}
-        </p>}
+        {prediction && <dl className="fact-list">
+          {predictionFacts(prediction).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+        </dl>}
       </section>
 
       <section className="horse-result-section">
         <div className="result-section-heading">
-          <h4>評価項目別の結果</h4>
-          <p>各項目のスコア・順位・集計内容です。</p>
+          <h4>項目別の評価</h4>
+          <p>スコアは出走馬の中での偏差値（50が平均）。順位は出走馬の中での順位。</p>
         </div>
         {CATEGORY_GROUPS.map((group) => {
           const items = group.labels.map((label) => ({
             item: categories.find((category) => category.label === label),
             factor: factorFor(label),
-          })).filter((value): value is { item: CategoryRank; factor: FactorScore | undefined } => value.item !== undefined);
+          })).filter((value): value is { item: CategoryRank; factor: FactorScore | undefined } =>
+            value.item !== undefined && !missing.includes(value.item.label));
+          if (!items.length) return null;
           return <section className="result-category-group" key={group.title}>
             <h5>{group.title}</h5>
             <div className="result-category-grid">
-              {items.map(({ item, factor }) => <article className="result-category-card" key={item.label}>
-                <div className="result-category-heading">
+              {items.map(({ item, factor }) => <details className="result-category-card" key={item.label}>
+                <summary className="result-category-heading">
                   <b>{item.label}</b>
-                  <strong>{factor ? "スコア " + factor.score.toFixed(1) : item.rank === null ? "算出不可" : item.rank + "位 / " + item.total + "頭"}</strong>
-                </div>
+                  <span className="result-category-value">
+                    {item.rank !== null && <em className={item.rank <= 3 && item.total >= 4 ? "good" : ""}>{item.rank}位/{item.total}</em>}
+                    {factor && <strong>{factor.score.toFixed(1)}</strong>}
+                  </span>
+                </summary>
                 {factor && <div className="category-score-track" role="img" aria-label={item.label + "スコア " + factor.score.toFixed(1)}>
-                  <div className="category-score-fill" style={{ width: Math.max(0, Math.min(100, factor.score)) + "%" }} />
+                  <div className="category-score-fill" style={{ width: Math.max(0, Math.min(100, (factor.score - 20) / 60 * 100)) + "%" }} />
+                  <span className="category-score-mid" />
                 </div>}
-                {factor && item.rank !== null && <div className="result-category-rank">{item.rank}位 / {item.total}頭</div>}
-                <p>{item.detail}</p>
-              </article>)}
+                {item.detail && <p>{item.detail}</p>}
+              </details>)}
             </div>
           </section>;
         })}
+        {missing.length > 0 && <p className="missing-note">データなし：{missing.join("・")}</p>}
       </section>
     </div>
   </details>;
+}
+
+function TopPicks({ horses }: { horses: Horse[] }) {
+  const picks = horses.filter((h) => h.prediction).sort((a, b) => a.prediction!.rank - b.prediction!.rank).slice(0, 3);
+  if (!picks.length) return null;
+  return <section className="top-picks" aria-label="AI上位3頭">
+    {picks.map((horse, index) => <div className={"top-pick rank-" + (index + 1)} key={horse.horseId}>
+      <span className="top-pick-rank">{index + 1}</span>
+      <HorseNumberBadge entry={horse.raceEntry} />
+      <b>{horse.name}</b>
+      <strong>{(horse.prediction!.probability * 100).toFixed(1)}%</strong>
+    </div>)}
+  </section>;
 }
 
 export default function RaceDetailPage() {
@@ -564,6 +613,7 @@ export default function RaceDetailPage() {
   const [cacheChecked, setCacheChecked] = useState(false);
   const [marks, setMarks] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"detail" | "prediction">("detail");
+  const [predSort, setPredSort] = useState<"number" | "prob">("number");
   const [assumedGoing, setAssumedGoing] = useState(""); // 馬場未発表時に想定する馬場（空 = 想定なし）
 
   const load = useCallback(async (forceRefresh: boolean, background: boolean, going = "") => {
@@ -607,6 +657,9 @@ export default function RaceDetailPage() {
   const horses = data?.results ?? [];
   const factorScores = useMemo(() => buildFactorScores(horses), [horses]);
   const categoryRanks = useMemo(() => buildCategoryRanks(horses, factorScores, conditions?.distanceMeters ?? null, conditions?.venue ?? null), [horses, factorScores, conditions?.distanceMeters, conditions?.venue]);
+  const sortedHorses = useMemo(() => [...horses].sort((a, b) => predSort === "prob"
+    ? (a.prediction?.rank ?? 999) - (b.prediction?.rank ?? 999)
+    : (a.raceEntry?.horseNumber ?? 999) - (b.raceEntry?.horseNumber ?? 999)), [horses, predSort]);
   const handleMarkChange = (horseId: string, mark: string) => {
     setMarks((current) => {
       const next = { ...current };
@@ -657,35 +710,51 @@ export default function RaceDetailPage() {
         </section>
       </div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
-        <div className="prediction-intro">
-          <h2>AI予測結果</h2>
-          <p>各馬の右側は、機械学習（LightGBM）で予測した3着以内に入る確率。人気・オッズは使っていない。馬名をタップすると、調子偏差値・騎手の今年成績・血統適性などの項目別結果を確認できる。</p>
-          {data.ml?.goingSource !== "announced" && <label className="going-select">
-            馬場状態が未発表のため、想定する馬場を選べる：
-            <select value={assumedGoing} disabled={refreshing || loading} onChange={(event) => {
-              setAssumedGoing(event.target.value); void load(false, true, event.target.value);
-            }}>
-              <option value="">指定なし（良として計算）</option>
-              {["良", "稍重", "重", "不良"].map((going) => <option key={going} value={going}>{going}</option>)}
-            </select>
-          </label>}
-          {data.ml?.status === "available" ? <p>
-            学習データ：JRA成績表 〜{data.ml.dataUntil}（{data.ml.metrics?.testYear}年の検証で、予測上位3頭の3着以内的中率 {data.ml.metrics ? Math.round(data.ml.metrics.raceTop3Hit * 1000) / 10 : "-"}%）。
-            {data.ml.goingSource === "user" ? `想定馬場「${conditions.going}」で計算。` : data.ml.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
-          </p> : <p>AI予測は利用できない（モデル未学習、または対象外のレース）。</p>}
-          {data.ml?.pace && <p>
-            展開予想：想定ペース <b>{data.ml.pace.expected}</b>（逃げ候補 {data.ml.pace.nigeCandidates}頭・先行馬 {data.ml.pace.frontRunners}頭 / {data.horseCount}頭）
-          </p>}
-        </div>
-        <section className="horse-results-section">
-          <div className="result-section-heading">
-            <h3>各馬の評価結果</h3>
-            <p>出馬表の枠番・馬番順で表示しています。馬名をタップすると詳細が開きます。</p>
+        {data.ml?.status === "available" ? <>
+          <div className="prediction-summary">
+            <div className="summary-item">
+              <small>馬場{data.ml.goingSource === "announced" ? "（発表）" : "（想定）"}</small>
+              {data.ml.goingSource !== "announced"
+                ? <select aria-label="想定する馬場" value={assumedGoing} disabled={refreshing || loading} onChange={(event) => {
+                  setAssumedGoing(event.target.value); void load(false, true, event.target.value);
+                }}>
+                  <option value="">良</option>
+                  {["良", "稍重", "重", "不良"].map((going) => <option key={going} value={going}>{going}</option>)}
+                </select>
+                : <b>{conditions.going ?? "-"}</b>}
+            </div>
+            {data.ml.pace && <div className="summary-item">
+              <small>想定ペース</small><b>{data.ml.pace.expected}</b>
+              <span>逃げ候補{data.ml.pace.nigeCandidates}・先行{data.ml.pace.frontRunners}</span>
+            </div>}
+            <div className="summary-item">
+              <small>上位3頭の的中率</small><b>{data.ml.metrics ? (Math.round(data.ml.metrics.raceTop3Hit * 1000) / 10) + "%" : "-"}</b>
+              <span>{data.ml.metrics?.testYear}年の検証</span>
+            </div>
           </div>
-          {horses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
+          <h2 className="prediction-heading">AI上位3頭</h2>
+          <TopPicks horses={horses} />
+        </> : <p className="state-panel">AI予測は利用できない（モデル未学習、または対象外のレース）。</p>}
+        <section className="horse-results-section">
+          <div className="results-toolbar">
+            <h2 className="prediction-heading">全頭の3着以内確率</h2>
+            <div className="sort-toggle" role="group" aria-label="並び順">
+              <button type="button" className={predSort === "number" ? "active" : ""} onClick={() => setPredSort("number")}>馬番順</button>
+              <button type="button" className={predSort === "prob" ? "active" : ""} onClick={() => setPredSort("prob")}>確率順</button>
+            </div>
+          </div>
+          {sortedHorses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
             total={horses.filter((item) => item.prediction).length}
+            mark={marks[horse.horseId] ?? ""}
             categories={categoryRanks.get(horse.horseId) ?? []}
             factors={factorScores.get(horse.horseId) ?? []} />)}
+          <details className="model-note">
+            <summary>このAI予測について</summary>
+            <p>機械学習（LightGBM）で、3着以内に入る確率を出している。人気・オッズは使っていない。
+              学習データ：JRA成績表 〜{data.ml?.dataUntil ?? "-"}。
+              {data.ml?.goingSource === "user" ? `想定馬場「${conditions.going}」で計算。` : data.ml?.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
+              重・不良の経験がない馬が稍重〜不良を走る場合は、血統の道悪倍率で補正する。</p>
+          </details>
         </section>
       </section>}
     </>}

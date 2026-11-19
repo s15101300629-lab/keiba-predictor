@@ -264,3 +264,73 @@ footer span { letter-spacing:0; }
 
 .going-select { display: block; margin: 8px 0; font-size: 12px; }
 .going-select select { margin-left: 6px; }
+
+/* ===== AI予測タブ（2026-11 UI改善） ===== */
+:root { --gold:#f0cd86; --good:#8bd3c7; --bad:#e58f8f; --panel-2:#0d1726; }
+.horse-number-badge { min-width: 30px; height: 30px; display: inline-grid; place-items: center; padding: 0 4px; border-radius: 8px; font-size: 14px; font-variant-numeric: tabular-nums; box-shadow: inset 0 0 0 1px #ffffff26; }
+.prediction-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.summary-item { min-width: 0; padding: 10px 10px 9px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.summary-item small { display: block; color: var(--muted); font-size: 10px; }
+.summary-item b { display: block; margin-top: 4px; font-size: 17px; font-variant-numeric: tabular-nums; }
+.summary-item span { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.summary-item select { width: 100%; margin-top: 4px; padding: 3px 4px; border: 1px solid #486273; border-radius: 7px; background: #17283a; color: var(--text); font: inherit; font-size: 15px; font-weight: 700; }
+.prediction-heading { margin: 22px 0 10px; font-size: 16px; }
+.top-picks { display: grid; gap: 7px; }
+.top-pick { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(100deg, #17283a, var(--panel)); }
+.top-pick.rank-1 { border-color: #8a7444; background: linear-gradient(100deg, #3a2f1a, var(--panel) 70%); }
+.top-pick-rank { width: 22px; color: var(--muted); font-size: 18px; font-weight: 900; text-align: center; }
+.top-pick.rank-1 .top-pick-rank { color: var(--gold); }
+.top-pick b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.top-pick strong { color: var(--accent); font-size: 18px; font-variant-numeric: tabular-nums; }
+.top-pick.rank-1 strong { color: var(--gold); }
+.results-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sort-toggle { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); }
+.sort-toggle button { padding: 6px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; font-size: 11px; font-weight: 700; }
+.sort-toggle button.active { background: #193b3b; color: var(--accent); }
+.horse-results-section { margin-top: 4px; }
+.prediction-horse-details { margin-top: 7px; }
+.prediction-horse-summary { min-height: 56px; padding: 9px 10px; gap: 10px; }
+.prediction-horse-summary .horse-main b { font-size: 14px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.horse-mark { color: var(--gold); font-weight: 900; }
+.heavy-flag { padding: 1px 5px; border: 1px solid #8a6a33; border-radius: 5px; color: #f0b860; font-size: 9px; font-weight: 700; }
+.horse-inline-score { flex: 0 0 78px; gap: 4px; }
+.horse-inline-score strong { font-size: 15px; }
+.horse-inline-rank { color: var(--muted); font-size: 9px; text-align: right; }
+.tier-top { border-color: #3f6f68; }
+.tier-top .horse-inline-score strong { color: var(--accent); }
+.tier-top .horse-inline-score-fill { background: linear-gradient(90deg, #5fb3a6, #a6f0e2); }
+.tier-mid .horse-inline-score strong { color: #d5e3f5; }
+.prediction-horse-details:not(.tier-top):not(.tier-mid) .horse-inline-score-fill { background: #4a6077; }
+.horse-result-content { padding: 0 10px 12px; }
+.horse-result-overall { margin-top: 10px; padding: 12px; background: var(--panel-2); }
+.horse-result-score-line { align-items: flex-end; margin: 0 0 8px; }
+.horse-result-score-line small { display: block; color: var(--muted); font-size: 10px; }
+.horse-result-score-line strong { display: block; font-size: 28px; line-height: 1.2; }
+.horse-result-score-line > span { font-size: 12px; font-weight: 700; color: var(--text); }
+.point-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 2px; }
+.point-chip { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.point-chip.strong { background: #193b3b; color: var(--good); border: 1px solid #32615c; }
+.point-chip.weak { background: #3a1f24; color: var(--bad); border: 1px solid #6b3a40; }
+.fact-list { display: grid; gap: 0; margin: 10px 0 0; }
+.fact-list > div { display: grid; grid-template-columns: 76px 1fr; gap: 8px; padding: 6px 0; border-top: 1px solid #ffffff0d; font-size: 11px; line-height: 1.55; }
+.fact-list dt { color: var(--muted); }
+.fact-list dd { margin: 0; color: #d3deed; }
+.horse-result-section { margin-top: 14px; }
+.result-category-group { margin-top: 10px; }
+.result-category-grid { gap: 5px; }
+.result-category-card { padding: 0; background: var(--panel-2); }
+.result-category-heading { padding: 9px 10px; cursor: pointer; list-style: none; align-items: center; }
+.result-category-heading::-webkit-details-marker { display: none; }
+.result-category-heading b { font-size: 12px; }
+.result-category-value { display: inline-flex; align-items: baseline; gap: 8px; }
+.result-category-value em { font-style: normal; color: var(--muted); font-size: 10px; }
+.result-category-value em.good { color: var(--good); font-weight: 700; }
+.result-category-value strong { min-width: 30px; text-align: right; color: var(--text); font-size: 13px; font-variant-numeric: tabular-nums; }
+.result-category-card .category-score-track { position: relative; margin: 0 10px 9px; }
+.result-category-card[open] .category-score-track { margin-bottom: 0; }
+.category-score-mid { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #ffffff55; }
+.result-category-card p { margin: 0; padding: 8px 10px 10px; }
+.missing-note { margin: 10px 2px 0; color: var(--muted); font-size: 10px; }
+.model-note { margin-top: 18px; color: var(--muted); font-size: 11px; }
+.model-note summary { cursor: pointer; }
+.model-note p { margin: 6px 0 0; line-height: 1.7; }
