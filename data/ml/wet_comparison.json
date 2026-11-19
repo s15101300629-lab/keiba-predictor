@@ -1,0 +1,46 @@
+{
+ "exp_heavy__heavy_ratio": {
+  "runners": 770,
+  "beta": 1.8802932560997114,
+  "chosen": "estimated",
+  "cv_none": 354.0058821772759,
+  "cv_beta1": 352.6888459762175,
+  "cv_estimated": 352.5463678219234,
+  "improvement": 1.4595143553524963,
+  "improvement_per_runner": 0.0018954731887694757,
+  "years_improved": 3
+ },
+ "exp_heavy__wet_ratio": {
+  "runners": 770,
+  "beta": 0.0,
+  "chosen": "none",
+  "cv_none": 354.0058821772759,
+  "cv_beta1": 354.38352599603024,
+  "cv_estimated": 354.49309998294177,
+  "improvement": -0.3776438187543363,
+  "improvement_per_runner": -0.0004904465178627744,
+  "years_improved": 2
+ },
+ "exp_wet__heavy_ratio": {
+  "runners": 372,
+  "beta": 0.0,
+  "chosen": "none",
+  "cv_none": 183.92288142619358,
+  "cv_beta1": 184.0339954049809,
+  "cv_estimated": 184.0381040556755,
+  "improvement": -0.11111397878732987,
+  "improvement_per_runner": -0.00029869349136379,
+  "years_improved": 2
+ },
+ "exp_wet__wet_ratio": {
+  "runners": 372,
+  "beta": 0.0,
+  "chosen": "none",
+  "cv_none": 183.92288142619358,
+  "cv_beta1": 185.0967051807076,
+  "cv_estimated": 183.92288142619358,
+  "improvement": 0.0,
+  "improvement_per_runner": 0.0,
+  "years_improved": 1
+ }
+}
