@@ -1,0 +1,56 @@
+{
+ "split": "2026-07-01",
+ "test_rows": 17373,
+ "coverage_in_test": {
+  "train_rank": 0.994,
+  "train_rank_rel": 0.994,
+  "rm_last1_any": 0.788,
+  "rm_last1_slow": 0.788,
+  "rm_n5_any": 0.832,
+  "rm_n5_slow": 0.832,
+  "agari_last1": 0.787,
+  "agari_mean5": 0.832
+ },
+ "sets": {
+  "base": {
+   "logloss": 0.44372,
+   "auc": 0.77541,
+   "top3_hit": 0.4893,
+   "races": 1306,
+   "top1_win_roi": 0.7288,
+   "top1_place_roi": 0.8108
+  },
+  "+調教": {
+   "logloss": 0.44091,
+   "auc": 0.77981,
+   "top3_hit": 0.49,
+   "races": 1306,
+   "top1_win_roi": 0.7348,
+   "top1_place_roi": 0.8129
+  },
+  "+備考": {
+   "logloss": 0.44391,
+   "auc": 0.77506,
+   "top3_hit": 0.4883,
+   "races": 1306,
+   "top1_win_roi": 0.7711,
+   "top1_place_roi": 0.8208
+  },
+  "+上がり": {
+   "logloss": 0.44374,
+   "auc": 0.77519,
+   "top3_hit": 0.4852,
+   "races": 1306,
+   "top1_win_roi": 0.7559,
+   "top1_place_roi": 0.8039
+  },
+  "+全部": {
+   "logloss": 0.44053,
+   "auc": 0.78042,
+   "top3_hit": 0.4867,
+   "races": 1306,
+   "top1_win_roi": 0.77,
+   "top1_place_roi": 0.8219
+  }
+ }
+}
