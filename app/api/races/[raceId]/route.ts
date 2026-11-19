@@ -441,7 +441,11 @@ async function fetchAllPerformances(
       continue;
     }
     pagesFetched++;
-    rows.push(...parsed.rows);
+    // 1ページ目に全戦績が載っている場合、2ページ目以降も同じ内容が返る。新しい走がなければ打ち切る
+    const known = new Set(rows.map((row) => JSON.stringify(row.values)));
+    const fresh = parsed.rows.filter((row) => !known.has(JSON.stringify(row.values)));
+    if (fresh.length === 0) break;
+    rows.push(...fresh);
   }
 
   const uniqueRows = new Map<string, { values: Record<string, string> }>();
