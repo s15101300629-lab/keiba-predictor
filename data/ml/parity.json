@@ -66,9 +66,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.3128,
    "tidx_best5": -1.0,
-   "tidx_last1": -1.0
+   "tidx_last1": -1.0,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.6014744885048857
+  "pred": 0.5961114644143357
  },
  {
   "race_id": "202603030401",
@@ -137,9 +139,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -3.1429,
    "tidx_best5": -3.1429,
-   "tidx_last1": -3.1429
+   "tidx_last1": -3.1429,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.07526360023077137
+  "pred": 0.0554198241131686
  },
  {
   "race_id": "202603030401",
@@ -208,9 +212,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -1.3333,
    "tidx_best5": -1.3333,
-   "tidx_last1": -1.3333
+   "tidx_last1": -1.3333,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.46608166289215797
+  "pred": 0.4671479954505813
  },
  {
   "race_id": "202603030401",
@@ -279,9 +285,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -1.54165,
    "tidx_best5": -1.0,
-   "tidx_last1": -1.0
+   "tidx_last1": -1.0,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.35263464572412684
+  "pred": 0.3633200672877829
  },
  {
   "race_id": "202603030401",
@@ -350,9 +358,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -1.7916750000000001,
    "tidx_best5": -1.1667,
-   "tidx_last1": -1.1667
+   "tidx_last1": -1.1667,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.26074325347795696
+  "pred": 0.27068018093035917
  },
  {
   "race_id": "202603030401",
@@ -421,9 +431,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.9563333333333333,
    "tidx_best5": -1.0,
-   "tidx_last1": -1.0
+   "tidx_last1": -1.0,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.20772803131001394
+  "pred": 0.20049413462605997
  },
  {
   "race_id": "202603030401",
@@ -492,9 +504,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -2.0,
    "tidx_best5": -1.8333,
-   "tidx_last1": -2.1667
+   "tidx_last1": -2.1667,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.1889377017564752
+  "pred": 0.1828007751019543
  },
  {
   "race_id": "202603030401",
@@ -563,9 +577,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.5278,
    "tidx_best5": -0.9167,
-   "tidx_last1": -1.6667
+   "tidx_last1": -1.6667,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.1513654174239008
+  "pred": 0.1388083708256594
  },
  {
   "race_id": "202603030401",
@@ -634,9 +650,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.425,
    "tidx_best5": -0.75,
-   "tidx_last1": -1.4167
+   "tidx_last1": -1.4167,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.2555273653089677
+  "pred": 0.2128147035039322
  },
  {
   "race_id": "202603030401",
@@ -705,9 +723,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -2.8125,
    "tidx_best5": -2.8125,
-   "tidx_last1": -2.8125
+   "tidx_last1": -2.8125,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.08493407587038317
+  "pred": 0.05916193870044815
  },
  {
   "race_id": "202603030401",
@@ -776,9 +796,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -3.0,
    "tidx_best5": -2.1667,
-   "tidx_last1": -3.8333
+   "tidx_last1": -3.8333,
+   "last1_victim": 0,
+   "victim_n5": 1
   },
-  "pred": 0.009564434368121478
+  "pred": 0.009097898487597894
  },
  {
   "race_id": "202603030401",
@@ -847,9 +869,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -1.193475,
    "tidx_best5": -0.6429,
-   "tidx_last1": -0.8929
+   "tidx_last1": -0.8929,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.2831302050684727
+  "pred": 0.24768660948259377
  },
  {
   "race_id": "202603030401",
@@ -918,9 +942,11 @@
    "jockey_change": null,
    "tidx_mean5": null,
    "tidx_best5": null,
-   "tidx_last1": null
+   "tidx_last1": null,
+   "last1_victim": null,
+   "victim_n5": null
   },
-  "pred": 0.0660943285641574
+  "pred": 0.06204638283497367
  },
  {
   "race_id": "202603030401",
@@ -989,9 +1015,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -2.2857,
    "tidx_best5": -2.2857,
-   "tidx_last1": -2.2857
+   "tidx_last1": -2.2857,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.04500428553010757
+  "pred": 0.040062397257676095
  },
  {
   "race_id": "202603030401",
@@ -1060,9 +1088,11 @@
    "jockey_change": null,
    "tidx_mean5": null,
    "tidx_best5": null,
-   "tidx_last1": null
+   "tidx_last1": null,
+   "last1_victim": null,
+   "victim_n5": null
   },
-  "pred": 0.033364295887392356
+  "pred": 0.03350268381060134
  },
  {
   "race_id": "202603030401",
@@ -1131,9 +1161,11 @@
    "jockey_change": null,
    "tidx_mean5": null,
    "tidx_best5": null,
-   "tidx_last1": null
+   "tidx_last1": null,
+   "last1_victim": null,
+   "victim_n5": null
   },
-  "pred": 0.039235621558025825
+  "pred": 0.04304610748610929
  },
  {
   "race_id": "202603030402",
@@ -1202,9 +1234,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -0.71875,
    "tidx_best5": -0.4375,
-   "tidx_last1": -0.4375
+   "tidx_last1": -0.4375,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.31785265428576653
+  "pred": 0.29935431944613655
  },
  {
   "race_id": "202603030402",
@@ -1273,9 +1307,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -1.15625,
    "tidx_best5": -0.6875,
-   "tidx_last1": -0.6875
+   "tidx_last1": -0.6875,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.21002421282571365
+  "pred": 0.17178746403929732
  },
  {
   "race_id": "202603030402",
@@ -1344,9 +1380,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -0.71945,
    "tidx_best5": -0.3,
-   "tidx_last1": -0.3
+   "tidx_last1": -0.3,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.17873601461795596
+  "pred": 0.1600212220319147
  },
  {
   "race_id": "202603030402",
@@ -1415,9 +1453,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -1.8571,
    "tidx_best5": -1.8571,
-   "tidx_last1": -1.8571
+   "tidx_last1": -1.8571,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.23893139414200654
+  "pred": 0.2602873470494396
  },
  {
   "race_id": "202603030402",
@@ -1486,9 +1526,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.1875,
    "tidx_best5": -1.1875,
-   "tidx_last1": -1.1875
+   "tidx_last1": -1.1875,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.3820961742580444
+  "pred": 0.4081587420252699
  },
  {
   "race_id": "202603030402",
@@ -1557,9 +1599,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -2.375,
    "tidx_best5": -2.375,
-   "tidx_last1": -2.375
+   "tidx_last1": -2.375,
+   "last1_victim": 1,
+   "victim_n5": 1
   },
-  "pred": 0.03504817323386995
+  "pred": 0.03782005639426958
  },
  {
   "race_id": "202603030402",
@@ -1628,9 +1672,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -2.5278,
    "tidx_best5": -2.5278,
-   "tidx_last1": -2.5278
+   "tidx_last1": -2.5278,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.2404808767511453
+  "pred": 0.22588607970002716
  },
  {
   "race_id": "202603030402",
@@ -1699,9 +1745,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -3.3639,
    "tidx_best5": -1.45,
-   "tidx_last1": -5.2778
+   "tidx_last1": -5.2778,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.017443167309575087
+  "pred": 0.01942339457475053
  },
  {
   "race_id": "202603030402",
@@ -1770,9 +1818,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.109375,
    "tidx_best5": 0.0625,
-   "tidx_last1": -2.0625
+   "tidx_last1": -2.0625,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.24440145367550078
+  "pred": 0.24489120463620997
  },
  {
   "race_id": "202603030402",
@@ -1841,9 +1891,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -1.25,
    "tidx_best5": -1.25,
-   "tidx_last1": -1.25
+   "tidx_last1": -1.25,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.11981135720358743
+  "pred": 0.1118671646705593
  },
  {
   "race_id": "202603030402",
@@ -1912,9 +1964,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -0.8714000000000001,
    "tidx_best5": 0.1111,
-   "tidx_last1": -0.3889
+   "tidx_last1": -0.3889,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.18756641527938125
+  "pred": 0.17088412206628417
  },
  {
   "race_id": "202603030402",
@@ -1983,9 +2037,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -1.0625,
    "tidx_best5": -1.0625,
-   "tidx_last1": -1.0625
+   "tidx_last1": -1.0625,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.16248007018884109
+  "pred": 0.14891689878551206
  },
  {
   "race_id": "202603030402",
@@ -2054,9 +2110,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -0.6592666666666667,
    "tidx_best5": 0.2778,
-   "tidx_last1": -1.7
+   "tidx_last1": -1.7,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.24295693564491738
+  "pred": 0.26100820554614973
  },
  {
   "race_id": "202603030402",
@@ -2125,9 +2183,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.7333,
    "tidx_best5": -1.7333,
-   "tidx_last1": -1.7333
+   "tidx_last1": -1.7333,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.03361286695016597
+  "pred": 0.03763114858749915
  },
  {
   "race_id": "202603030402",
@@ -2196,9 +2256,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -5.25,
    "tidx_best5": -2.5,
-   "tidx_last1": -2.5
+   "tidx_last1": -2.5,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.016226021341650354
+  "pred": 0.0203368800699636
  },
  {
   "race_id": "202603030402",
@@ -2267,9 +2329,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -2.30555,
    "tidx_best5": -1.0,
-   "tidx_last1": -3.6111
+   "tidx_last1": -3.6111,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.031945964161791726
+  "pred": 0.03653861386463821
  },
  {
   "race_id": "202603030403",
@@ -2338,9 +2402,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": 0.22048,
    "tidx_best5": 1.1429,
-   "tidx_last1": 1.1429
+   "tidx_last1": 1.1429,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.6684395332287393
+  "pred": 0.6616487867887842
  },
  {
   "race_id": "202603030403",
@@ -2409,9 +2475,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -0.10128,
    "tidx_best5": 0.2353,
-   "tidx_last1": 0.0556
+   "tidx_last1": 0.0556,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.518161886926036
+  "pred": 0.512641513030241
  },
  {
   "race_id": "202603030403",
@@ -2480,9 +2548,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.04328,
    "tidx_best5": -0.3889,
-   "tidx_last1": -1.1053
+   "tidx_last1": -1.1053,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.189101400680906
+  "pred": 0.13959205036249966
  },
  {
   "race_id": "202603030403",
@@ -2551,9 +2621,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -0.4143,
    "tidx_best5": 0.5714,
-   "tidx_last1": 0.5714
+   "tidx_last1": 0.5714,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.20212392063230103
+  "pred": 0.22560788171064666
  },
  {
   "race_id": "202603030403",
@@ -2622,9 +2694,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -0.24445999999999998,
    "tidx_best5": 0.4444,
-   "tidx_last1": -0.0556
+   "tidx_last1": -0.0556,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.31834768810259517
+  "pred": 0.33850601333866265
  },
  {
   "race_id": "202603030403",
@@ -2693,9 +2767,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -0.35572,
    "tidx_best5": 0.5714,
-   "tidx_last1": 0.5714
+   "tidx_last1": 0.5714,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.2830486205263305
+  "pred": 0.25704833118324705
  },
  {
   "race_id": "202603030403",
@@ -2764,9 +2840,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -0.46066,
    "tidx_best5": 0.0588,
-   "tidx_last1": -0.2941
+   "tidx_last1": -0.2941,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.15678386476911155
+  "pred": 0.15563098225894384
  },
  {
   "race_id": "202603030403",
@@ -2835,9 +2913,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -0.1639,
    "tidx_best5": 0.5556,
-   "tidx_last1": 0.1111
+   "tidx_last1": 0.1111,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.40048864332377104
+  "pred": 0.37656951785955495
  },
  {
   "race_id": "202603030403",
@@ -2906,9 +2986,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.03404,
    "tidx_best5": -0.3889,
-   "tidx_last1": -1.7812
+   "tidx_last1": -1.7812,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.011024145834959628
+  "pred": 0.012096067321694775
  },
  {
   "race_id": "202603030403",
@@ -2977,9 +3059,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -0.53332,
    "tidx_best5": 0.8333,
-   "tidx_last1": -1.2222
+   "tidx_last1": -1.2222,
+   "last1_victim": 0,
+   "victim_n5": 1
   },
-  "pred": 0.28044568789783336
+  "pred": 0.27711024146971025
  },
  {
   "race_id": "202603030403",
@@ -3048,9 +3132,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -1.10918,
    "tidx_best5": -0.1667,
-   "tidx_last1": -0.1667
+   "tidx_last1": -0.1667,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.2353449145572083
+  "pred": 0.21919493470474605
  },
  {
   "race_id": "202603030403",
@@ -3119,9 +3205,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -0.87418,
    "tidx_best5": -0.2143,
-   "tidx_last1": -0.5938
+   "tidx_last1": -0.5938,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.13657461447064442
+  "pred": 0.11924243270039743
  },
  {
   "race_id": "202603030403",
@@ -3190,9 +3278,11 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.15666,
    "tidx_best5": -0.25,
-   "tidx_last1": -1.8333
+   "tidx_last1": -1.8333,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.02655645183691391
+  "pred": 0.02960752532452996
  },
  {
   "race_id": "202603030403",
@@ -3261,9 +3351,11 @@
    "jockey_change": 0.0,
    "tidx_mean5": -0.8856999999999999,
    "tidx_best5": -0.5,
-   "tidx_last1": -1.1071
+   "tidx_last1": -1.1071,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.08950821704094017
+  "pred": 0.0856596501438115
  },
  {
   "race_id": "202603030403",
@@ -3332,8 +3424,10 @@
    "jockey_change": 1.0,
    "tidx_mean5": -1.68612,
    "tidx_best5": -1.375,
-   "tidx_last1": -1.5556
+   "tidx_last1": -1.5556,
+   "last1_victim": 0,
+   "victim_n5": 0
   },
-  "pred": 0.01648286915010565
+  "pred": 0.013739105139055746
  }
 ]

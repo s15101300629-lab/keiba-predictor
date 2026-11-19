@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import re
 import math
 import unicodedata
 from collections import defaultdict
@@ -45,6 +46,8 @@ FEATURES = [
     "field_nige_cands", "field_front", "field_front_ratio", "rel_pos_rank",
     # 追加分（compare_features.py extra で比較し、効いた4グループを採用。枠の有利不利は4年とも悪化したので不採用）
     *[f for g in ("class", "trainer", "change", "time_index") for f in EXTRA_GROUPS[g]],
+    # 不利（成績表の〔制裁〕の「被害馬」。compare_furi.py で4年とも logloss 改善）
+    "last1_victim", "victim_n5",
 ]
 
 NIGE_CAND_RATE = 0.4  # 近5走で最初のコーナー1番手が4割以上 → 逃げ候補
@@ -122,6 +125,17 @@ def rate(top3: int, n: int) -> float:
     return top3 / n if n else NAN
 
 
+def victim_umabans(notes: list[str]) -> set[int]:
+    """成績表の〔制裁〕にある「(被害馬:5番・4番)」から、不利を受けた馬の馬番を取り出す."""
+    out: set[int] = set()
+    for note in notes:
+        if "〔制裁〕" not in note:
+            continue
+        for grp in re.findall(r"被害馬[:：]([^)）]+)", note):
+            out.update(int(u) for u in re.findall(r"(\d+)番", grp))
+    return out
+
+
 def load_races(data_root: Path) -> list[dict]:
     """平地レースを日付・race_id 順に。各出走馬に time_diff（勝ち馬との差, 秒）を付ける."""
     races = []
@@ -134,13 +148,14 @@ def load_races(data_root: Path) -> list[dict]:
             if len(starters) < 2:
                 continue
             win_time = min((h["time_sec"] for h in starters if h.get("finish") and h.get("time_sec")), default=None)
+            victims = victim_umabans(r.get("notes") or [])
             runners = []
             for h in starters:
                 finish = h.get("finish") if h.get("status") != "中止" else None
                 td = None
                 if finish is not None and h.get("time_sec") and win_time is not None:
                     td = max(0.0, round(h["time_sec"] - win_time, 1))
-                runners.append({**h, "finish": finish, "time_diff": td})
+                runners.append({**h, "finish": finish, "time_diff": td, "victim": 1 if h.get("umaban") in victims else 0})
             races.append({
                 "pace_index": pace_index(r.get("laps"), r.get("distance")),
                 "race_id": r["race_id"], "date": r["date"], "venue": int(day["venue_code"]),
@@ -203,7 +218,7 @@ class History:
                 "pos_last": next((x for x in reversed(h.get("corner_positions") or []) if x), None),
                 "prize": None if race["prize_1st"] is None else race["prize_1st"] / 10000,
                 "weight": h.get("weight"), "jockey": norm_jockey(h.get("jockey")), "tidx": h.get("tidx"),
-                "trainer": norm_jockey(h.get("trainer")),
+                "trainer": norm_jockey(h.get("trainer")), "victim": h.get("victim", 0),
             }
             top3 = 1 if h["finish"] is not None and h["finish"] <= 3 else 0
             tr = norm_jockey(h.get("trainer"))  # 表記ゆれ吸収は騎手と同じ
@@ -271,6 +286,9 @@ def horse_features(runs: list[dict], race: dict) -> dict:
     else:
         f["dist_change"] = f["surface_change"] = NAN
     # タイム指数（近5走）
+    # 不利（前走で被害馬になったか・近5走で被害馬になった回数）
+    f["last1_victim"] = runs[-1]["victim"] if runs else NAN
+    f["victim_n5"] = sum(r["victim"] for r in runs[-FORM_RUNS:]) if runs else NAN
     tx = [r["tidx"] for r in runs[-FORM_RUNS:] if r["tidx"] is not None]
     f["tidx_mean5"] = sum(tx) / len(tx) if tx else NAN
     f["tidx_best5"] = max(tx) if tx else NAN

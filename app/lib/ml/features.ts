@@ -5,9 +5,10 @@ export type Store = {
   lastDate: string;
   // [date, venue, surface, distance, going(-1=不明), field, finish(-1=中止), timeDiff(-1=不明),
   //  pace(0=スロー 1=ミドル 2=ハイ -1=不明), posFirst(最初のコーナーの位置, -1=不明), posLast,
-  //  prize(1着賞金・万円), weight(斤量), jockey(names の番号), trainer(names の番号), tidx(タイム指数)]
+  //  prize(1着賞金・万円), weight(斤量), jockey(names の番号), trainer(names の番号), tidx(タイム指数),
+  //  victim(成績表の〔制裁〕で被害馬=1)]
   horses: Record<string, [string, number, number, number | null, number, number, number, number, number, number, number,
-    number | null, number | null, number, number, number | null][]>;
+    number | null, number | null, number, number, number | null, number?][]>;
   names?: string[]; // 騎手・調教師名の一覧
   // [date, venue, surface, distance, top3]
   jockeys: Record<string, [string, number, number, number | null, number][]>;
@@ -83,7 +84,7 @@ function horseFeatures(store: Store, race: RaceInput, horse: string): Features {
       going: r[4] < 0 ? null : r[4], field: r[5],
       finish: r[6] < 0 ? null : r[6], timeDiff: r[7] < 0 ? null : r[7],
       pace: r[8] < 0 ? null : r[8], posFirst: r[9] > 0 ? r[9] : null, posLast: r[10] > 0 ? r[10] : null,
-      prize: r[11] ?? null, weight: r[12] ?? null, tidx: r[15] ?? null,
+      prize: r[11] ?? null, weight: r[12] ?? null, tidx: r[15] ?? null, victim: r[16] ?? 0,
     }));
   const f: Features = { n_prior: runs.length };
   if (runs.length) {
@@ -132,6 +133,9 @@ function horseFeatures(store: Store, race: RaceInput, horse: string): Features {
     f.dist_change = NaN;
     f.surface_change = NaN;
   }
+  // 不利（前走で被害馬になったか・近5走で被害馬になった回数）
+  f.last1_victim = runs.length ? runs[runs.length - 1].victim : NaN;
+  f.victim_n5 = runs.length ? runs.slice(-FORM_RUNS).reduce((sum, r) => sum + r.victim, 0) : NaN;
   // タイム指数（近5走）
   const tx = runs.slice(-FORM_RUNS).map((r) => r.tidx).filter((t): t is number => t !== null);
   let txSum = 0;
