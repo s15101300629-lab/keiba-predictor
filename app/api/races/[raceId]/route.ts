@@ -22,6 +22,7 @@ type HorseEntry = {
 type RaceEntry = {
   horseId: string;
   horseName: string;
+  scratched: boolean; // 出走取消・競走除外
   frameNumber: number | null;
   horseNumber: number | null;
   sexAge: string | null;
@@ -226,12 +227,13 @@ function parseNumber(value: string | undefined): number | null {
 
 function extractRaceEntries(html: string): RaceEntry[] {
   const tableRegex = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
-  const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
+  const rowRegex = /<tr\b([^>]*)>([\s\S]*?)<\/tr>/gi;
   const cellRegex = /<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi;
   let tableMatch: RegExpExecArray | null;
 
   while ((tableMatch = tableRegex.exec(html)) !== null) {
     const rawRows: string[][] = [];
+    const rowAttrs: string[] = [];
     let rowMatch: RegExpExecArray | null;
     rowRegex.lastIndex = 0;
 
@@ -240,10 +242,10 @@ function extractRaceEntries(html: string): RaceEntry[] {
       let cellMatch: RegExpExecArray | null;
       cellRegex.lastIndex = 0;
 
-      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
+      while ((cellMatch = cellRegex.exec(rowMatch[2])) !== null) {
         cells.push(cellMatch[1]);
       }
-      if (cells.length) rawRows.push(cells);
+      if (cells.length) { rawRows.push(cells); rowAttrs.push(rowMatch[1]); }
     }
 
     const headerIndex = rawRows.findIndex((cells) => {
@@ -271,7 +273,8 @@ function extractRaceEntries(html: string): RaceEntry[] {
 
     const entries: RaceEntry[] = [];
 
-    for (const rawCells of rawRows.slice(headerIndex + 1)) {
+    for (const [rowIndex, rawCells] of rawRows.entries()) {
+      if (rowIndex <= headerIndex) continue;
       const rowHtml = rawCells.join(" ");
       const horseIdMatch =
         rowHtml.match(/\/horse\/(\d+)/i) ||
@@ -279,6 +282,8 @@ function extractRaceEntries(html: string): RaceEntry[] {
       if (!horseIdMatch) continue;
 
       const values = rawCells.map(cleanText);
+      // 出走取消・競走除外：行の class に Cancel が付くか、セルに「取消」「除外」と書かれる
+      const scratched = /cancel/i.test(rowAttrs[rowIndex] ?? "") || values.some((v) => v === "取消" || v === "除外");
       const get = (index: number) =>
         index >= 0 ? values[index] ?? "" : "";
 
@@ -308,6 +313,7 @@ function extractRaceEntries(html: string): RaceEntry[] {
       entries.push({
         horseId: horseIdMatch[1],
         horseName,
+        scratched,
         frameNumber: parseNumber(frameText),
         horseNumber: parseNumber(numberText),
         sexAge,
@@ -806,6 +812,8 @@ export async function GET(
     addDisplayDeviation(forms);
 
     const ml = await loadMlAssets();
+    // 出走取消・競走除外の馬は、頭数・出走馬の中での比較・予測から外す（学習データと同じ扱い）
+    const activeIdx = horses.map((_, i) => i).filter((i) => !entryByHorseId.get(horses[i].horseId)?.scratched);
     let mlSummary: Record<string, unknown> = { status: "unavailable" };
     const predictions: (Record<string, unknown> | null)[] = horses.map(() => null);
     if (ml && surfaceName && raceConditions.date) {
@@ -816,7 +824,7 @@ export async function GET(
         surface: surfaceName === "芝" ? 0 : 1,
         distance: raceConditions.distanceMeters,
         going: goingAssumed ? 0 : GOING_CODE[raceConditions.going!] ?? 0,
-        fieldSize: horses.length,
+        fieldSize: activeIdx.length,
         prize1stMan: extractFirstPrize(race.html),
       };
       const rows = horses.map((horse) => {
@@ -833,8 +841,8 @@ export async function GET(
         });
         return { jockeyKey, trainerKey, features };
       });
-      addFormDeviation(rows.map((row) => row.features));
-      addFieldFeatures(rows.map((row) => row.features));
+      addFormDeviation(activeIdx.map((i) => rows[i].features));
+      addFieldFeatures(activeIdx.map((i) => rows[i].features));
       const baseProbs = rows.map((row) => predictProbability(ml.model, row.features));
       const useStack = !!ml.stack?.adopted;
       const isHeavy = raceConditions.going === "重" || raceConditions.going === "不良";
@@ -864,7 +872,7 @@ export async function GET(
       // 勝率・連対率（道悪補正はかけない）。3着以内確率を超えないようにそろえる
       const top2Probs = rows.map((row, i) => ml.top2Model ? Math.min(predictProbability(ml.top2Model, row.features), probs[i]) : null);
       const winProbs = rows.map((row, i) => ml.winModel ? Math.min(predictProbability(ml.winModel, row.features), top2Probs[i] ?? probs[i]) : null);
-      const order = probs.map((p, i) => ({ p, i })).sort((a, b) => b.p - a.p);
+      const order = activeIdx.map((i) => ({ p: probs[i], i })).sort((a, b) => b.p - a.p);
       order.forEach(({ i }, rank) => {
         const f = rows[i].features;
         const num = (v: number) => (Number.isNaN(v) ? null : v);
@@ -889,9 +897,11 @@ export async function GET(
           },
         };
       });
-      const f0 = rows[0]?.features;
+      const f0 = rows[activeIdx[0]]?.features;
       mlSummary = {
         status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource,
+        // このレースの結果がすでに学習データに入っている（答えを見て学習した状態）
+        raceInTraining: raceConditions.date <= ml.store.lastDate,
         pace: f0 ? {
           nigeCandidates: f0.field_nige_cands, frontRunners: f0.field_front, frontRatio: f0.field_front_ratio,
           expected: expectedPace(f0.field_nige_cands, f0.field_front_ratio),

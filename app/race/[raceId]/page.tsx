@@ -78,6 +78,7 @@ type Prediction = {
 type MlSummary = {
   pace?: { nigeCandidates: number; frontRunners: number; frontRatio: number; expected: string } | null;
   status: "available" | "unavailable"; dataUntil?: string; goingAssumed?: boolean; pedigreeIncluded?: boolean;
+  raceInTraining?: boolean;
   goingSource?: "announced" | "user" | "default";
   metrics?: { auc: number; raceTop3Hit: number; testYear: string };
 };
@@ -780,6 +781,9 @@ export default function RaceDetailPage() {
               <span>{data.ml.metrics?.testYear}年の検証</span>
             </div>
           </div>
+          {data.ml.raceInTraining && <p className="heavy-note" role="note">
+            ⚠ このレースの結果は、すでにAIの学習データに入っている（学習データ：〜{data.ml.dataUntil}）。答えを見て学習した状態なので、予測の確かめには使えない。参考として見ること。
+          </p>}
           <h2 className="prediction-heading">AI上位3頭</h2>
           <TopPicks horses={horses} />
         </> : <p className="state-panel">AI予測は利用できない（モデル未学習、または対象外のレース）。</p>}

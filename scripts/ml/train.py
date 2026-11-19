@@ -143,23 +143,37 @@ def build_store(hist, last_date: str) -> dict:
             "rideFields": ["date", "venue", "surface", "distance", "top3"]}
 
 
+def split_rows(rows: list[dict], test_year: str):
+    """評価する年（test_year）は、学習にも木の本数の決定にも使わない。
+    木の本数は、その前年（val）を検証にして、それより前の年（fit）で学習して決める."""
+    val_year = str(int(test_year) - 1)
+    fit = [r for r in rows if r["date"][:4] < val_year]
+    val = [r for r in rows if r["date"][:4] == val_year]
+    train = [r for r in rows if r["date"][:4] < test_year]
+    test = [r for r in rows if r["date"][:4] == test_year]
+    return fit, val, train, test
+
+
+def best_rounds(fit, val, y_fit, y_val) -> int:
+    dfit = lgb.Dataset(matrix(fit), label=y_fit, feature_name=FEATURES)
+    dval = lgb.Dataset(matrix(val), label=y_val, reference=dfit)
+    b = lgb.train(PARAMS, dfit, num_boost_round=3000, valid_sets=[dval], callbacks=[lgb.early_stopping(100, verbose=False)])
+    return max(b.best_iteration, 50)
+
+
 # 3着以内のほかに、勝率（1着）・連対率（2着以内）も同じ特徴量で予測する
 EXTRA_TARGETS = {"win": 1, "top2": 2}
 
 
 def train_extra_targets(rows: list[dict], test_year: str) -> dict:
     """1着・2着以内のモデルを学習して model_<name>.json に書き出し、検証の結果を返す."""
-    train = [r for r in rows if r["date"][:4] != test_year]
-    test = [r for r in rows if r["date"][:4] == test_year]
+    fit, val, train, test = split_rows(rows, test_year)
     out = {}
     for name, k in EXTRA_TARGETS.items():
         label = lambda rs: [1 if r["finish"] is not None and r["finish"] <= k else 0 for r in rs]  # noqa: E731
-        dtrain = lgb.Dataset(matrix(train), label=label(train), feature_name=FEATURES)
-        dtest = lgb.Dataset(matrix(test), label=label(test), reference=dtrain)
-        booster = lgb.train(PARAMS, dtrain, num_boost_round=3000, valid_sets=[dtest],
-                            callbacks=[lgb.early_stopping(100, verbose=False)])
-        best = booster.best_iteration
-        pred = booster.predict(matrix(test), num_iteration=best)
+        best = best_rounds(fit, val, label(fit), label(val))
+        booster = lgb.train(PARAMS, lgb.Dataset(matrix(train), label=label(train), feature_name=FEATURES), num_boost_round=best)
+        pred = booster.predict(matrix(test))
         y = label(test)
         out[name] = {"best_iteration": best, "auc": roc_auc_score(y, pred), "logloss": log_loss(y, pred), "base_rate": sum(y) / len(y)}
         print(name, out[name], file=sys.stderr)
@@ -179,16 +193,12 @@ def main() -> None:
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
     years = sorted({r["date"][:4] for r in rows})
     test_year = years[-1]
-    train = [r for r in rows if r["date"][:4] != test_year]
-    test = [r for r in rows if r["date"][:4] == test_year]
-    print(f"rows: train {len(train)} / test {len(test)} (test year {test_year})", file=sys.stderr)
-
-    dtrain = lgb.Dataset(matrix(train), label=[r["label"] for r in train], feature_name=FEATURES)
-    dtest = lgb.Dataset(matrix(test), label=[r["label"] for r in test], reference=dtrain)
-    booster = lgb.train(PARAMS, dtrain, num_boost_round=3000, valid_sets=[dtest],
-                        callbacks=[lgb.early_stopping(100, verbose=False)])
-    best = booster.best_iteration
-    pred = booster.predict(matrix(test), num_iteration=best)
+    fit, val, train, test = split_rows(rows, test_year)
+    print(f"rows: fit {len(fit)} / val {len(val)} / train {len(train)} / test {len(test)} (test year {test_year})", file=sys.stderr)
+    # 評価する年は使わずに木の本数を決め、その年より前で学習したモデルで評価する（評価の数字を甘くしない）
+    best = best_rounds(fit, val, [r["label"] for r in fit], [r["label"] for r in val])
+    booster = lgb.train(PARAMS, lgb.Dataset(matrix(train), label=[r["label"] for r in train], feature_name=FEATURES), num_boost_round=best)
+    pred = booster.predict(matrix(test))
     y = [r["label"] for r in test]
     metrics = {
         "test_year": test_year, "train_rows": len(train), "test_rows": len(test),
