@@ -470,194 +470,9 @@ type PerformanceStats = {
   sameGoingStarts: number; sameGoingTop3: number;
   positionStarts: number; positionGainTotal: number;
   positionForwardStarts: number; positionForwardTop3: number;
+  jockeyPairStarts: number; jockeyPairTop3: number;
+  goingUsed: string | null;
 };
-
-type RaceHistoryMetric = { starts: number; wins: number; top3: number; winRate: number; placeRate: number };
-type RaceHistoryStats = {
-  status: "available" | "partial" | "unavailable";
-  requestedYears: number[]; fetchedYears: number[]; failedYears: number[];
-  frameYears: number[]; jockeyYears: number[];
-  totalEntries: number;
-  frameStats: Record<string, RaceHistoryMetric>;
-  jockeyStats: Record<string, RaceHistoryMetric>;
-};
-type RaceHistoryForHorse = {
-  frame: RaceHistoryMetric | null; jockey: RaceHistoryMetric | null;
-  frameYears: number[]; jockeyYears: number[];
-} | null;
-type JraHistoricalEntry = {
-  frameNumber: number | null; horseNumber: number; horseName: string;
-  jockey: string | null; finish: number | null;
-};
-
-function normalizeJockeyName(value: string | null | undefined) {
-  return (value ?? "").normalize("NFKC").replace(/[\s　.・]/g, "").toLowerCase();
-}
-
-
-function createEmptyRaceHistoryStats(requestedYears: number[], status: RaceHistoryStats["status"]): RaceHistoryStats {
-  return { status, requestedYears, fetchedYears: [], failedYears: [...requestedYears], frameYears: [], jockeyYears: [], totalEntries: 0, frameStats: {}, jockeyStats: {} };
-}
-
-function extractJraHistoricalEntries(html: string): JraHistoricalEntry[] {
-  const tableRegex = /<table\b[^>]*>([\s\S]*?)<\/table>/gi;
-  const rowRegex = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-  const cellRegex = /<(t[dh])\b([^>]*)>([\s\S]*?)<\/\1>/gi;
-  let tableMatch: RegExpExecArray | null;
-  const cellText = (value: string) => cleanText(
-    value.replace(/<img\b[^>]*\balt\s*=\s*(["'])(.*?)\1[^>]*>/gi, " $2 ")
-  );
-
-  while ((tableMatch = tableRegex.exec(html)) !== null) {
-    const rawRows: { raw: string; cells: { text: string; raw: string; attrs: string; tag: string }[] }[] = [];
-    let rowMatch: RegExpExecArray | null;
-    rowRegex.lastIndex = 0;
-    while ((rowMatch = rowRegex.exec(tableMatch[1])) !== null) {
-      const cells: { text: string; raw: string; attrs: string; tag: string }[] = [];
-      let cellMatch: RegExpExecArray | null;
-      cellRegex.lastIndex = 0;
-      while ((cellMatch = cellRegex.exec(rowMatch[1])) !== null) {
-        cells.push({ text: cellText(cellMatch[3]), raw: cellMatch[3], attrs: cellMatch[2], tag: cellMatch[1].toLowerCase() });
-      }
-      if (cells.length) rawRows.push({ raw: rowMatch[1], cells });
-    }
-
-    const firstDataRow = rawRows.findIndex((row) =>
-      row.cells.some((cell) => cell.tag === "td") &&
-      /^\d{1,2}$/.test(row.cells[0]?.text ?? "") &&
-      row.cells.length >= 5
-    );
-    if (firstDataRow < 1) continue;
-
-    const grid: ({ text: string; raw: string } | undefined)[][] = [];
-    for (let rowIndex = 0; rowIndex < rawRows.length; rowIndex++) {
-      const row = rawRows[rowIndex];
-      grid[rowIndex] ??= [];
-      let column = 0;
-      for (const cell of row.cells) {
-        while (grid[rowIndex][column] !== undefined) column++;
-        const colspan = Math.max(1, Number(cell.attrs.match(/\bcolspan\s*=\s*["']?(\d+)/i)?.[1] ?? 1));
-        const rowspan = Math.max(1, Number(cell.attrs.match(/\browspan\s*=\s*["']?(\d+)/i)?.[1] ?? 1));
-        for (let r = rowIndex; r < Math.min(rawRows.length, rowIndex + rowspan); r++) {
-          grid[r] ??= [];
-          for (let c = column; c < column + colspan; c++) {
-            grid[r][c] = { text: cell.text, raw: cell.raw };
-          }
-        }
-        column += colspan;
-      }
-    }
-
-    const headerRows = grid.slice(0, firstDataRow);
-    const width = Math.max(...headerRows.map((row) => row.length));
-    const headers = Array.from({ length: width }, (_, column) =>
-      headerRows.map((row) => row[column]?.text ?? "").join("")
-    );
-    const findColumn = (pattern: RegExp) => headers.findIndex((value) => pattern.test(value.replace(/\s+/g, "")));
-    const columns = {
-      finish: findColumn(/着順/),
-      frame: findColumn(/枠/),
-      number: findColumn(/馬番/),
-      name: findColumn(/馬名/),
-      jockey: findColumn(/騎手名?/),
-    };
-    if (columns.finish < 0 || columns.number < 0 || columns.name < 0 || columns.jockey < 0) continue;
-
-    const entries: JraHistoricalEntry[] = [];
-    for (let rowIndex = firstDataRow; rowIndex < rawRows.length; rowIndex++) {
-      const rawRow = rawRows[rowIndex];
-      if (!rawRow.cells.some((cell) => cell.tag === "td") || !/^\d{1,2}$/.test(rawRow.cells[0]?.text ?? "")) continue;
-      const row = grid[rowIndex] ?? [];
-      const get = (index: number) => row[index];
-      const horseNumber = parseNumber(get(columns.number)?.text);
-      const horseName = get(columns.name)?.text ?? "";
-      if (horseNumber === null || !horseName) continue;
-      const frameCell = get(columns.frame);
-      const frameAlt = frameCell?.raw.match(/\balt\s*=\s*(["'])(.*?)\1/i)?.[2] ?? "";
-      const frameText = (frameAlt + " " + (frameCell?.text ?? "")).trim();
-      const frameMatch = frameText.match(/(?:枠)?\s*(\d+)(?:\D|$)/);
-      const finishMatch = (get(columns.finish)?.text ?? "").match(/^\s*(\d+)/);
-      const jockey = get(columns.jockey)?.text ?? "";
-      entries.push({
-        frameNumber: frameMatch ? Number(frameMatch[1]) : null,
-        horseNumber,
-        horseName,
-        jockey: jockey && !/^(?:-|--|取消|除外)$/u.test(jockey) ? jockey : null,
-        finish: finishMatch ? Number(finishMatch[1]) : null,
-      });
-    }
-    if (entries.length) return entries;
-  }
-  return [];
-}
-function toRaceHistoryMetric(value: { starts: number; wins: number; top3: number }): RaceHistoryMetric {
-  return { ...value, winRate: value.starts ? value.wins / value.starts : 0, placeRate: value.starts ? value.top3 / value.starts : 0 };
-}
-
-async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: boolean): Promise<RaceHistoryStats | null> {
-  const raceName = (conditions.raceName ?? "").replace(/[\s　]/g, "");
-  if (!raceName.includes("エリザベス女王杯")) return null;
-  const targetYear = conditions.date ? Number(conditions.date.slice(0, 4)) : NaN;
-  if (!Number.isInteger(targetYear)) return null;
-  const requestedYears = Array.from({ length: 10 }, (_, i) => targetYear - i - 1);
-  const archiveUrl = "https://www.jra.go.jp/datafile/seiseki/g1/eliza/";
-  const archive = await fetchHtml(archiveUrl, 86400, forceRefresh);
-  if (!archive.ok) return createEmptyRaceHistoryStats(requestedYears, "unavailable");
-
-  const yearUrls = new Map<number, string>();
-  const links = /href\s*=\s*(["'])([^"']*eliza(20\d{2})\.html[^"']*)\1/gi;
-  let match: RegExpExecArray | null;
-  while ((match = links.exec(archive.html)) !== null) {
-    const year = Number(match[3]);
-    if (requestedYears.includes(year)) {
-      try { yearUrls.set(year, new URL(decodeEntities(match[2]), archiveUrl).toString()); } catch { /* ignore invalid href */ }
-    }
-  }
-  const failedYears = requestedYears.filter((year) => !yearUrls.has(year));
-  const pending = requestedYears.filter((year) => yearUrls.has(year));
-  const fetched: { year: number; venue: string | null; entries: JraHistoricalEntry[] }[] = [];
-  let next = 0;
-  async function worker() {
-    while (true) {
-      const i = next++;
-      if (i >= pending.length) return;
-      const year = pending[i];
-      const page = await fetchHtml(yearUrls.get(year)!, 2592000, forceRefresh);
-      if (!page.ok) { failedYears.push(year); continue; }
-      const entries = extractJraHistoricalEntries(page.html);
-      if (!entries.length) { failedYears.push(year); continue; }
-      const pageText = cleanText(page.html);
-      const venueMatch = pageText.match(/\d+回\s*(札幌|函館|福島|新潟|東京|中山|中京|京都|阪神|小倉)\s*\d+日/);
-      fetched.push({ year, venue: venueMatch?.[1] ?? null, entries });
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, () => worker()));
-
-  const frameCounts: Record<string, { starts: number; wins: number; top3: number }> = {};
-  const jockeyCounts: Record<string, { starts: number; wins: number; top3: number }> = {};
-  let totalEntries = 0;
-  const frameYears = fetched.filter((race) => race.venue === conditions.venue).map((race) => race.year).sort((a, b) => a - b);
-  const jockeyYears = fetched.map((race) => race.year).sort((a, b) => a - b);
-  for (const race of fetched) for (const entry of race.entries) {
-    totalEntries++;
-    const add = (bucket: Record<string, { starts: number; wins: number; top3: number }>, key: string) => {
-      const item = bucket[key] ?? (bucket[key] = { starts: 0, wins: 0, top3: 0 });
-      item.starts++;
-      if (entry.finish === 1) item.wins++;
-      if (entry.finish !== null && entry.finish <= 3) item.top3++;
-    };
-    if (race.venue === conditions.venue && entry.frameNumber !== null) add(frameCounts, String(entry.frameNumber));
-    if (entry.jockey) add(jockeyCounts, normalizeJockeyName(entry.jockey));
-  }
-  const fetchedYears = fetched.map((race) => race.year).sort((a, b) => a - b);
-  return {
-    status: fetchedYears.length === 0 ? "unavailable" : failedYears.length ? "partial" : "available",
-    requestedYears, fetchedYears, failedYears: failedYears.sort((a, b) => a - b),
-    frameYears, jockeyYears, totalEntries,
-    frameStats: Object.fromEntries(Object.entries(frameCounts).map(([k, v]) => [k, toRaceHistoryMetric(v)])),
-    jockeyStats: Object.fromEntries(Object.entries(jockeyCounts).map(([k, v]) => [k, toRaceHistoryMetric(v)])),
-  };
-}
 
 // 学習済みモデルと特徴量用データ（scripts/ml/train.py が data/ml に書き出す）
 type StackAsset = StackModel & { adopted: boolean; validation?: Record<string, unknown> };
@@ -688,6 +503,16 @@ function loadMlAssets() {
   return mlAssets;
 }
 
+// コース別・枠番別の成績（scripts/ml/course_waku.py が書き出す。表示用）
+type CourseWaku = { years: string[]; courses: Record<string, Record<string, [number, number]>> };
+let courseWakuAsset: Promise<CourseWaku | null> | null = null;
+function loadCourseWaku() {
+  courseWakuAsset ??= readFile(path.join(process.cwd(), "data", "ml", "course_waku.json"), "utf8")
+    .then((text) => JSON.parse(text) as CourseWaku)
+    .catch(() => { courseWakuAsset = null; return null; });
+  return courseWakuAsset;
+}
+
 function extractFirstPrize(html: string): number | null {
   const m = cleanText(html).match(/本賞金\s*[:：]\s*(\d+(?:\.\d+)?)/); // 「15000,6000,…万円」の先頭 = 1着
   return m ? Number(m[1]) : null; // 万円
@@ -695,26 +520,34 @@ function extractFirstPrize(html: string): number | null {
 
 const GOING_CODE: Record<string, number> = { "良": 0, "稍重": 1, "重": 2, "不良": 3 };
 
-function getRaceHistoryForHorse(entry: RaceEntry | null, history: RaceHistoryStats | null): RaceHistoryForHorse {
-  if (!entry || !history) return null;
-  return {
-    frame: entry.frameNumber === null ? null : history.frameStats[String(entry.frameNumber)] ?? null,
-    jockey: entry.jockey ? history.jockeyStats[normalizeJockeyName(entry.jockey)] ?? null : null,
-    frameYears: history.frameYears,
-    jockeyYears: history.jockeyYears,
-  };
+
+// 騎手名の比較用：空白・点を除き、全角英字を半角にする
+function normalizeRiderName(value: string) {
+  return value.replace(/[\s　.．・]/g, "").replace(/[Ａ-Ｚａ-ｚ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
+}
+// netkeiba の出馬表は「岩田望」のような略記、戦績は「岩田望来」のようなフルネームなので、前方一致で同じ騎手とみなす
+function sameRider(entryJockey: string, rowJockey: string) {
+  const a = normalizeRiderName(entryJockey), b = normalizeRiderName(rowJockey);
+  return a.length > 0 && b.length > 0 && (a === b || b.startsWith(a) || a.startsWith(b));
 }
 
 function summarizePerformances(
-  rows: { values: Record<string, string> }[],
-  conditions: RaceConditions
+  allRows: { values: Record<string, string> }[],
+  raceConditions: RaceConditions,
+  entryJockey: string | null
 ): PerformanceStats {
+  // 予測するレースより前の走だけを数える（過去のレースを開いたとき、そのレース自身の結果を含めない）
+  const raceDate = raceConditions.date?.replace(/-/g, "/") ?? null;
+  const rows = raceDate ? allRows.filter((row) => (row.values["日付"] ?? "") < raceDate) : allRows;
+  // 馬場が未発表のときは「良」として数える（AI予測と同じ扱い）
+  const conditions = { ...raceConditions, going: raceConditions.going ?? "良" };
   const stats: PerformanceStats = {
     parsedStarts: 0, wins: 0, top3: 0, averageFinish: null,
     gradedStarts: 0, gradedWins: 0, sameVenueStarts: 0, sameVenueTop3: 0,
     sameVenueSurfaceStarts: 0, sameVenueSurfaceTop3: 0,
     similarDistanceStarts: 0, similarDistanceTop3: 0, sameGoingStarts: 0, sameGoingTop3: 0,
     positionStarts: 0, positionGainTotal: 0, positionForwardStarts: 0, positionForwardTop3: 0,
+    jockeyPairStarts: 0, jockeyPairTop3: 0, goingUsed: conditions.going,
   };
   const venueNames = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
   const finishes: number[] = [];
@@ -735,8 +568,13 @@ function summarizePerformances(
       if (finish === 1) stats.wins++;
       if (finish <= 3) stats.top3++;
     }
+    const rider = findValue([/^騎手$/]);
+    if (entryJockey && finish !== null && sameRider(entryJockey, rider)) {
+      stats.jockeyPairStarts++;
+      if (finish <= 3) stats.jockeyPairTop3++;
+    }
     const raceTitle = findValue([/^レース名$/]);
-    if (/G[1-3]|Ｇ[１２３]|GⅠ|GⅡ|GⅢ|重賞/i.test(raceTitle)) {
+    if (/\((?:J・)?G(?:I{1,3}|[1-3])\)|G[1-3]|Ｇ[１２３]|GⅠ|GⅡ|GⅢ|重賞/.test(raceTitle)) {
       stats.gradedStarts++;
       if (finish === 1) stats.gradedWins++;
     }
@@ -849,7 +687,6 @@ export async function GET(
     }
     const horses = extractHorses(race.html);
     const raceEntries = extractRaceEntries(race.html);
-    const raceHistoryStats = await fetchRaceHistoryStats(raceConditions, forceRefresh);
 
     if (horses.length === 0) {
       return NextResponse.json(
@@ -915,7 +752,6 @@ export async function GET(
           if (!profilePage.ok && !historyResult.performance) {
             results[index] = {
               horseId: horse.horseId, name: horse.name, raceEntry,
-              raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
               status: "fetch_failed",
               pedigree,
               profileHttpStatus: profilePage.status,
@@ -926,10 +762,9 @@ export async function GET(
           const profile = profilePage.ok ? extractProfile(extractTables(profilePage.html)) : null;
           const performance = historyResult.performance;
           const performanceRows = performance?.rows ?? [];
-          const performanceStats = summarizePerformances(performanceRows, raceConditions);
+          const performanceStats = summarizePerformances(performanceRows, raceConditions, raceEntry?.jockey ?? null);
           results[index] = {
             horseId: horse.horseId, name: horse.name, raceEntry,
-            raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
             status: profile && performance && pedigree && historyResult.failedPages.length === 0 ? "complete" : "partial",
             pedigree,
             pedigreeHttpStatus: pedigreePage?.status ?? null,
@@ -946,7 +781,6 @@ export async function GET(
           const raceEntry = entryByHorseId.get(horse.horseId) ?? null;
           results[index] = {
             horseId: horse.horseId, name: horse.name, raceEntry,
-            raceHistory: getRaceHistoryForHorse(raceEntry, raceHistoryStats),
             status: "fetch_failed",
             error: error instanceof Error ? error.message : "Unknown error",
           };
@@ -1065,8 +899,18 @@ export async function GET(
         },
       };
     }
+    // 枠順（表示用）：同じコースでの、この枠の3着内率とコース全体の3着内率
+    const courseWaku = await loadCourseWaku();
+    const courseCells = courseWaku && raceConditions.venue && raceConditions.surface && raceConditions.distanceMeters
+      ? courseWaku.courses[`${raceConditions.venue}-${raceConditions.surface}-${raceConditions.distanceMeters}`] ?? null : null;
+    const courseTotal = courseCells ? Object.values(courseCells).reduce((sum, [n, t]) => [sum[0] + n, sum[1] + t], [0, 0]) : null;
     results.forEach((item, i) => {
       if (!item) return;
+      const frame = (item as { raceEntry?: RaceEntry | null }).raceEntry?.frameNumber;
+      const cell = courseCells && frame != null ? courseCells[String(frame)] : null;
+      item.courseFrame = cell && courseTotal ? {
+        starts: cell[0], top3: cell[1], courseStarts: courseTotal[0], courseTop3: courseTotal[1], years: courseWaku!.years,
+      } : null;
       item.prediction = predictions[i];
       item.form = forms[i];
       item.pedigreeAptitude = aptitudes[i];
@@ -1093,7 +937,6 @@ export async function GET(
         raceConditions,
         racePageStatus: race.status,
         racePageBytes: race.bytes,
-        raceHistoryStats,
         ml: mlSummary,
         horseCount: horses.length,
         raceEntryCount: raceEntries.length,
