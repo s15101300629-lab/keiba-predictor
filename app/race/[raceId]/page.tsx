@@ -515,7 +515,7 @@ function OverallHorseCard({ horse, total, categories, factors, mark }: {
     <summary className="prediction-horse-summary">
       <HorseNumberBadge entry={entry} />
       <span className="horse-main">
-        <b>{mark && <span className="horse-mark">{mark}</span>}{horse.name}{heavy && <span className="heavy-flag" title="道悪の注意あり">道悪注意</span>}</b>
+        <b>{mark && <span className="horse-mark">{mark}</span>}{horse.name}{heavy?.applied && <span className="heavy-flag" title="道悪補正あり">道悪補正</span>}</b>
         <small>{[entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
       </span>
       <span className="horse-inline-score">
@@ -567,17 +567,19 @@ function OverallHorseCard({ horse, total, categories, factors, mark }: {
             <h5>{group.title}</h5>
             <div className="result-category-grid">
               {items.map(({ item, factor }) => <details className="result-category-card" key={item.label}>
-                <summary className="result-category-heading">
-                  <b>{item.label}</b>
-                  <span className="result-category-value">
-                    {item.rank !== null && <em className={item.rank <= 3 && item.total >= 4 ? "good" : ""}>{item.rank}位/{item.total}</em>}
-                    {factor && <strong>{factor.score.toFixed(1)}</strong>}
+                <summary className="result-category-summary">
+                  <span className="result-category-heading">
+                    <b>{item.label}</b>
+                    <span className="result-category-value">
+                      {item.rank !== null && <em className={item.rank <= 3 && item.total >= 4 ? "good" : ""}>{item.rank}位/{item.total}</em>}
+                      {factor && <strong>{factor.score.toFixed(1)}</strong>}
+                    </span>
                   </span>
+                  {factor && <span className="category-score-track" role="img" aria-label={item.label + "スコア " + factor.score.toFixed(1)}>
+                    <span className="category-score-fill" style={{ width: Math.max(0, Math.min(100, (factor.score - 20) / 60 * 100)) + "%" }} />
+                    <span className="category-score-mid" />
+                  </span>}
                 </summary>
-                {factor && <div className="category-score-track" role="img" aria-label={item.label + "スコア " + factor.score.toFixed(1)}>
-                  <div className="category-score-fill" style={{ width: Math.max(0, Math.min(100, (factor.score - 20) / 60 * 100)) + "%" }} />
-                  <span className="category-score-mid" />
-                </div>}
                 {item.detail && <p>{item.detail}</p>}
               </details>)}
             </div>

@@ -334,3 +334,9 @@ footer span { letter-spacing:0; }
 .model-note { margin-top: 18px; color: var(--muted); font-size: 11px; }
 .model-note summary { cursor: pointer; }
 .model-note p { margin: 6px 0 0; line-height: 1.7; }
+/* 項目別の評価：閉じていてもスコアのバーを出す */
+.result-category-summary { display: block; padding: 9px 10px; cursor: pointer; list-style: none; }
+.result-category-summary::-webkit-details-marker { display: none; }
+.result-category-summary .result-category-heading { display: flex; padding: 0; }
+.result-category-card .result-category-summary .category-score-track { display: block; margin: 7px 0 0; }
+.category-score-fill { display: block; }
