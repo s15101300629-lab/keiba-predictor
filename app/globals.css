@@ -395,3 +395,26 @@ footer span { letter-spacing:0; }
 .horse-summary { padding-right: 10px; }
 .horse-mark-slot { flex: 0 0 auto; display: flex; align-items: center; }
 .horse-mark-slot .horse-mark-select { position: static; transform: none; }
+
+/* ===== トップ画面（2026-11 UI改善） ===== */
+.topbar { height: auto; padding: 16px 0 12px; border-bottom: 0; }
+.brand small { font-size: 11px; letter-spacing: 0; margin-top: 3px; }
+.date-tabs { position: sticky; top: 0; z-index: 5; margin: 0 -16px 12px; padding: 8px 16px; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); scrollbar-width: none; }
+.date-tabs::-webkit-scrollbar { display: none; }
+.date-tab { min-width: 0; padding: 8px 14px; border-radius: 999px; font-size: 13px; }
+.race-list { gap: 8px; }
+.race-card { gap: 12px; padding: 13px 12px; border-radius: 14px; }
+.grade-badge { flex: 0 0 auto; min-width: 46px; padding: 7px 0; border-radius: 9px; text-align: center; font-size: 13px; font-weight: 900; letter-spacing: .02em; }
+.grade-badge.g1 { background: linear-gradient(135deg, #f3d48d, #c89a3c); color: #2a1d05; }
+.grade-badge.g2 { background: #c8414b; color: #fff; }
+.grade-badge.g3 { background: #2e8b57; color: #fff; }
+.grade-badge.main { background: #24344b; color: #cbd7e8; font-size: 11px; }
+.race-card .race-title { display: block; font-size: 16px; line-height: 1.35; font-weight: 800; }
+.race-card .race-info p { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 5px; font-size: 11px; color: var(--muted); }
+.race-card .race-info p b { color: #cbd7e8; font-weight: 700; }
+.surface { padding: 1px 6px; border-radius: 5px; font-weight: 700; }
+.surface.turf { background: #1d3b26; color: #8fd6a2; }
+.surface.dirt { background: #3b2e1d; color: #e0b880; }
+.race-arrow { color: var(--muted); font-size: 22px; line-height: 1; }
+.sample-section { margin-top: 26px; }
+.sample-section h3 { margin: 0 0 8px; color: var(--muted); font-size: 12px; font-weight: 700; }

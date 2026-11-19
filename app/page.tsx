@@ -12,6 +12,8 @@ type RaceItem = {
   startTime: string | null;
   course: string | null;
   runners: number | null;
+  isMain?: boolean;
+  grade?: string | null;
 };
 
 type RaceListResponse = {
@@ -109,42 +111,17 @@ export default function Home() {
     return () => { active = false; };
   }, []);
 
-  const grouped = useMemo(() => {
-    const selectedRaces = races.filter((race) => race.raceDate === selectedDate);
-    return VENUE_ORDER
-      .map((venue) => ({
-        venue,
-        races: selectedRaces
-          .filter((race) => race.venue === venue)
-          .sort((a, b) => a.raceNumber - b.raceNumber),
-      }))
-      .filter((group) => group.races.length > 0);
-  }, [races, selectedDate]);
+  // 選んだ日のレースを発走時刻順に並べる
+  const dayRaces = useMemo(() => races
+    .filter((race) => race.raceDate === selectedDate)
+    .sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99") ||
+      VENUE_ORDER.indexOf(a.venue) - VENUE_ORDER.indexOf(b.venue)), [races, selectedDate]);
 
   return (
     <main className="shell">
       <header className="topbar">
-        <div className="brand"><span className="brand-mark">K</span><div><strong>KEIBA PREDICTOR</strong><small>PERSONAL JRA ANALYSIS</small></div></div>
-        <span className="private-pill">PRIVATE</span>
+        <div className="brand"><span className="brand-mark">K</span><div><strong>KEIBA PREDICTOR</strong><small>{month ? `${Number(month)}月の重賞・メインレース` : "開催情報を取得中"}</small></div></div>
       </header>
-
-      <div className="month-row">
-        <span className="date-chip">{month ? `${Number(month)}月` : "取得中"}</span>
-      </div>
-
-      <section className="venue-section">
-        <div className="venue-heading"><h3>検証用レース</h3><span>過去開催</span></div>
-        <div className="race-list">
-          <Link href="/race/202608050411" className="race-card race-card-link">
-            <div className="race-time">15:40<span>11R</span></div>
-            <div className="race-info">
-              <div className="race-title">エリザベス女王杯</div>
-              <p>11/15（日）京都 ・ 芝2200m ・ 18頭</p>
-            </div>
-            <span className="race-number">検証</span>
-          </Link>
-        </div>
-      </section>
 
       {loading && (
         <div className="state-panel loading-panel">
@@ -170,45 +147,45 @@ export default function Home() {
         <>
           <div className="date-tabs" role="tablist" aria-label="開催日">
             {raceDates.map((date) => (
-              <button
-                key={date}
-                type="button"
-                role="tab"
-                aria-selected={selectedDate === date}
+              <button key={date} type="button" role="tab" aria-selected={selectedDate === date}
                 className={selectedDate === date ? "date-tab active" : "date-tab"}
-                onClick={() => setSelectedDate(date)}
-              >
+                onClick={() => setSelectedDate(date)}>
                 {formatTabDate(date)}
               </button>
             ))}
           </div>
-
-          {grouped.length === 0 ? (
-            <div className="state-panel">この日の表示対象レースはありません。</div>
-          ) : (
-            <div className="venue-list">
-              {grouped.map(({ venue, races: venueRaces }) => (
-                <section className="venue-section" key={venue}>
-                  <div className="venue-heading"><h3>{venue}競馬場</h3><span>{venueRaces.length}レース</span></div>
-                  <div className="race-list">
-                    {venueRaces.map((race) => (
-                      <Link href={`/race/${race.raceId}`} className="race-card race-card-link" key={race.raceId}>
-                        <div className="race-time">{race.startTime ?? "--:--"}<span>{race.raceNumber}R</span></div>
-                        <div className="race-info">
-                          <div className="race-title">{race.raceTitle}</div>
-                          <p>{[race.course, race.runners !== null ? `${race.runners}頭` : null].filter(Boolean).join(" ・ ") || "詳細情報は未取得"}</p>
-                
-                        </div>
-                        <span className="race-number">{race.raceNumber}R</span>
-                      </Link>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          )}
+          {dayRaces.length === 0
+            ? <div className="state-panel">この日の表示対象レースはありません。</div>
+            : <div className="race-list">{dayRaces.map((race) => <RaceCard race={race} key={race.raceId} />)}</div>}
         </>
       )}
+
+      <section className="sample-section">
+        <h3>検証用レース</h3>
+        <RaceCard race={{ raceId: "202608050411", raceDate: "20261115", venue: "京都", raceNumber: 11,
+          raceTitle: "エリザベス女王杯", startTime: "15:40", course: "芝2200m", runners: 18, grade: "G1" }}
+          dateLabel="11/15（日）" />
+      </section>
     </main>
+  );
+}
+
+function RaceCard({ race, dateLabel }: { race: RaceItem; dateLabel?: string }) {
+  const title = race.raceTitle.replace(/[（(]\s*G[123IⅠⅡⅢ]+\s*[)）]/gi, "").trim();
+  const surface = race.course?.startsWith("芝") ? "turf" : race.course?.startsWith("ダ") ? "dirt" : "";
+  return (
+    <Link href={`/race/${race.raceId}`} className="race-card race-card-link">
+      <span className={"grade-badge " + (race.grade ? race.grade.toLowerCase() : "main")}>{race.grade ?? "メイン"}</span>
+      <div className="race-info">
+        <div className="race-title">{title}</div>
+        <p>
+          <b>{dateLabel ? dateLabel + " " : ""}{race.venue}{race.raceNumber}R</b>
+          {race.startTime && <span>{race.startTime}</span>}
+          {race.course && <span className={"surface " + surface}>{race.course}</span>}
+          {race.runners !== null && <span>{race.runners}頭</span>}
+        </p>
+      </div>
+      <span className="race-arrow" aria-hidden="true">›</span>
+    </Link>
   );
 }
