@@ -31,7 +31,8 @@ SETS_BY_NAME = {
     },
 }
 _BASE = [f for f in FEATURES if f not in EXTRA_FEATURES]
-SETS_BY_NAME["extra"] = {"base": _BASE, **{f"+{g}": _BASE + fs for g, fs in EXTRA_GROUPS.items()}, "+all": FEATURES}
+SETS_BY_NAME["extra"] = {"base": _BASE, **{f"+{g}": _BASE + fs for g, fs in EXTRA_GROUPS.items()}, "+all": _BASE + EXTRA_FEATURES}
+SETS_BY_NAME["adopted"] = {"base": _BASE, "adopted": FEATURES}
 SETS = SETS_BY_NAME[sys.argv[1] if len(sys.argv) > 1 else "pace"]
 OUTPUT = f"feature_comparison{'' if len(sys.argv) < 2 or sys.argv[1] == 'pace' else '_' + sys.argv[1]}.json"
 

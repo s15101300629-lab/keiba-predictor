@@ -1,6 +1,6 @@
 {
- "beta": 1.9197839062938356,
- "chosen": "estimated",
+ "beta": 1.0,
+ "chosen": "beta1",
  "goings": [
   "稍重",
   "重",
@@ -8,62 +8,62 @@
  ],
  "races": 92,
  "runners": 770,
- "mle_beta": 1.9197839062938356,
+ "mle_beta": 1.8184809923043481,
  "mle_ci95": [
-  -0.11128688594418201,
-  3.9508546985318533
+  -0.2608511708678827,
+  3.897813155476579
  ],
  "cv_logloss": {
-  "none": 355.2198631109171,
-  "beta1": 353.8674241888463,
-  "estimated": 353.7339341392253
+  "none": 350.40104254658377,
+  "beta1": 349.2039976489903,
+  "estimated": 349.2611733921069
  },
- "years_improved": 3,
+ "years_improved": 4,
  "per_year": {
   "2023": {
    "runners": 276,
-   "beta_without_year": 2.4238456464143074,
-   "logloss_none": 129.31681632680426,
-   "logloss_beta1": 129.1570235175475,
-   "logloss_estimated": 129.49165267806964
+   "beta_without_year": 2.335097645272463,
+   "logloss_none": 126.39110919676352,
+   "logloss_beta1": 126.29819926116201,
+   "logloss_estimated": 126.64122731709861
   },
   "2024": {
    "runners": 151,
-   "beta_without_year": 1.80617440239596,
-   "logloss_none": 75.64010224206906,
-   "logloss_beta1": 75.31251528911915,
-   "logloss_estimated": 75.17365313759359
+   "beta_without_year": 1.8138299460475118,
+   "logloss_none": 72.54160496490606,
+   "logloss_beta1": 72.32991991838753,
+   "logloss_estimated": 72.27575632287491
   },
   "2025": {
    "runners": 173,
-   "beta_without_year": 1.6534664332397961,
-   "logloss_none": 79.72039198906167,
-   "logloss_beta1": 79.20957360505263,
-   "logloss_estimated": 78.99897455010819
+   "beta_without_year": 1.3658016758640517,
+   "logloss_none": 80.69508653071995,
+   "logloss_beta1": 80.10109227238623,
+   "logloss_estimated": 79.93848433198215
   },
   "2026": {
    "runners": 170,
-   "beta_without_year": 1.8845663548105795,
-   "logloss_none": 70.54255255298212,
-   "logloss_beta1": 70.18831177712705,
-   "logloss_estimated": 70.06965377345387
+   "beta_without_year": 1.8334793267013858,
+   "logloss_none": 70.77324185419425,
+   "logloss_beta1": 70.47478619705453,
+   "logloss_estimated": 70.40570542015118
   }
  },
  "by_going": {
   "稍重": {
    "runners": 485,
-   "logloss_none": 220.349229108648,
-   "logloss_adopted": 219.33582367939178
+   "logloss_none": 220.11992617056626,
+   "logloss_adopted": 219.33412667634437
   },
   "重": {
    "runners": 212,
-   "logloss_none": 103.25772571687483,
-   "logloss_adopted": 103.14717636753866
+   "logloss_none": 98.55353640110175,
+   "logloss_adopted": 98.51719543362421
   },
   "不良": {
    "runners": 73,
-   "logloss_none": 31.612908285394358,
-   "logloss_adopted": 30.98678382582217
+   "logloss_none": 31.72757997491576,
+   "logloss_adopted": 31.35267553902172
   }
  }
 }

@@ -43,8 +43,8 @@ FEATURES = [
     "pos_first_mean", "pos_last_mean", "nige_rate", "senko_rate",
     "hp_n", "hp_top3", "sp_n", "sp_top3",
     "field_nige_cands", "field_front", "field_front_ratio", "rel_pos_rank",
-    # 追加候補（compare_features.py extra で比較し、採用分を残す）
-    *EXTRA_FEATURES,
+    # 追加分（compare_features.py extra で比較し、効いた4グループを採用。枠の有利不利は4年とも悪化したので不採用）
+    *[f for g in ("class", "trainer", "change", "time_index") for f in EXTRA_GROUPS[g]],
 ]
 
 NIGE_CAND_RATE = 0.4  # 近5走で最初のコーナー1番手が4割以上 → 逃げ候補

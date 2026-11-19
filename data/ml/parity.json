@@ -4,6 +4,7 @@
   "date": "2026-11-15",
   "horse": "エコロメジャー",
   "jockey": "小林美駒",
+  "trainer": "牧浦充徳",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -52,15 +53,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.625
+   "rel_pos_rank": 0.625,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.9030612244897959,
+   "trainer_n": 231,
+   "trainer_top3": 0.22510822510822512,
+   "trainer_venue_n": 31,
+   "trainer_venue_top3": 0.25806451612903225,
+   "dist_change": -50,
+   "surface_change": 0.0,
+   "weight_change": -2.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.3128,
+   "tidx_best5": -1.0,
+   "tidx_last1": -1.0
   },
-  "pred": 0.5981026851140675
+  "pred": 0.6014744885048857
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "ポッドハンター",
   "jockey": "藤懸貴志",
+  "trainer": "前川恭子",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -109,15 +124,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.75
+   "rel_pos_rank": 0.75,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 239,
+   "trainer_top3": 0.200836820083682,
+   "trainer_venue_n": 9,
+   "trainer_venue_top3": 0.3333333333333333,
+   "dist_change": -250,
+   "surface_change": 1.0,
+   "weight_change": 1.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -3.1429,
+   "tidx_best5": -3.1429,
+   "tidx_last1": -3.1429
   },
-  "pred": 0.04106579610381244
+  "pred": 0.07526360023077137
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "クリスタルシャイン",
   "jockey": "小崎綾也",
+  "trainer": "小崎憲",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -166,15 +195,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.0625
+   "rel_pos_rank": 0.0625,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 235,
+   "trainer_top3": 0.2297872340425532,
+   "trainer_venue_n": 11,
+   "trainer_venue_top3": 0.2727272727272727,
+   "dist_change": -50,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -1.3333,
+   "tidx_best5": -1.3333,
+   "tidx_last1": -1.3333
   },
-  "pred": 0.5601385148859737
+  "pred": 0.46608166289215797
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "ビーテリオス",
   "jockey": "斎藤新",
+  "trainer": "藤野健太",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -223,15 +266,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.1875
+   "rel_pos_rank": 0.1875,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.8613138686131386,
+   "trainer_n": 220,
+   "trainer_top3": 0.1409090909090909,
+   "trainer_venue_n": 9,
+   "trainer_venue_top3": 0.2222222222222222,
+   "dist_change": -50,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -1.54165,
+   "tidx_best5": -1.0,
+   "tidx_last1": -1.0
   },
-  "pred": 0.3616951329102228
+  "pred": 0.35263464572412684
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "アーバーバイティ",
   "jockey": "嶋田純次",
+  "trainer": "武市康男",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -280,15 +337,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.3125
+   "rel_pos_rank": 0.3125,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.9254901960784314,
+   "trainer_n": 235,
+   "trainer_top3": 0.15319148936170213,
+   "trainer_venue_n": 25,
+   "trainer_venue_top3": 0.2,
+   "dist_change": -50,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -1.7916750000000001,
+   "tidx_best5": -1.1667,
+   "tidx_last1": -1.1667
   },
-  "pred": 0.3361257297982823
+  "pred": 0.26074325347795696
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "シュネルアステリア",
   "jockey": "富田暁",
+  "trainer": "牧光二",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -337,15 +408,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.4375
+   "rel_pos_rank": 0.4375,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.9030612244897959,
+   "trainer_n": 278,
+   "trainer_top3": 0.15467625899280577,
+   "trainer_venue_n": 33,
+   "trainer_venue_top3": 0.18181818181818182,
+   "dist_change": -50,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.9563333333333333,
+   "tidx_best5": -1.0,
+   "tidx_last1": -1.0
   },
-  "pred": 0.2187391052672973
+  "pred": 0.20772803131001394
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "サザンヴィターレ",
   "jockey": "永島まなみ",
+  "trainer": "栗田徹",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -394,15 +479,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.5625
+   "rel_pos_rank": 0.5625,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.8613138686131386,
+   "trainer_n": 297,
+   "trainer_top3": 0.26936026936026936,
+   "trainer_venue_n": 35,
+   "trainer_venue_top3": 0.2857142857142857,
+   "dist_change": -50,
+   "surface_change": 0.0,
+   "weight_change": -2.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -2.0,
+   "tidx_best5": -1.8333,
+   "tidx_last1": -2.1667
   },
-  "pred": 0.15844455607063007
+  "pred": 0.1889377017564752
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "プリンセスロッティ",
   "jockey": "石田拓郎",
+  "trainer": "伊藤圭三",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -451,15 +550,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.25
+   "rel_pos_rank": 0.25,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.9030612244897959,
+   "trainer_n": 320,
+   "trainer_top3": 0.21875,
+   "trainer_venue_n": 24,
+   "trainer_venue_top3": 0.041666666666666664,
+   "dist_change": -50,
+   "surface_change": 0.0,
+   "weight_change": 1.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.5278,
+   "tidx_best5": -0.9167,
+   "tidx_last1": -1.6667
   },
-  "pred": 0.10789950511354882
+  "pred": 0.1513654174239008
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "スペシャルサンクス",
   "jockey": "黛弘人",
+  "trainer": "矢嶋大樹",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -508,15 +621,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.125
+   "rel_pos_rank": 0.125,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.9254901960784314,
+   "trainer_n": 219,
+   "trainer_top3": 0.228310502283105,
+   "trainer_venue_n": 31,
+   "trainer_venue_top3": 0.3225806451612903,
+   "dist_change": -50,
+   "surface_change": 1.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.425,
+   "tidx_best5": -0.75,
+   "tidx_last1": -1.4167
   },
-  "pred": 0.2374688375711175
+  "pred": 0.2555273653089677
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "アマンドショコラ",
   "jockey": "江田照男",
+  "trainer": "田中剛",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -565,15 +692,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.6875
+   "rel_pos_rank": 0.6875,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 157,
+   "trainer_top3": 0.18471337579617833,
+   "trainer_venue_n": 13,
+   "trainer_venue_top3": 0.23076923076923078,
+   "dist_change": -450,
+   "surface_change": 1.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -2.8125,
+   "tidx_best5": -2.8125,
+   "tidx_last1": -2.8125
   },
-  "pred": 0.05191065267623867
+  "pred": 0.08493407587038317
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "アップルザビート",
   "jockey": "丸田恭介",
+  "trainer": "本間忍",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -622,15 +763,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.8125
+   "rel_pos_rank": 0.8125,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.8613138686131386,
+   "trainer_n": 166,
+   "trainer_top3": 0.060240963855421686,
+   "trainer_venue_n": 16,
+   "trainer_venue_top3": 0.0625,
+   "dist_change": -50,
+   "surface_change": 0.0,
+   "weight_change": 1.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -3.0,
+   "tidx_best5": -2.1667,
+   "tidx_last1": -3.8333
   },
-  "pred": 0.01689579087100758
+  "pred": 0.009564434368121478
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "ピコジャック",
   "jockey": "松本大輝",
+  "trainer": "森秀行",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -679,15 +834,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.5
+   "rel_pos_rank": 0.5,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.44029850746268656,
+   "trainer_n": 226,
+   "trainer_top3": 0.20353982300884957,
+   "trainer_venue_n": 13,
+   "trainer_venue_top3": 0.07692307692307693,
+   "dist_change": -250,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -1.193475,
+   "tidx_best5": -0.6429,
+   "tidx_last1": -0.8929
   },
-  "pred": 0.1879463573261689
+  "pred": 0.2831302050684727
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "エマーソンズ",
   "jockey": "石神深道",
+  "trainer": "金成貴史",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -736,15 +905,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": null
+   "rel_pos_rank": null,
+   "prize_ratio_last": null,
+   "prize_ratio_mean5": null,
+   "trainer_n": 222,
+   "trainer_top3": 0.18018018018018017,
+   "trainer_venue_n": 25,
+   "trainer_venue_top3": 0.16,
+   "dist_change": null,
+   "surface_change": null,
+   "weight_change": null,
+   "jockey_change": null,
+   "tidx_mean5": null,
+   "tidx_best5": null,
+   "tidx_last1": null
   },
-  "pred": 0.07562848751860463
+  "pred": 0.0660943285641574
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "マリノミステリアス",
   "jockey": "森田誠也",
+  "trainer": "伊坂重信",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -793,15 +976,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.375
+   "rel_pos_rank": 0.375,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 217,
+   "trainer_top3": 0.22119815668202766,
+   "trainer_venue_n": 25,
+   "trainer_venue_top3": 0.24,
+   "dist_change": -250,
+   "surface_change": 1.0,
+   "weight_change": -3.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -2.2857,
+   "tidx_best5": -2.2857,
+   "tidx_last1": -2.2857
   },
-  "pred": 0.031345378599661515
+  "pred": 0.04500428553010757
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "アプリコットスカイ",
   "jockey": "柴田裕一郎",
+  "trainer": "大根田裕之",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -850,15 +1047,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": null
+   "rel_pos_rank": null,
+   "prize_ratio_last": null,
+   "prize_ratio_mean5": null,
+   "trainer_n": 188,
+   "trainer_top3": 0.20212765957446807,
+   "trainer_venue_n": 6,
+   "trainer_venue_top3": 0.0,
+   "dist_change": null,
+   "surface_change": null,
+   "weight_change": null,
+   "jockey_change": null,
+   "tidx_mean5": null,
+   "tidx_best5": null,
+   "tidx_last1": null
   },
-  "pred": 0.02679137751951223
+  "pred": 0.033364295887392356
  },
  {
   "race_id": "202603030401",
   "date": "2026-11-15",
   "horse": "ラブジェンヌ",
   "jockey": "菊沢一樹",
+  "trainer": "佐藤吉勝",
   "features": {
    "surface": 1,
    "distance": 1150,
@@ -907,15 +1118,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": null
+   "rel_pos_rank": null,
+   "prize_ratio_last": null,
+   "prize_ratio_mean5": null,
+   "trainer_n": 198,
+   "trainer_top3": 0.03535353535353535,
+   "trainer_venue_n": 22,
+   "trainer_venue_top3": 0.045454545454545456,
+   "dist_change": null,
+   "surface_change": null,
+   "weight_change": null,
+   "jockey_change": null,
+   "tidx_mean5": null,
+   "tidx_best5": null,
+   "tidx_last1": null
   },
-  "pred": 0.0859680789227637
+  "pred": 0.039235621558025825
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "イテルム",
   "jockey": "小沢大仁",
+  "trainer": "田中克典",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -964,15 +1189,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.5
+   "rel_pos_rank": 0.5,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.8613138686131386,
+   "trainer_n": 227,
+   "trainer_top3": 0.3039647577092511,
+   "trainer_venue_n": 10,
+   "trainer_venue_top3": 0.4,
+   "dist_change": 200,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -0.71875,
+   "tidx_best5": -0.4375,
+   "tidx_last1": -0.4375
   },
-  "pred": 0.2516797561461274
+  "pred": 0.31785265428576653
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "プレママドンナ",
   "jockey": "丸山元気",
+  "trainer": "手塚貴徳",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1021,15 +1260,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.5625
+   "rel_pos_rank": 0.5625,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.8613138686131386,
+   "trainer_n": 115,
+   "trainer_top3": 0.21739130434782608,
+   "trainer_venue_n": 10,
+   "trainer_venue_top3": 0.2,
+   "dist_change": 200,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -1.15625,
+   "tidx_best5": -0.6875,
+   "tidx_last1": -0.6875
   },
-  "pred": 0.2490324893740625
+  "pred": 0.21002421282571365
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "セレスタイト",
   "jockey": "杉原誠人",
+  "trainer": "岩戸孝樹",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1078,15 +1331,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.25
+   "rel_pos_rank": 0.25,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.8613138686131386,
+   "trainer_n": 217,
+   "trainer_top3": 0.23963133640552994,
+   "trainer_venue_n": 25,
+   "trainer_venue_top3": 0.2,
+   "dist_change": -200,
+   "surface_change": 0.0,
+   "weight_change": 1.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -0.71945,
+   "tidx_best5": -0.3,
+   "tidx_last1": -0.3
   },
-  "pred": 0.11499364009427922
+  "pred": 0.17873601461795596
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "ノーマンデー",
   "jockey": "斎藤新",
+  "trainer": "茶木太樹",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1135,15 +1402,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.625
+   "rel_pos_rank": 0.625,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 213,
+   "trainer_top3": 0.22065727699530516,
+   "trainer_venue_n": 12,
+   "trainer_venue_top3": 0.16666666666666666,
+   "dist_change": 400,
+   "surface_change": 0.0,
+   "weight_change": 1.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -1.8571,
+   "tidx_best5": -1.8571,
+   "tidx_last1": -1.8571
   },
-  "pred": 0.3415821605200099
+  "pred": 0.23893139414200654
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "サンオブシディアン",
   "jockey": "鮫島克駿",
+  "trainer": "牧浦充徳",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1192,15 +1473,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.1875
+   "rel_pos_rank": 0.1875,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 231,
+   "trainer_top3": 0.22510822510822512,
+   "trainer_venue_n": 31,
+   "trainer_venue_top3": 0.25806451612903225,
+   "dist_change": 200,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.1875,
+   "tidx_best5": -1.1875,
+   "tidx_last1": -1.1875
   },
-  "pred": 0.46151626821860164
+  "pred": 0.3820961742580444
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "ニシノメガミサマ",
   "jockey": "河原田菜々",
+  "trainer": "武藤善則",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1249,15 +1544,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.3125
+   "rel_pos_rank": 0.3125,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 193,
+   "trainer_top3": 0.15025906735751296,
+   "trainer_venue_n": 21,
+   "trainer_venue_top3": 0.14285714285714285,
+   "dist_change": 200,
+   "surface_change": 0.0,
+   "weight_change": -4.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -2.375,
+   "tidx_best5": -2.375,
+   "tidx_last1": -2.375
   },
-  "pred": 0.05863319472727471
+  "pred": 0.03504817323386995
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "ブンブクチャガマ",
   "jockey": "嶋田純次",
+  "trainer": "手塚貴久",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1306,15 +1615,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.0625
+   "rel_pos_rank": 0.0625,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 274,
+   "trainer_top3": 0.28102189781021897,
+   "trainer_venue_n": 31,
+   "trainer_venue_top3": 0.3548387096774194,
+   "dist_change": 0,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -2.5278,
+   "tidx_best5": -2.5278,
+   "tidx_last1": -2.5278
   },
-  "pred": 0.33957488230955624
+  "pred": 0.2404808767511453
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "ワンダーラヴグッド",
   "jockey": "酒井学",
+  "trainer": "羽月友彦",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1363,15 +1686,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 1.0
+   "rel_pos_rank": 1.0,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.8613138686131386,
+   "trainer_n": 222,
+   "trainer_top3": 0.0990990990990991,
+   "trainer_venue_n": 9,
+   "trainer_venue_top3": 0.3333333333333333,
+   "dist_change": 0,
+   "surface_change": 1.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -3.3639,
+   "tidx_best5": -1.45,
+   "tidx_last1": -5.2778
   },
-  "pred": 0.023607721274090457
+  "pred": 0.017443167309575087
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "ヴェントリナ",
   "jockey": "菊沢一樹",
+  "trainer": "相沢郁",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1420,15 +1757,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.125
+   "rel_pos_rank": 0.125,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.9254901960784314,
+   "trainer_n": 247,
+   "trainer_top3": 0.17813765182186234,
+   "trainer_venue_n": 36,
+   "trainer_venue_top3": 0.2777777777777778,
+   "dist_change": 200,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.109375,
+   "tidx_best5": 0.0625,
+   "tidx_last1": -2.0625
   },
-  "pred": 0.21636928793738577
+  "pred": 0.24440145367550078
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "セイバードライバー",
   "jockey": "横山琉人",
+  "trainer": "矢嶋大樹",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1477,15 +1828,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.75
+   "rel_pos_rank": 0.75,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 219,
+   "trainer_top3": 0.228310502283105,
+   "trainer_venue_n": 31,
+   "trainer_venue_top3": 0.3225806451612903,
+   "dist_change": 200,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -1.25,
+   "tidx_best5": -1.25,
+   "tidx_last1": -1.25
   },
-  "pred": 0.1067515340226086
+  "pred": 0.11981135720358743
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "モーモーゼロ",
   "jockey": "小林美駒",
+  "trainer": "石栗龍彦",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1534,15 +1899,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.875
+   "rel_pos_rank": 0.875,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.6941176470588235,
+   "trainer_n": 145,
+   "trainer_top3": 0.027586206896551724,
+   "trainer_venue_n": 18,
+   "trainer_venue_top3": 0.0,
+   "dist_change": 0,
+   "surface_change": 0.0,
+   "weight_change": -2.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -0.8714000000000001,
+   "tidx_best5": 0.1111,
+   "tidx_last1": -0.3889
   },
-  "pred": 0.2012808511007184
+  "pred": 0.18756641527938125
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "ウインロッドブレス",
   "jockey": "黛弘人",
+  "trainer": "高木登",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1591,15 +1970,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.3125
+   "rel_pos_rank": 0.3125,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 271,
+   "trainer_top3": 0.2730627306273063,
+   "trainer_venue_n": 15,
+   "trainer_venue_top3": 0.26666666666666666,
+   "dist_change": 200,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -1.0625,
+   "tidx_best5": -1.0625,
+   "tidx_last1": -1.0625
   },
-  "pred": 0.15333936654866115
+  "pred": 0.16248007018884109
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "コウサイリクリ",
   "jockey": "柴田大知",
+  "trainer": "粕谷昌央",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1648,15 +2041,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.4375
+   "rel_pos_rank": 0.4375,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.9030612244897959,
+   "trainer_n": 174,
+   "trainer_top3": 0.13218390804597702,
+   "trainer_venue_n": 18,
+   "trainer_venue_top3": 0.05555555555555555,
+   "dist_change": -200,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -0.6592666666666667,
+   "tidx_best5": 0.2778,
+   "tidx_last1": -1.7
   },
-  "pred": 0.22529023540303253
+  "pred": 0.24295693564491738
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "ララアウローラ",
   "jockey": "永島まなみ",
+  "trainer": "千葉直人",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1705,15 +2112,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.8125
+   "rel_pos_rank": 0.8125,
+   "prize_ratio_last": 0.7564102564102564,
+   "prize_ratio_mean5": 0.7564102564102564,
+   "trainer_n": 232,
+   "trainer_top3": 0.1896551724137931,
+   "trainer_venue_n": 30,
+   "trainer_venue_top3": 0.23333333333333334,
+   "dist_change": 300,
+   "surface_change": 0.0,
+   "weight_change": -2.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.7333,
+   "tidx_best5": -1.7333,
+   "tidx_last1": -1.7333
   },
-  "pred": 0.041752275399755095
+  "pred": 0.03361286695016597
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "ヌンエリン",
   "jockey": "石田拓郎",
+  "trainer": "秋本大介",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1762,15 +2183,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.9375
+   "rel_pos_rank": 0.9375,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.8613138686131386,
+   "trainer_n": 112,
+   "trainer_top3": 0.1875,
+   "trainer_venue_n": 20,
+   "trainer_venue_top3": 0.25,
+   "dist_change": 200,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -5.25,
+   "tidx_best5": -2.5,
+   "tidx_last1": -2.5
   },
-  "pred": 0.01873793259129853
+  "pred": 0.016226021341650354
  },
  {
   "race_id": "202603030402",
   "date": "2026-11-15",
   "horse": "ミリオンカラー",
   "jockey": "国分優作",
+  "trainer": "北出成人",
   "features": {
    "surface": 0,
    "distance": 1800,
@@ -1819,15 +2254,29 @@
    "field_nige_cands": 2,
    "field_front": 7,
    "field_front_ratio": 0.4375,
-   "rel_pos_rank": 0.6875
+   "rel_pos_rank": 0.6875,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.8613138686131386,
+   "trainer_n": 257,
+   "trainer_top3": 0.19066147859922178,
+   "trainer_venue_n": 8,
+   "trainer_venue_top3": 0.125,
+   "dist_change": 0,
+   "surface_change": 1.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -2.30555,
+   "tidx_best5": -1.0,
+   "tidx_last1": -3.6111
   },
-  "pred": 0.026769245296554705
+  "pred": 0.031945964161791726
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "ラブインアクション",
   "jockey": "鮫島克駿",
+  "trainer": "橋口慎介",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -1876,15 +2325,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.2
+   "rel_pos_rank": 0.2,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.0,
+   "trainer_n": 234,
+   "trainer_top3": 0.24786324786324787,
+   "trainer_venue_n": 12,
+   "trainer_venue_top3": 0.3333333333333333,
+   "dist_change": 300,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": 0.22048,
+   "tidx_best5": 1.1429,
+   "tidx_last1": 1.1429
   },
-  "pred": 0.5627827122457555
+  "pred": 0.6684395332287393
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "レボルシオン",
   "jockey": "江田照男",
+  "trainer": "蛯名正義",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -1933,15 +2396,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.13333333333333333
+   "rel_pos_rank": 0.13333333333333333,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.9360730593607306,
+   "trainer_n": 196,
+   "trainer_top3": 0.2602040816326531,
+   "trainer_venue_n": 21,
+   "trainer_venue_top3": 0.19047619047619047,
+   "dist_change": -100,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -0.10128,
+   "tidx_best5": 0.2353,
+   "tidx_last1": 0.0556
   },
-  "pred": 0.4540287689874136
+  "pred": 0.518161886926036
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "タイセイサーブル",
   "jockey": "角田大和",
+  "trainer": "高野友和",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -1990,15 +2467,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.3333333333333333
+   "rel_pos_rank": 0.3333333333333333,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.9785202863961814,
+   "trainer_n": 261,
+   "trainer_top3": 0.2988505747126437,
+   "trainer_venue_n": 10,
+   "trainer_venue_top3": 0.3,
+   "dist_change": -200,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.04328,
+   "tidx_best5": -0.3889,
+   "tidx_last1": -1.1053
   },
-  "pred": 0.15410103176452453
+  "pred": 0.189101400680906
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "メティエダール",
   "jockey": "小崎綾也",
+  "trainer": "松永幹夫",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2047,15 +2538,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.4666666666666667
+   "rel_pos_rank": 0.4666666666666667,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.0148514851485149,
+   "trainer_n": 266,
+   "trainer_top3": 0.2781954887218045,
+   "trainer_venue_n": 9,
+   "trainer_venue_top3": 0.1111111111111111,
+   "dist_change": 300,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -0.4143,
+   "tidx_best5": 0.5714,
+   "tidx_last1": 0.5714
   },
-  "pred": 0.17806775130069874
+  "pred": 0.20212392063230103
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "ロードフロリゼル",
   "jockey": "菊沢一樹",
+  "trainer": "稲垣幸雄",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2104,15 +2609,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.5333333333333333
+   "rel_pos_rank": 0.5333333333333333,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.0098522167487685,
+   "trainer_n": 171,
+   "trainer_top3": 0.21637426900584794,
+   "trainer_venue_n": 19,
+   "trainer_venue_top3": 0.10526315789473684,
+   "dist_change": -100,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -0.24445999999999998,
+   "tidx_best5": 0.4444,
+   "tidx_last1": -0.0556
   },
-  "pred": 0.2406358358685354
+  "pred": 0.31834768810259517
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "オーライカモン",
   "jockey": "松本大輝",
+  "trainer": "田中克典",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2161,15 +2680,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.06666666666666667
+   "rel_pos_rank": 0.06666666666666667,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 0.6156156156156156,
+   "trainer_n": 227,
+   "trainer_top3": 0.3039647577092511,
+   "trainer_venue_n": 10,
+   "trainer_venue_top3": 0.4,
+   "dist_change": 300,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -0.35572,
+   "tidx_best5": 0.5714,
+   "tidx_last1": 0.5714
   },
-  "pred": 0.19156884963793563
+  "pred": 0.2830486205263305
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "ファイアリービート",
   "jockey": "横山琉人",
+  "trainer": "鈴木慎太郎",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2218,15 +2751,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.7333333333333333
+   "rel_pos_rank": 0.7333333333333333,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.3015873015873016,
+   "trainer_n": 240,
+   "trainer_top3": 0.26666666666666666,
+   "trainer_venue_n": 26,
+   "trainer_venue_top3": 0.23076923076923078,
+   "dist_change": 0,
+   "surface_change": 0.0,
+   "weight_change": 2.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -0.46066,
+   "tidx_best5": 0.0588,
+   "tidx_last1": -0.2941
   },
-  "pred": 0.19670108095859692
+  "pred": 0.15678386476911155
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "タルタロス",
   "jockey": "石田拓郎",
+  "trainer": "天間昭一",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2275,15 +2822,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.8666666666666667
+   "rel_pos_rank": 0.8666666666666667,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.0,
+   "trainer_n": 186,
+   "trainer_top3": 0.11290322580645161,
+   "trainer_venue_n": 23,
+   "trainer_venue_top3": 0.043478260869565216,
+   "dist_change": -100,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -0.1639,
+   "tidx_best5": 0.5556,
+   "tidx_last1": 0.1111
   },
-  "pred": 0.4009409219979575
+  "pred": 0.40048864332377104
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "ビスケットマリー",
   "jockey": "石神深道",
+  "trainer": "和田雄二",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2332,15 +2893,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 1.0
+   "rel_pos_rank": 1.0,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.0,
+   "trainer_n": 195,
+   "trainer_top3": 0.035897435897435895,
+   "trainer_venue_n": 22,
+   "trainer_venue_top3": 0.0,
+   "dist_change": 100,
+   "surface_change": 0.0,
+   "weight_change": -2.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.03404,
+   "tidx_best5": -0.3889,
+   "tidx_last1": -1.7812
   },
-  "pred": 0.01843116400698747
+  "pred": 0.011024145834959628
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "ソングコレクター",
   "jockey": "富田暁",
+  "trainer": "加藤公太",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2389,15 +2964,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.4
+   "rel_pos_rank": 0.4,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.0098522167487685,
+   "trainer_n": 200,
+   "trainer_top3": 0.175,
+   "trainer_venue_n": 8,
+   "trainer_venue_top3": 0.5,
+   "dist_change": -100,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -0.53332,
+   "tidx_best5": 0.8333,
+   "tidx_last1": -1.2222
   },
-  "pred": 0.23851386988640177
+  "pred": 0.28044568789783336
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "ヒヒーン",
   "jockey": "小林美駒",
+  "trainer": "須貝尚介",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2446,15 +3035,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.26666666666666666
+   "rel_pos_rank": 0.26666666666666666,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.0199004975124377,
+   "trainer_n": 285,
+   "trainer_top3": 0.24561403508771928,
+   "trainer_venue_n": 10,
+   "trainer_venue_top3": 0.3,
+   "dist_change": -100,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -1.10918,
+   "tidx_best5": -0.1667,
+   "tidx_last1": -0.1667
   },
-  "pred": 0.24751099182956535
+  "pred": 0.2353449145572083
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "ティアップドライブ",
   "jockey": "河原田菜々",
+  "trainer": "奥平雅士",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2503,15 +3106,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.6666666666666666
+   "rel_pos_rank": 0.6666666666666666,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.0,
+   "trainer_n": 178,
+   "trainer_top3": 0.12921348314606743,
+   "trainer_venue_n": 30,
+   "trainer_venue_top3": 0.06666666666666667,
+   "dist_change": 100,
+   "surface_change": 0.0,
+   "weight_change": -4.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -0.87418,
+   "tidx_best5": -0.2143,
+   "tidx_last1": -0.5938
   },
-  "pred": 0.15618230703420954
+  "pred": 0.13657461447064442
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "アルマグラース",
   "jockey": "嶋田純次",
+  "trainer": "水野貴広",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2560,15 +3177,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.6
+   "rel_pos_rank": 0.6,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.0,
+   "trainer_n": 243,
+   "trainer_top3": 0.1646090534979424,
+   "trainer_venue_n": 25,
+   "trainer_venue_top3": 0.08,
+   "dist_change": 500,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.15666,
+   "tidx_best5": -0.25,
+   "tidx_last1": -1.8333
   },
-  "pred": 0.037456436231856655
+  "pred": 0.02655645183691391
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "ニーナバイリッカ",
   "jockey": "永島まなみ",
+  "trainer": "松下武士",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2617,15 +3248,29 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.8
+   "rel_pos_rank": 0.8,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.2349397590361446,
+   "trainer_n": 231,
+   "trainer_top3": 0.27705627705627706,
+   "trainer_venue_n": 5,
+   "trainer_venue_top3": 0.4,
+   "dist_change": 300,
+   "surface_change": 0.0,
+   "weight_change": 0.0,
+   "jockey_change": 0.0,
+   "tidx_mean5": -0.8856999999999999,
+   "tidx_best5": -0.5,
+   "tidx_last1": -1.1071
   },
-  "pred": 0.07003211355168301
+  "pred": 0.08950821704094017
  },
  {
   "race_id": "202603030403",
   "date": "2026-11-15",
   "horse": "ナックシュバリエ",
   "jockey": "原田和真",
+  "trainer": "小野次郎",
   "features": {
    "surface": 1,
    "distance": 1700,
@@ -2674,8 +3319,21 @@
    "field_nige_cands": 4,
    "field_front": 4,
    "field_front_ratio": 0.26666666666666666,
-   "rel_pos_rank": 0.9333333333333333
+   "rel_pos_rank": 0.9333333333333333,
+   "prize_ratio_last": 1.0,
+   "prize_ratio_mean5": 1.3398692810457515,
+   "trainer_n": 215,
+   "trainer_top3": 0.12093023255813953,
+   "trainer_venue_n": 15,
+   "trainer_venue_top3": 0.06666666666666667,
+   "dist_change": -100,
+   "surface_change": 0.0,
+   "weight_change": 3.0,
+   "jockey_change": 1.0,
+   "tidx_mean5": -1.68612,
+   "tidx_best5": -1.375,
+   "tidx_last1": -1.5556
   },
-  "pred": 0.020281568822155295
+  "pred": 0.01648286915010565
  }
 ]

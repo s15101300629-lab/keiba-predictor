@@ -5,9 +5,10 @@ export type Store = {
   lastDate: string;
   // [date, venue, surface, distance, going(-1=不明), field, finish(-1=中止), timeDiff(-1=不明),
   //  pace(0=スロー 1=ミドル 2=ハイ -1=不明), posFirst(最初のコーナーの位置, -1=不明), posLast,
-  //  prize(1着賞金・万円), weight(斤量), jockey, trainer, tidx(タイム指数)]
+  //  prize(1着賞金・万円), weight(斤量), jockey(names の番号), trainer(names の番号), tidx(タイム指数)]
   horses: Record<string, [string, number, number, number | null, number, number, number, number, number, number, number,
-    number | null, number | null, string, string, number | null][]>;
+    number | null, number | null, number, number, number | null][]>;
+  names?: string[]; // 騎手・調教師名の一覧
   // [date, venue, surface, distance, top3]
   jockeys: Record<string, [string, number, number, number | null, number][]>;
   // [date, venue, top3]
@@ -82,7 +83,7 @@ function horseFeatures(store: Store, race: RaceInput, horse: string): Features {
       going: r[4] < 0 ? null : r[4], field: r[5],
       finish: r[6] < 0 ? null : r[6], timeDiff: r[7] < 0 ? null : r[7],
       pace: r[8] < 0 ? null : r[8], posFirst: r[9] > 0 ? r[9] : null, posLast: r[10] > 0 ? r[10] : null,
-      prize: r[11] ?? null, weight: r[12] ?? null, jockey: r[13] ?? "", trainer: r[14] ?? "", tidx: r[15] ?? null,
+      prize: r[11] ?? null, weight: r[12] ?? null, tidx: r[15] ?? null,
     }));
   const f: Features = { n_prior: runs.length };
   if (runs.length) {
@@ -179,7 +180,7 @@ export function resolveTrainer(name: string | null | undefined, store: Store, ra
   if (!n) return null;
   const runs = (store.horses[horse] ?? []).filter((r) => r[0] < raceDate);
   for (let i = runs.length - 1; i >= 0; i--) {
-    const t = runs[i][14];
+    const t = store.names?.[runs[i][14]] ?? "";
     if (t && (t === n || t.startsWith(n))) return t;
   }
   const trainers = store.trainers ?? {};
@@ -243,7 +244,8 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
   const prior = (store.horses[runner.horse] ?? []).filter((r) => r[0] < race.date);
   const last = prior.length ? prior[prior.length - 1] : null;
   f.weight_change = last && runner.weight && last[12] ? runner.weight - last[12] : NaN;
-  f.jockey_change = last && runner.jockeyKey && last[13] ? (runner.jockeyKey === last[13] ? 0 : 1) : NaN;
+  const lastJockey = last ? store.names?.[last[13]] ?? "" : "";
+  f.jockey_change = last && runner.jockeyKey && lastJockey ? (runner.jockeyKey === lastJockey ? 0 : 1) : NaN;
   const j = jockeyStats(store, race, runner.jockeyKey);
   Object.assign(f, {
     jockey_n: j.n, jockey_top3: rate(j.top3, j.n),

@@ -96,6 +96,15 @@ def export_model(booster: lgb.Booster) -> dict:
 def build_store(hist, last_date: str) -> dict:
     cutoff = (date.fromisoformat(last_date) - timedelta(days=STORE_DAYS)).isoformat()
     horses = {}
+    names: list[str] = []  # 騎手・調教師名の一覧（各走には番号だけ入れる）
+    name_index: dict[str, int] = {}
+
+    def idx(name: str) -> int:
+        if name not in name_index:
+            name_index[name] = len(names)
+            names.append(name)
+        return name_index[name]
+
     for name, runs in hist.horses.items():
         if runs and runs[-1]["date"] >= cutoff:
             horses[name] = [[r["date"], r["venue"], r["surface"], r["distance"],
@@ -104,7 +113,7 @@ def build_store(hist, last_date: str) -> dict:
                              -1 if r["time_diff"] is None else r["time_diff"],
                              -1 if r["pace"] is None else r["pace"],
                              r["pos_first"] or -1, r["pos_last"] or -1,
-                             r["prize"], r["weight"], r["jockey"], r["trainer"], r["tidx"]] for r in runs]
+                             r["prize"], r["weight"], idx(r["jockey"]), idx(r["trainer"]), r["tidx"]] for r in runs]
     year_start = last_date[:4] + "-01-01"
     prev_year_start = str(int(last_date[:4]) - 1) + "-01-01"
     jockeys = {}
@@ -125,8 +134,10 @@ def build_store(hist, last_date: str) -> dict:
             a[0] += 1
             a[1] += top3
         course_waku[f"{venue}-{surface}-{distance}"] = [[d, w, n, t] for (d, w), (n, t) in sorted(agg.items())]
+    # 枠の有利不利（courseWaku）は比較で不採用だったので store には入れない（サイズ削減）
+    del course_waku
     return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys,
-            "trainers": trainers, "courseWaku": course_waku,
+            "trainers": trainers, "names": names,
             "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast",
                           "prize", "weight", "jockey", "trainer", "tidx"],
             "rideFields": ["date", "venue", "surface", "distance", "top3"]}
