@@ -470,7 +470,6 @@ type PerformanceStats = {
   sameGoingStarts: number; sameGoingTop3: number;
   positionStarts: number; positionGainTotal: number;
   positionForwardStarts: number; positionForwardTop3: number;
-  jockeyPairStarts: number; jockeyPairTop3: number;
   goingUsed: string | null;
 };
 
@@ -521,20 +520,9 @@ function extractFirstPrize(html: string): number | null {
 const GOING_CODE: Record<string, number> = { "良": 0, "稍重": 1, "重": 2, "不良": 3 };
 
 
-// 騎手名の比較用：空白・点を除き、全角英字を半角にする
-function normalizeRiderName(value: string) {
-  return value.replace(/[\s　.．・]/g, "").replace(/[Ａ-Ｚａ-ｚ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
-}
-// netkeiba の出馬表は「岩田望」のような略記、戦績は「岩田望来」のようなフルネームなので、前方一致で同じ騎手とみなす
-function sameRider(entryJockey: string, rowJockey: string) {
-  const a = normalizeRiderName(entryJockey), b = normalizeRiderName(rowJockey);
-  return a.length > 0 && b.length > 0 && (a === b || b.startsWith(a) || a.startsWith(b));
-}
-
 function summarizePerformances(
   allRows: { values: Record<string, string> }[],
-  raceConditions: RaceConditions,
-  entryJockey: string | null
+  raceConditions: RaceConditions
 ): PerformanceStats {
   // 予測するレースより前の走だけを数える（過去のレースを開いたとき、そのレース自身の結果を含めない）
   const raceDate = raceConditions.date?.replace(/-/g, "/") ?? null;
@@ -547,7 +535,7 @@ function summarizePerformances(
     sameVenueSurfaceStarts: 0, sameVenueSurfaceTop3: 0,
     similarDistanceStarts: 0, similarDistanceTop3: 0, sameGoingStarts: 0, sameGoingTop3: 0,
     positionStarts: 0, positionGainTotal: 0, positionForwardStarts: 0, positionForwardTop3: 0,
-    jockeyPairStarts: 0, jockeyPairTop3: 0, goingUsed: conditions.going,
+    goingUsed: conditions.going,
   };
   const venueNames = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
   const finishes: number[] = [];
@@ -567,11 +555,6 @@ function summarizePerformances(
       finishes.push(finish);
       if (finish === 1) stats.wins++;
       if (finish <= 3) stats.top3++;
-    }
-    const rider = findValue([/^騎手$/]);
-    if (entryJockey && finish !== null && sameRider(entryJockey, rider)) {
-      stats.jockeyPairStarts++;
-      if (finish <= 3) stats.jockeyPairTop3++;
     }
     const raceTitle = findValue([/^レース名$/]);
     if (/\((?:J・)?G(?:I{1,3}|[1-3])\)|G[1-3]|Ｇ[１２３]|GⅠ|GⅡ|GⅢ|重賞/.test(raceTitle)) {
@@ -762,7 +745,7 @@ export async function GET(
           const profile = profilePage.ok ? extractProfile(extractTables(profilePage.html)) : null;
           const performance = historyResult.performance;
           const performanceRows = performance?.rows ?? [];
-          const performanceStats = summarizePerformances(performanceRows, raceConditions, raceEntry?.jockey ?? null);
+          const performanceStats = summarizePerformances(performanceRows, raceConditions);
           results[index] = {
             horseId: horse.horseId, name: horse.name, raceEntry,
             status: profile && performance && pedigree && historyResult.failedPages.length === 0 ? "complete" : "partial",

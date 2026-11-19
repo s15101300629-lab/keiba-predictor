@@ -23,7 +23,7 @@ type PerformanceStats = {
   sameGoingStarts: number; sameGoingTop3: number;
   positionStarts: number; positionGainTotal: number;
   positionForwardStarts: number; positionForwardTop3: number;
-  jockeyPairStarts?: number; jockeyPairTop3?: number; goingUsed?: string | null;
+  goingUsed?: string | null;
 };
 type CourseFrame = { starts: number; top3: number; courseStarts: number; courseTop3: number; years: string[] } | null;
 type Pedigree = {
@@ -165,7 +165,6 @@ function buildFactorScores(horses: Horse[]): Map<string, FactorScore[]> {
     { label: "競馬場・馬場適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.sameVenueSurfaceStarts ?? 0, rate: s?.sameVenueSurfaceStarts ? s.sameVenueSurfaceTop3 / s.sameVenueSurfaceStarts : 0 }; } },
     { label: "距離適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.similarDistanceStarts ?? 0, rate: s?.similarDistanceStarts ? s.similarDistanceTop3 / s.similarDistanceStarts : 0 }; } },
     { label: "馬場適性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.sameGoingStarts ?? 0, rate: s?.sameGoingStarts ? s.sameGoingTop3 / s.sameGoingStarts : 0 }; } },
-    { label: "騎手と馬の相性", get: (horse: Horse) => { const s = horse.performanceStats; return { starts: s?.jockeyPairStarts ?? 0, rate: s?.jockeyPairStarts ? (s.jockeyPairTop3 ?? 0) / s.jockeyPairStarts : 0 }; } },
     { label: "枠順実績", get: (horse: Horse) => { const c = horse.courseFrame; return { starts: c?.starts ?? 0, rate: c?.starts ? c.top3 / c.starts : 0 }; } },
     { label: "調子", get: (horse: Horse) => ({ starts: horse.form?.runs.length ?? 0, rate: horse.form?.raw ?? 0 }) },
     { label: "血統適性", get: (horse: Horse) => { const a = horse.pedigreeAptitude; return { starts: a?.conditionRate != null ? 1 : 0, rate: a?.conditionRate ?? 0 }; } },
@@ -213,7 +212,7 @@ function buildCategoryRanks(
   venue: string | null
 ): Map<string, CategoryRank[]> {
   const result = new Map<string, CategoryRank[]>();
-  const categories = ["全体成績", "重賞実績", "調子", "騎手", "騎手と馬の相性", "調教", "血統", "距離適性", "コース適性", "馬場適性", "枠順", "種牡馬", "ポジション"];
+  const categories = ["全体成績", "重賞実績", "調子", "騎手", "調教", "血統", "距離適性", "コース適性", "馬場適性", "枠順", "種牡馬", "ポジション"];
   for (const horse of horses) {
     result.set(horse.horseId, categories.map((label) => ({
       label, rank: null, total: 0, detail: NO_DATA,
@@ -260,8 +259,6 @@ function buildCategoryRanks(
   const goingUsed = horses.find((horse) => horse.performanceStats?.goingUsed)?.performanceStats?.goingUsed ?? null;
   assignFactorRank("馬場適性", "馬場適性", (value) =>
     `${goingUsed ?? "同じ馬場"}での過去走 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
-  assignFactorRank("騎手と馬の相性", "騎手と馬の相性", (value) =>
-    `今回の騎手が乗った過去走 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
   assignFactorRank("全体成績", "全体成績", (value) =>
     `全過去走 ${value.starts}走・3着以内率 ${Math.round(value.rate * 100)}%`);
   assignFactorRank("重賞実績", "重賞実績", (value) =>
@@ -493,7 +490,7 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
 const CATEGORY_GROUPS = [
   { title: "成績・距離", labels: ["全体成績", "重賞実績", "距離適性"] },
   { title: "コース・馬場適性", labels: ["コース適性", "馬場適性", "枠順"] },
-  { title: "調子・騎手・位置取り", labels: ["調子", "騎手", "騎手と馬の相性", "ポジション"] },
+  { title: "調子・騎手・位置取り", labels: ["調子", "騎手", "ポジション"] },
   { title: "血統・調教", labels: ["血統", "種牡馬", "調教"] },
 ];
 
