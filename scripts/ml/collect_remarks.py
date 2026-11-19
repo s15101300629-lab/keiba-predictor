@@ -20,7 +20,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[2]
 URL = "https://db.sp.netkeiba.com/race/{}/"
-WAIT_SECONDS = 2.0
+WAIT_SECONDS = 5.0
 
 
 def parse(html: str) -> list[dict]:
