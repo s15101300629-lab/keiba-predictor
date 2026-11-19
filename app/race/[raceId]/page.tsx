@@ -567,7 +567,7 @@ function OverallHorseCard({ horse, total, categories, factors, mark }: {
         </span>
         {prediction && <small className="horse-inline-rank">{prediction.rank}位</small>}
       </span>
-      <span className="horse-expand">＋</span>
+      <span className="horse-expand prediction-expand" aria-hidden="true" />
     </summary>
 
     <div className="horse-result-content">

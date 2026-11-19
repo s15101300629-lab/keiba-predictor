@@ -231,7 +231,8 @@ footer span { letter-spacing:0; }
 .horse-inline-score strong { text-align: right; font-size: 12px; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .horse-inline-score-track { display: block; height: 6px; overflow: hidden; border-radius: 999px; background: #26354a; }
 .horse-inline-score-fill { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg,#4b8b91,#8bd3c7); }
-.prediction-horse-details[open] .horse-expand { transform: rotate(45deg); }
+.prediction-expand::after { content: "＋"; }
+.prediction-horse-details[open] .prediction-expand::after { content: "－"; }
 .horse-result-content { padding: 0 12px 14px; border-top: 1px solid var(--line); }
 .horse-result-overall { padding: 13px; border: 1px solid var(--line); border-radius: 10px; background: #111e2e; }
 .horse-result-overall .result-section-heading h4,
