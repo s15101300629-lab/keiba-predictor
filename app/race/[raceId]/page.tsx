@@ -431,14 +431,20 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
   const pedigreeRows = (pedigree?.ancestors ?? []).filter((ancestor) => ancestor.generation <= 3);
   const runs = showAllRuns ? histories : histories.slice(0, 5);
   const v = (run: { values: Record<string, string> }, key: string) => run.values[key] ?? "";
-  return <div className="horse-detail-wrap">
-  <details className="horse-detail" onToggle={(event) => setExpanded(event.currentTarget.open)}>
+  return <details className="horse-detail" onToggle={(event) => setExpanded(event.currentTarget.open)}>
     <summary className="horse-summary">
       <HorseNumberBadge entry={entry} />
       <span className="horse-main">
         <b>{horse.name}</b>
         <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
         {sire && <small className="horse-blood">{sire}{damsire && <> <i>×</i> 母父{damsire}</>}</small>}
+      </span>
+      {/* 印の操作で開閉しないように、クリックの既定動作（summary の開閉）を止める */}
+      <span className="horse-mark-slot" onClick={(event) => event.preventDefault()}>
+        <select className={"horse-mark-select" + (mark ? " marked" : "")} aria-label={horse.name + "の印"} value={mark}
+          onChange={(event) => onMarkChange(horse.horseId, event.target.value)}>
+          {MARK_OPTIONS.map((option) => <option key={option || "none"} value={option}>{option || "印"}</option>)}
+        </select>
       </span>
       <span className="horse-expand">{expanded ? "－" : "＋"}</span>
     </summary>
@@ -487,12 +493,7 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
         </div>
       </div>}
     </div>}
-  </details>
-    <select className={"horse-mark-select" + (mark ? " marked" : "")} aria-label={horse.name + "の印"} value={mark}
-    onChange={(event) => onMarkChange(horse.horseId, event.target.value)}>
-    {MARK_OPTIONS.map((option) => <option key={option || "none"} value={option}>{option || "印"}</option>)}
-  </select>
-  </div>;
+  </details>;
 }
 
 const CATEGORY_GROUPS = [

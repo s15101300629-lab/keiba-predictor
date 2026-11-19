@@ -391,3 +391,7 @@ footer span { letter-spacing:0; }
 .horse-detail-wrap { position: relative; }
 .horse-detail { position: static; }
 .horse-detail-wrap .horse-mark-select { top: 7px; transform: none; z-index: 2; }
+/* 印：summary の中で縦中央に置く */
+.horse-summary { padding-right: 10px; }
+.horse-mark-slot { flex: 0 0 auto; display: flex; align-items: center; }
+.horse-mark-slot .horse-mark-select { position: static; transform: none; }
