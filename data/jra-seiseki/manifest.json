@@ -4316,6 +4316,456 @@
   "warnings": [],
   "unknown_glyphs": {}
  },
+ "2020-3niigata1": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3niigata1.pdf",
+  "date": "2020-08-15",
+  "sha256": "0ac5c7178b40d7657b64b0086adc0fcbddcb1dd229be916a506f544fdf5bf91c",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3niigata2": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3niigata2.pdf",
+  "date": "2020-08-16",
+  "sha256": "94073e96dabdcc6365e0fda631989b0835a7ae450757ecfb71eb942c676fcafe",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3niigata3": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3niigata3.pdf",
+  "date": "2020-08-22",
+  "sha256": "94eec1e7c075685c7566ed9761910191bf75ebc460b4a18b4c8a41498f4c1008",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3niigata4": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3niigata4.pdf",
+  "date": "2020-08-23",
+  "sha256": "2d58b7fbb27d2ba5388387d0ac332137f09357ce28ad71a7719f820d423e4135",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3niigata5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3niigata5.pdf",
+  "date": "2020-08-29",
+  "sha256": "a70e5cdf327d102d3f70bd9a7fabd0ff0afcf265051e5722029b728bec34c61b",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3niigata6": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3niigata6.pdf",
+  "date": "2020-08-30",
+  "sha256": "0d28956d0d5ceeb5218ced2754534cd9853120b8506ebc9a26500e4d2fee61bb",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3niigata7": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3niigata7.pdf",
+  "date": "2020-09-05",
+  "sha256": "352c28830bf51a0c404e8856ba20ea6b5afcbe25534dc95c3bc29464f13f439a",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3niigata8": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3niigata8.pdf",
+  "date": "2020-09-06",
+  "sha256": "596f24b7569fca8592e5e3d647d17aaaab3ad6f3baadcb3c944a847b249080a7",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3tokyo1": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3tokyo1.pdf",
+  "date": "2020-06-06",
+  "sha256": "85383542eb78b64d4d0b8720f926288defa0ff92b3c133a257b4ac5bcb09dc09",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3tokyo2": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3tokyo2.pdf",
+  "date": "2020-06-07",
+  "sha256": "af52a825547240285c756d40574be3cf77ba6aaafb2692fe6b33e079123f3b1f",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3tokyo3": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3tokyo3.pdf",
+  "date": "2020-06-13",
+  "sha256": "4c04d25cf79149e9897fb9d3db976c131c39e14704cc3bd5af38ef26b145dd1b",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3tokyo4": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3tokyo4.pdf",
+  "date": "2020-06-14",
+  "sha256": "82979d50b55ac4ecaa6720088a2cd42ccedcd19bbb0c56de8776d130fdde4c67",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3tokyo5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3tokyo5.pdf",
+  "date": "2020-06-20",
+  "sha256": "027b1f452e576acecdd796277d2f95e79a3cbddb329773ec37a833c4dbb0e464",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3tokyo6": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3tokyo6.pdf",
+  "date": "2020-06-21",
+  "sha256": "8c79a215e8c449a31b24659691ba18ad80a2579206f736853cc9ddfa1dae7314",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3tokyo7": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3tokyo7.pdf",
+  "date": "2020-06-27",
+  "sha256": "8f41ce2f9639d3dbcf42354fa34017ffb29fd2d7dcb7a7354645f66a74ba57da",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-3tokyo8": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-3tokyo8.pdf",
+  "date": "2020-06-28",
+  "sha256": "c7cb202941e2b8f84d0b90eaf369f87c71ef86cbb53d7f2ec8cb3f1a7034b8de",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4hanshin1": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4hanshin1.pdf",
+  "date": "2020-07-04",
+  "sha256": "86307a6d8d57d83aa84e9edc8739bddafcdc0d9811731cf5c316f1e436e2af11",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4hanshin2": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4hanshin2.pdf",
+  "date": "2020-07-05",
+  "sha256": "a52b485d564748259bd10b1d17cd0e1d0e67445c15a9b5c7d8177b275736e693",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4hanshin3": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4hanshin3.pdf",
+  "date": "2020-07-11",
+  "sha256": "a635d9f0a733b63fd0d9f9a572e6aae20d5bbbd9ef92aba3c835546eb6f0b63b",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4hanshin4": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4hanshin4.pdf",
+  "date": "2020-07-12",
+  "sha256": "3cc6121e4119fc0dee10ef511cf5118855ba02fdab9d9316ce52e3b9b5fe7c50",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4hanshin5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4hanshin5.pdf",
+  "date": "2020-07-18",
+  "sha256": "75885e10abdc69649e01964e4c2a189ff01d63cbf090f01e77a3f332803a0ce2",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4hanshin6": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4hanshin6.pdf",
+  "date": "2020-07-19",
+  "sha256": "cffb8fb1485ad7a641d498568a44b7177c91d5649b4054e77ef5608b97d75f8a",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4kyoto1": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4kyoto1.pdf",
+  "date": "2020-10-10",
+  "sha256": "10224cc8d9c49c36b629058166dbe1f49fe66b4468cb7aa21d2dbfc5f7d3b4f1",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4kyoto2": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4kyoto2.pdf",
+  "date": "2020-10-11",
+  "sha256": "317c2652dfa6823b66347c2e7d54eebcd5f906ec8f2d0aaf7f07d0486c2b96b6",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4kyoto3": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4kyoto3.pdf",
+  "date": "2020-10-17",
+  "sha256": "b30ce629fd51571a7a86b57854b6dda0a9f1508fb94338556fd93a34e7e3a6e4",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4kyoto4": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4kyoto4.pdf",
+  "date": "2020-10-18",
+  "sha256": "077a8dca50c32ab13afaf482f1d8a28cfed7a31dbf079455b4208851b25344ff",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4kyoto5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4kyoto5.pdf",
+  "date": "2020-10-24",
+  "sha256": "58e8f11fc20593fa34c4af280c7e2f226a0b73a12753925f198e3fc832f22904",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4kyoto6": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4kyoto6.pdf",
+  "date": "2020-10-25",
+  "sha256": "57e7a7b33b74e306a23f8b9d6218a362782b5c42f192905767b6c7772630e3f0",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4kyoto7": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4kyoto7.pdf",
+  "date": "2020-10-31",
+  "sha256": "54b7e14d35428331d8d62ea343d34914936b8a6f918639d56e3f2c12bde402df",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4kyoto8": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4kyoto8.pdf",
+  "date": "2020-11-01",
+  "sha256": "369cad3fa2ed8e6ddc1d40e72e7b4b783581ae9c44ad3a38f3690f6f8273829c",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4nakayama1": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4nakayama1.pdf",
+  "date": "2020-09-12",
+  "sha256": "ef4ba8cd721f145a6c3bea84092c16cf5a012a449d6e240c80579f87b843b65b",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4nakayama2": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4nakayama2.pdf",
+  "date": "2020-09-13",
+  "sha256": "903ec70fa57d9eab4a6eec68e936db5a72214e23854d928b302fd6ef6402c85d",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4nakayama3": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4nakayama3.pdf",
+  "date": "2020-09-19",
+  "sha256": "cfe76cdd2bb4df2910e8204b4ada2cb90db78629d1b7cb299a2943a1e11b5d58",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4nakayama4": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4nakayama4.pdf",
+  "date": "2020-09-20",
+  "sha256": "24fa01a239a7107d6e1225289722741efd49a621eded9dd2450419be11fce7d3",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4nakayama5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4nakayama5.pdf",
+  "date": "2020-09-21",
+  "sha256": "66b045233c8d5fd3c0bde68a8090cb21de04f0d21cb7b43931262857b5e9d6fa",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4nakayama6": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4nakayama6.pdf",
+  "date": "2020-09-26",
+  "sha256": "72aae14fe2d81e1c7ca5eed0e42f313e1e40e77ebf15167e5a02c59435fbf8a6",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4nakayama7": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4nakayama7.pdf",
+  "date": "2020-09-27",
+  "sha256": "82f15b0a2e7bcde3424409bdcc16fa74b533b7eb614d5282ed94d354d21a7d34",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4nakayama8": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4nakayama8.pdf",
+  "date": "2020-10-03",
+  "sha256": "a3316b1f202af6b4eddd846714ff168a07594103e05a50cd58dff96239e45f28",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4nakayama9": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4nakayama9.pdf",
+  "date": "2020-10-04",
+  "sha256": "42f655947b25736ba7e1d330c06fb13c120522eb3fd065e0edf7008aa0331d50",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4niigata1": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4niigata1.pdf",
+  "date": "2020-10-10",
+  "sha256": "224c3b36d0740187688788936eea61df0f36dee7014b2ab88dbb531c81d636dd",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4niigata2": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4niigata2.pdf",
+  "date": "2020-10-11",
+  "sha256": "9501382306f3a0650badfe8ddea7af7ad129a36b4c25f79d2ef6c157678876b3",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4niigata3": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4niigata3.pdf",
+  "date": "2020-10-17",
+  "sha256": "bdead53b6f0dd528bb7cabc4f4c1b71d4549521dcaee008480ec8677564da092",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4niigata4": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4niigata4.pdf",
+  "date": "2020-10-18",
+  "sha256": "16dededb4e98e47e20d045e45797685fadf9b5dfe0e4c1de8259fbbe60d2890b",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4niigata5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4niigata5.pdf",
+  "date": "2020-10-24",
+  "sha256": "a93a55cba443dc1b4c23e879ac84f59933fe9330208c63d6a79618e02e0faca5",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4niigata6": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4niigata6.pdf",
+  "date": "2020-10-25",
+  "sha256": "2db33046ad077a7e826c76cd0e8e95337be96acade934b00f216b41483b8f318",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4tokyo1": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4tokyo1.pdf",
+  "date": "2020-10-10",
+  "sha256": "ddc5f5c08e1361fc609429aaca1c558f85cbe88c2ac19dcfae46770b001c8cd9",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4tokyo2": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4tokyo2.pdf",
+  "date": "2020-10-11",
+  "sha256": "07b73eaad9526a78e31a660f50c5cb31e722f4aa263d11876e01e8e2001b78b3",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4tokyo3": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4tokyo3.pdf",
+  "date": "2020-10-17",
+  "sha256": "89029b024b322ef08edf409470aae6feaf7d3a71b62a247a27b7bb216e5dddb5",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4tokyo4": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4tokyo4.pdf",
+  "date": "2020-10-18",
+  "sha256": "456efd094e3195eb6aba9554b8d24c695b064eb0fb99e0f5af9291831f061735",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2020-4tokyo5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2020/2020-4tokyo5.pdf",
+  "date": "2020-10-24",
+  "sha256": "48ff7fbc5d2b0c707f14ec9439d174f8e4ad1dea9e1235f26bd99cc56a660430",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
  "2021-1chukyo1": {
   "url": "https://www.jra.go.jp/datafile/seiseki/report/2021/2021-1chukyo1.pdf",
   "date": "2021-01-05",
