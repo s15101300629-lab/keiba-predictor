@@ -715,35 +715,118 @@ function buildBets(horses: Horse[]): BetGroup[] {
   ];
 }
 
-function BetsPanel({ horses, inTraining }: { horses: Horse[]; inTraining: boolean }) {
+type OddsMap = Record<string, { min: number; max: number | null }>;
+type OddsData = { ok: boolean; fetchedAt: string; officialTime: string | null; errors: string[];
+  win: OddsMap; place: OddsMap; umaren: OddsMap; wide: OddsMap; trio: OddsMap; trifecta: OddsMap };
+const ODDS_FIELD: Record<string, keyof OddsData> = { 単勝: "win", 複勝: "place", ワイド: "wide", 馬連: "umaren", "3連複": "trio", "3連単": "trifecta" };
+
+// 予算を100円単位で割り振る。重みに比例させ、端数は小数部分の大きい順に100円ずつ足す
+function allocate(budget: number, weights: number[]): number[] {
+  const units = Math.floor(budget / 100);
+  const total = weights.reduce((sum, w) => sum + w, 0);
+  if (!units || !total) return weights.map(() => 0);
+  const raw = weights.map((w) => (units * w) / total);
+  const base = raw.map(Math.floor);
+  let left = units - base.reduce((sum, x) => sum + x, 0);
+  const order = raw.map((x, i) => ({ f: x - Math.floor(x), i })).sort((p, q) => q.f - p.f);
+  for (const { i } of order) { if (left <= 0) break; base[i] += 1; left -= 1; }
+  return base.map((u) => u * 100);
+}
+
+function BetsPanel({ raceId, horses, inTraining }: { raceId: string; horses: Horse[]; inTraining: boolean }) {
   const groups = buildBets(horses);
+  const [budget, setBudget] = useState("");
+  const [included, setIncluded] = useState<Record<string, boolean>>({});
+  const [odds, setOdds] = useState<OddsData | null>(null);
+  const [oddsState, setOddsState] = useState<"idle" | "loading" | "error">("idle");
+  const [oddsError, setOddsError] = useState("");
   if (!groups.length) return <p className="state-panel">AIの勝率が出ていないため、買い目を組めない。</p>;
+
+  const keyOf = (g: BetGroup, t: Ticket) => {
+    const nums = t.horses.map((h) => h.num);
+    if (nums.some((n) => n == null)) return null;
+    return (g.ordered || nums.length === 1 ? nums : [...nums].sort((a, b) => a! - b!)).join("-");
+  };
+  const oddsOf = (g: BetGroup, t: Ticket) => {
+    const key = keyOf(g, t);
+    const table = odds ? odds[ODDS_FIELD[g.title]] as OddsMap : null;
+    return key && table ? table[key] ?? null : null;
+  };
+  const isOn = (title: string) => included[title] ?? true;
+  // 予算の割り振り：選んだ券種の買い目すべて。全部にオッズがあれば払戻がそろうように（1/オッズに比例）、なければ的中確率に比例
+  const chosen = groups.filter((g) => isOn(g.title)).flatMap((g) => g.tickets.map((t) => ({ g, t, o: oddsOf(g, t) })));
+  const useOdds = chosen.length > 0 && chosen.every((c) => c.o);
+  const budgetYen = Math.max(0, Math.floor(Number(budget.replace(/[^\d]/g, "")) || 0));
+  const stakes = allocate(budgetYen, chosen.map((c) => (useOdds ? 1 / c.o!.min : c.t.prob)));
+  const stakeOf = new Map(chosen.map((c, i) => [c.g.title + ":" + c.t.horses.map((h) => h.id).join("-"), stakes[i]]));
+  const spent = stakes.reduce((sum, x) => sum + x, 0);
+  // 払戻をそろえたときの、どれが当たってもの払戻（予算 ÷ Σ 1/オッズ）。予算を下回ると、当たっても損になる
+  const evenPayout = useOdds && budgetYen > 0 ? budgetYen / chosen.reduce((sum, c) => sum + 1 / c.o!.min, 0) : null;
+
+  async function loadOdds() {
+    setOddsState("loading"); setOddsError("");
+    try {
+      const res = await fetch("/api/odds/" + raceId, { cache: "no-store" });
+      const json = await res.json() as OddsData & { error?: string };
+      if (!res.ok || !json.ok) throw new Error(json.errors?.join(" / ") || json.error || "HTTP " + res.status);
+      setOdds(json); setOddsState("idle");
+    } catch (error) {
+      setOddsState("error"); setOddsError(error instanceof Error ? error.message : "取得に失敗した");
+    }
+  }
+
   return <section className="bets-panel">
     {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。買い目は参考として見ること。</p>}
+    <div className="bet-controls">
+      <label className="bet-budget">予算
+        <input inputMode="numeric" placeholder="例 3000" value={budget} onChange={(e) => setBudget(e.target.value)} />円
+      </label>
+      <button type="button" className="refresh-button" onClick={() => void loadOdds()} disabled={oddsState === "loading"}>
+        {oddsState === "loading" ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} オッズを取得
+      </button>
+    </div>
+    <p className="bet-note">
+      {odds ? `オッズ：netkeiba ${odds.officialTime ? odds.officialTime + " 時点" : ""}（取得 ${new Date(odds.fetchedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}）` : "オッズ未取得。取得すると配当・期待値を出し、予算を払戻がそろうように割り振る"}
+      {oddsState === "error" && <><br />オッズを取得できなかった：{oddsError}</>}
+      {budgetYen > 0 && <><br />割り振り：{useOdds ? "どれが当たっても払戻がほぼ同じになるように" : "的中確率に比例"}・合計 {spent.toLocaleString()}円
+        {budgetYen < chosen.length * 100 && "（予算が少なく、0円の買い目がある）"}
+        {evenPayout !== null && <><br />どれが当たっても払戻は 約{Math.round(evenPayout).toLocaleString()}円
+          {evenPayout < budgetYen && <b className="bet-warn">（予算を下回る：当たっても損。券種や点数を減らすと改善する）</b>}</>}</>}
+    </p>
     {groups.map((g) => {
       const total = g.tickets.reduce((sum, t) => sum + t.prob, 0);
-      return <section className="bet-group" key={g.title}>
+      const on = isOn(g.title);
+      return <section className={"bet-group" + (on ? "" : " off")} key={g.title}>
         <div className="bet-group-head">
-          <h3>{g.title}</h3>
+          <label className="bet-toggle"><input type="checkbox" checked={on}
+            onChange={(e) => setIncluded((cur) => ({ ...cur, [g.title]: e.target.checked }))} /><h3>{g.title}</h3></label>
           <span>{g.tickets.length}点・まとめての的中確率 {(total * 100).toFixed(1)}%</span>
         </div>
         <p className="bet-note">{g.note}</p>
         <ul className="bet-list">
-          {g.tickets.map((t) => <li key={t.horses.map((h) => h.id).join("-")}>
-            <span className="bet-combo">{t.horses.map((h, i) => <span key={h.id}>
-              {i > 0 && <i>{g.ordered ? "→" : "-"}</i>}
-              <HorseNumberBadge entry={horses.find((x) => x.horseId === h.id)?.raceEntry ?? null} />
-            </span>)}</span>
-            <span className="bet-names">{t.horses.map((h) => h.name).join(g.ordered ? " → " : "・")}</span>
-            <strong>{(t.prob * 100).toFixed(1)}%</strong>
-          </li>)}
+          {g.tickets.map((t) => {
+            const o = oddsOf(g, t);
+            const stake = on ? stakeOf.get(g.title + ":" + t.horses.map((h) => h.id).join("-")) ?? 0 : 0;
+            return <li key={t.horses.map((h) => h.id).join("-")}>
+              <span className="bet-combo">{t.horses.map((h, i) => <span key={h.id}>
+                {i > 0 && <i>{g.ordered ? "→" : "-"}</i>}
+                <HorseNumberBadge entry={horses.find((x) => x.horseId === h.id)?.raceEntry ?? null} />
+              </span>)}</span>
+              <span className="bet-names">{t.horses.map((h) => h.name).join(g.ordered ? " → " : "・")}
+                {o && <small>配当 {o.min.toFixed(1)}{o.max ? "〜" + o.max.toFixed(1) : ""}倍・期待値 {(t.prob * o.min).toFixed(2)}</small>}
+                {budgetYen > 0 && on && <small>{stake.toLocaleString()}円{o && stake ? `（払戻 ${Math.round(stake * o.min).toLocaleString()}円〜）` : ""}</small>}
+              </span>
+              <strong>{(t.prob * 100).toFixed(1)}%</strong>
+            </li>;
+          })}
         </ul>
       </section>;
     })}
     <details className="model-note">
       <summary>買い目の決め方と注意</summary>
-      <p>単勝・複勝はAIの確率が一番高い馬。組み合わせの馬券は、AIの勝率から各組み合わせの的中確率を計算し（勝率を合計1にそろえ、1着の馬を除いた残りで2着・3着が決まると考える計算）、高い順に並べた。確率は目安。
-        オッズは使っていないので、配当や期待値は考えていない。過去の検証では、AIの1位の馬を買い続けた場合の回収率は単勝 約76%・複勝 約84%で、100%を下回る。</p>
+      <p>単勝・複勝はAIの確率が一番高い馬。組み合わせの馬券は、AIの勝率から各組み合わせの的中確率を計算し（勝率を合計1にそろえ、1着の馬を除いた残りで2着・3着が決まると考える計算）、高い順に並べた。確率は目安。</p>
+      <p>期待値は「的中確率 × 配当」（幅のある複勝・ワイドは下限）。1を超えると理屈の上では得になるが、今のAIはオッズにない情報が少なく、AIだけが高く見ている買い目ほど見誤りの可能性が高い（過去の検証）。過去の検証では、AIの1位の馬を買い続けた場合の回収率は単勝 約76%・複勝 約84%で、100%を下回る。</p>
+      <p>予算はチェックした券種の買い目すべてに100円単位で割り振る。全部にオッズがあるときは、どれが当たっても払戻がほぼ同じになるように（配当の逆数に比例）、ないときは的中確率に比例させる。</p>
     </details>
   </section>;
 }
@@ -855,7 +938,7 @@ export default function RaceDetailPage() {
             mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />)}
         </section>
       </div>}
-      {activeTab === "bets" && <div role="tabpanel"><BetsPanel horses={horses} inTraining={!!data.ml?.raceInTraining} /></div>}
+      {activeTab === "bets" && <div role="tabpanel"><BetsPanel raceId={raceId} horses={horses} inTraining={!!data.ml?.raceInTraining} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         {data.ml?.status === "available" ? <>
           <div className="prediction-summary">

@@ -441,3 +441,12 @@ footer span { letter-spacing:0; }
 .bet-combo .horse-number-badge { min-width: 26px; height: 26px; font-size: 13px; }
 .bet-names { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #cbd7e8; font-size: 11px; }
 .bet-list strong { color: var(--accent); font-size: 14px; font-variant-numeric: tabular-nums; }
+.bet-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
+.bet-budget { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+.bet-budget input { width: 110px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); color: var(--text); font: inherit; font-size: 15px; text-align: right; }
+.bet-controls .refresh-button { margin: 0; padding: 8px 12px; gap: 4px; }
+.bet-toggle { display: inline-flex; align-items: center; gap: 7px; }
+.bet-toggle input { width: 18px; height: 18px; accent-color: var(--accent); }
+.bet-group.off { opacity: .45; }
+.bet-names small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; white-space: normal; }
+.bet-warn { color: #f0b860; font-weight: 700; }
