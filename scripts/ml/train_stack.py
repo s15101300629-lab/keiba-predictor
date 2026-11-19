@@ -91,7 +91,9 @@ def heavy_adjustment(data, base, context, ratios, experience: str = "heavy") -> 
                "logloss_none": nll(0, te), "logloss_beta1": nll(HEAVY_BETA_DEFAULT, te), "logloss_estimated": nll(b_tr, te)}
         per_year[yy] = row
         cv["none"] += row["logloss_none"]; cv["beta1"] += row["logloss_beta1"]; cv["estimated"] += row["logloss_estimated"]
-    if cv["estimated"] < cv["beta1"] and cv["estimated"] < cv["none"]:
+    # 推定値を使うのは、β=1 より良く、しかも全部の年で補正なしより良いときだけ（2026-11 依頼者の判断。ぶれの大きい推定値で決めない）
+    est_all_years = all(v["logloss_estimated"] < v["logloss_none"] for v in per_year.values())
+    if cv["estimated"] < cv["beta1"] and cv["estimated"] < cv["none"] and est_all_years:
         beta, chosen = min(HEAVY_BETA_MAX, max(0.0, b_all)), "estimated"
     elif cv["beta1"] < cv["none"]:
         beta, chosen = HEAVY_BETA_DEFAULT, "beta1"

@@ -1,6 +1,6 @@
 {
- "beta": 1.8348943288534456,
- "chosen": "estimated",
+ "beta": 1.0,
+ "chosen": "beta1",
  "goings": [
   "稍重",
   "重",
@@ -18,7 +18,7 @@
   "beta1": 348.30435260475633,
   "estimated": 348.294416573402
  },
- "years_improved": 3,
+ "years_improved": 4,
  "per_year": {
   "2023": {
    "runners": 276,
