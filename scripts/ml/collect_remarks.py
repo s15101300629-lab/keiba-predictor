@@ -1,8 +1,8 @@
-"""netkeiba スマホ版のレース結果ページ（db.sp.netkeiba.com/race/<race_id>/）から、各馬の「備考」（出遅れなど）を取得する.
+"""netkeiba スマホ版のレース結果ページ（db.sp.netkeiba.com/race/<race_id>/）から、各馬の「備考」（出遅れなど）・上がり3F・通過順を取得する.
 
     cd scripts/ml && python collect_remarks.py 2026
 
-- PC 版の備考列は空（有料会員向け）だが、スマホ版はログインなしで見える
+- PC 版の備考列は空（有料会員向け）だが、スマホ版はログインなしで一部が見える（隠れているものは "**"）
 - 対象：data/jra-seiseki/csv/<年>/races.csv の平地レース
 - 保存先：data/remarks/<年>.jsonl（1行1レース）。続きから再開できる
 """
@@ -29,6 +29,9 @@ def parse(html: str) -> list[dict]:
     for row in re.findall(r"<tr>(.*?)</tr>", body, re.S):
         umaban = re.search(r"<td[^>]*>\s*(\d+)\s*</td>\s*<!--馬番-->", row)
         remark = re.search(r"<td[^>]*>\s*([^<]*?)\s*</td>\s*<!--備考-->", row)
+        # 有料会員向けで中身が隠れている備考は「**」になる（中身はあるが読めない）
+        hidden = re.search(r"remarks[^>]*>\*\*</a>\s*</td>\s*<!--備考-->", row)
+        cell = lambda name: (m.group(1) if (m := re.search(r"<td[^>]*>\s*([^<]*?)\s*</td>\s*<!--" + name + "-->", row)) else None)
         horse = re.search(r'href="https://db\.sp\.netkeiba\.com/horse/(\w+)/">([^<]+)</a>', row)
         if not umaban:
             continue
@@ -36,7 +39,8 @@ def parse(html: str) -> list[dict]:
             "umaban": int(umaban.group(1)),
             "horse_id": horse.group(1) if horse else None,
             "horse": horse.group(2).strip() if horse else None,
-            "remark": remark.group(1) if remark else None,
+            "remark": "**" if hidden else remark.group(1) if remark else None,
+            "finish": cell("着順"), "passing": cell("通過"), "agari": cell("上り"),
         })
     return horses
 
