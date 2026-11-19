@@ -271,6 +271,22 @@ export function addFieldFeatures(rows: Features[]): void {
     const v = r.pos_first_mean;
     r.rel_pos_rank = Number.isNaN(v) ? NaN : (1 + known.filter((x) => x < v).length) / rows.length;
   }
+  // 今回の出走馬の中での比較（タイム指数・クラスの、出走馬平均との差と順位÷頭数、出走馬全体の調子）
+  for (const key of ["tidx_mean5", "tidx_best5", "prize_ratio_mean5"]) {
+    const vals = rows.map((r) => r[key]).filter((x) => !Number.isNaN(x));
+    let sum = 0;
+    for (const x of vals) sum += x;
+    const m = vals.length ? sum / vals.length : NaN;
+    for (const r of rows) {
+      const x = r[key];
+      r["rel_" + key] = Number.isNaN(x) ? NaN : x - m;
+      r["rank_" + key] = Number.isNaN(x) ? NaN : (1 + vals.filter((y) => y > x).length) / rows.length;
+    }
+  }
+  const forms = rows.map((r) => r.form_raw).filter((x) => !Number.isNaN(x));
+  let formSum = 0;
+  for (const x of forms) formSum += x;
+  for (const r of rows) r.field_form_mean = forms.length ? formSum / forms.length : NaN;
 }
 
 /** 想定ペース（表示用）。モデルには頭数・割合の数値を入れている. */

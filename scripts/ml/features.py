@@ -48,8 +48,12 @@ FEATURES = [
     *[f for g in ("class", "trainer", "change", "time_index") for f in EXTRA_GROUPS[g]],
     # 不利（成績表の〔制裁〕の「被害馬」。compare_furi.py で4年とも logloss 改善）
     "last1_victim", "victim_n5",
+    # 今回の出走馬の中での比較（compare_level.py。タイム指数・クラスの、出走馬平均との差と順位÷頭数、出走馬全体の調子）
+    "rel_tidx_mean5", "rank_tidx_mean5", "rel_tidx_best5", "rank_tidx_best5",
+    "rel_prize_ratio_mean5", "rank_prize_ratio_mean5", "field_form_mean",
 ]
 
+FIELD_COMPARE_KEYS = ("tidx_mean5", "tidx_best5", "prize_ratio_mean5")
 NIGE_CAND_RATE = 0.4  # 近5走で最初のコーナー1番手が4割以上 → 逃げ候補
 FRONT_RATIO = 1 / 3  # 最初のコーナーで前3分の1 → 先行
 
@@ -381,6 +385,17 @@ def add_field_features(rows: list[dict]) -> None:
         r["field_front_ratio"] = front / len(rows)
         v = r["pos_first_mean"]
         r["rel_pos_rank"] = NAN if math.isnan(v) else (1 + sum(1 for x in known if x < v)) / len(rows)
+    # 今回の出走馬の中での比較（compare_level.py の「今回の比較」で4年とも logloss 改善）
+    for key in FIELD_COMPARE_KEYS:
+        vals = [r[key] for r in rows if not math.isnan(r[key])]
+        m = sum(vals) / len(vals) if vals else NAN
+        for r in rows:
+            v = r[key]
+            r["rel_" + key] = NAN if math.isnan(v) else v - m
+            r["rank_" + key] = NAN if math.isnan(v) else (1 + sum(1 for x in vals if x > v)) / len(rows)
+    forms = [r["form_raw"] for r in rows if not math.isnan(r["form_raw"])]
+    for r in rows:
+        r["field_form_mean"] = sum(forms) / len(forms) if forms else NAN
 
 
 def add_form_deviation(rows: list[dict]) -> None:
