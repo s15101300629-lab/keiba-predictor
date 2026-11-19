@@ -111,6 +111,16 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
 - 不利を追加して再学習した後に決め直した結果：推定値は β=1.83 だが、依頼者の判断で β=1 のまま。年を外した検証の合計 logloss は β=1 が 348.304、推定値が 348.294 で、差はほぼない。推定値が補正なしより良いのは4年中3年（2023年は補正なしより悪い）。β=1 は4年とも補正なしより良い
   - 以後 `train_stack.py` は、推定値が β=1 より良く、かつ全部の年で補正なしより良いときだけ推定値を使う
 
+## 進行中：netkeiba の調教評価・備考の取得と検証（2026-11-19 開始）
+
+- GitHub Actions のワークフロー `netkeiba-collect.yml`（作業ブランチ `claude/horse-racing-pdf-conversion-ucigrq` への push で起動。run 44487887824）
+  - 調教評価（`collect_training.py` → `data/training/2026.jsonl`）：race.netkeiba.com の調教ページの短評・A〜D評価。ログインなしで見える。タイムは見えない
+  - 備考（`collect_remarks.py` → `data/remarks/2026.jsonl`）：スマホ版レース結果（db.sp.netkeiba.com/race/ID/）の備考・着順・通過・上がり3F。備考は約25%が「**」（有料会員向けで中身は隠れる）、見えるのは約1%（出遅れ・躓く・出脚鈍いなど）
+  - 5秒間隔。15分ごとに途中結果を作業ブランチに commit。両方終わると `eval_new_info.py` が自動で走り、`data/ml/new_info_eval.json` を commit する
+  - 止まったら、ワークフローをもう一度起動すれば続きから取る（`netkeiba-collect.yml` を変更して push、または手動実行）
+- 次にやること：`new_info_eval.json` を見て、調教評価・備考・上がり3F の効果（logloss・AUC・的中率・1位の単勝/複勝回収率）を依頼者に報告し、採用を相談する。効果があれば 2025年分も取る
+- 取得中は作業ブランチに Actions の commit が入るので、push の前に `git pull --rebase` する
+
 ## 全馬の血統取得（中断中）
 
 - 目的：父・母父・母母父の成績（産駒勝率、芝ダ別・距離別・馬場別）と、父×競馬場の成績を本体モデルに入れること
