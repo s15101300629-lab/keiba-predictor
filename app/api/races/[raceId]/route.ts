@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
-import { addDisplayDeviation, formFromHistory, type FormDisplay } from "@/app/lib/form";
+import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
 import { addFormDeviation, jockeyStats, resolveJockey, runnerFeatures, type Store } from "@/app/lib/ml/features";
 import { predictProbability, type Model } from "@/app/lib/ml/model";
 import {
@@ -657,7 +657,10 @@ async function fetchRaceHistoryStats(conditions: RaceConditions, forceRefresh: b
 
 // 学習済みモデルと特徴量用データ（scripts/ml/train.py が data/ml に書き出す）
 type StackAsset = StackModel & { adopted: boolean; validation?: Record<string, unknown> };
-let mlAssets: Promise<{ model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null } | null> | null = null;
+type HeavyAdjustment = { beta: number; runners: number; mle_beta?: number; years_improved?: number; per_year?: Record<string, unknown> };
+let mlAssets: Promise<{
+  model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
+} | null> | null = null;
 function loadMlAssets() {
   mlAssets ??= (async () => {
     try {
@@ -667,7 +670,9 @@ function loadMlAssets() {
       );
       // 2段目（AI確率 + 血統）。未作成なら1段目だけで予測する
       const stack = await readFile(path.join(dir, "stack.json"), "utf8").then((text) => JSON.parse(text) as StackAsset).catch(() => null);
-      return { model, store, metrics, stack };
+      // 道悪未経験 × 血統の道悪倍率 の補正（scripts/ml/train_stack.py が検証して書き出す）
+      const heavy = await readFile(path.join(dir, "heavy_adjustment.json"), "utf8").then((text) => JSON.parse(text) as HeavyAdjustment).catch(() => null);
+      return { model, store, metrics, stack, heavy };
     } catch {
       mlAssets = null; // 次のリクエストで再試行
       return null;
@@ -827,6 +832,14 @@ export async function GET(
     }
 
     const raceConditions = extractRaceConditions(race.html, raceId);
+    // 馬場状態が未発表のときだけ、画面で選んだ想定の馬場（?going=重 など）を使う
+    const goingParam = searchParams.get("going");
+    let goingSource: "announced" | "user" | "default" = raceConditions.going ? "announced" : "default";
+    if (!raceConditions.going && goingParam && goingParam in GOING_CODE) {
+      raceConditions.going = goingParam;
+      raceConditions.fieldStatus.going = "assumed_by_user";
+      goingSource = "user";
+    }
     const horses = extractHorses(race.html);
     const raceEntries = extractRaceEntries(race.html);
     const raceHistoryStats = await fetchRaceHistoryStats(raceConditions, forceRefresh);
@@ -979,21 +992,41 @@ export async function GET(
       const baseProbs = rows.map((row) => predictProbability(ml.model, row.features));
       const useStack = !!ml.stack?.adopted;
       const isHeavy = raceConditions.going === "重" || raceConditions.going === "不良";
-      const probs = baseProbs.map((p, i) => (useStack ? stackProbability(ml.stack!, stackFeatures(p, aptitudes[i], isHeavy)) : p));
+      const stacked = baseProbs.map((p, i) => (useStack ? stackProbability(ml.stack!, stackFeatures(p, aptitudes[i], isHeavy)) : p));
+      // 道悪未経験の馬が重・不良を走る場合: オッズ × 血統の道悪倍率^β（2段目に血統が入っているときは二重にかけない）
+      const beta = ml.heavy?.beta ?? 0;
+      const heavyNotes = horses.map((_, i) => {
+        const apt = aptitudes[i];
+        const performances = (results[i] as { performances?: { values: Record<string, string> }[] }).performances ?? [];
+        const inexperienced = rows[i].features.heavy_n === 0 && heavyRunsInHistory(performances, surfaceName, raceConditions.date) === 0;
+        if (!inexperienced || apt?.heavyRatio == null) return null;
+        const label = apt.heavyLabel;
+        const applies = isHeavy && !useStack && beta !== 0;
+        const before = stacked[i];
+        const after = applies
+          ? 1 / (1 + Math.exp(-(Math.log(before / (1 - before)) + beta * Math.log(apt.heavyRatio))))
+          : before;
+        // 判定が「普通」の馬は、補正があっても表示はしない
+        const show = label === "得意" || label === "苦手";
+        return { applied: applies, show, label, ratio: apt.heavyRatio, before, after, goingKnown: !goingAssumed, beta };
+      });
+      const probs = stacked.map((p, i) => heavyNotes[i]?.after ?? p);
       const order = probs.map((p, i) => ({ p, i })).sort((a, b) => b.p - a.p);
       order.forEach(({ i }, rank) => {
         const f = rows[i].features;
         const num = (v: number) => (Number.isNaN(v) ? null : v);
         predictions[i] = {
           probability: probs[i], baseProbability: baseProbs[i], pedigreeIncluded: useStack, rank: rank + 1,
+          heavyNote: heavyNotes[i],
           modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior,
           jockeyName: rows[i].jockeyKey,
           jockey: jockeyStats(ml.store, raceInput, rows[i].jockeyKey),
         };
       });
       mlSummary = {
-        status: "available", dataUntil: ml.store.lastDate, goingAssumed,
+        status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource,
         pedigreeIncluded: useStack, stackValidation: ml.stack?.validation ?? null,
+        heavyAdjustment: ml.heavy ? { beta: ml.heavy.beta, runners: ml.heavy.runners, yearsImproved: ml.heavy.years_improved ?? null } : null,
         prize1stMan: raceInput.prize1stMan, metrics: {
           auc: ml.metrics.auc, raceTop3Hit: ml.metrics.race_top3_hit, testYear: ml.metrics.test_year,
         },

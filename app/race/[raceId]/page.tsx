@@ -56,10 +56,15 @@ type JockeyYear = { n: number; top3: number; venueN: number; venueTop3: number; 
 type Prediction = {
   probability: number; baseProbability: number; pedigreeIncluded: boolean;
   rank: number; modelFormDeviation: number | null; priorRuns: number;
+  heavyNote: {
+    applied: boolean; show: boolean; label: string | null; ratio: number;
+    before: number; after: number; goingKnown: boolean; beta: number;
+  } | null;
   jockeyName: string | null; jockey: JockeyYear;
 };
 type MlSummary = {
   status: "available" | "unavailable"; dataUntil?: string; goingAssumed?: boolean; pedigreeIncluded?: boolean;
+  goingSource?: "announced" | "user" | "default";
   metrics?: { auc: number; raceTop3Hit: number; testYear: string };
 };
 type Horse = {
@@ -460,6 +465,14 @@ function OverallHorseCard({ horse, total, categories, factors }: {
         {probability !== null && <div className="overall-score-track" role="img" aria-label={"3着以内確率 " + probabilityText}>
           <div className="overall-score-fill" style={{ width: Math.max(0, Math.min(100, probability)) + "%" }} />
         </div>}
+        {prediction?.heavyNote && (prediction.heavyNote.applied || prediction.heavyNote.show) && <p className="heavy-note" role="note">
+          ⚠ 道悪（重・不良）未経験・血統は道悪{prediction.heavyNote.label}（血統の道悪倍率 {prediction.heavyNote.ratio.toFixed(2)}倍）。
+          {prediction.heavyNote.applied
+            ? ` 重・不良の発表に合わせ、3着以内確率を ${(prediction.heavyNote.before * 100).toFixed(1)}% → ${(prediction.heavyNote.after * 100).toFixed(1)}% に補正。`
+            : prediction.heavyNote.goingKnown
+              ? " 今回は良・稍重のため補正なし。"
+              : " 馬場未発表。重・不良になった場合は補正対象。"}
+        </p>}
         {prediction && <p className="result-category-rank">
           モデル内の調子偏差値 {prediction.modelFormDeviation == null ? "-" : prediction.modelFormDeviation.toFixed(1)}
           （成績表の近5走: 着順＋タイム差）・成績表の過去走 {prediction.priorRuns}走
@@ -510,19 +523,25 @@ export default function RaceDetailPage() {
   const [cacheChecked, setCacheChecked] = useState(false);
   const [marks, setMarks] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"detail" | "prediction">("detail");
+  const [assumedGoing, setAssumedGoing] = useState(""); // 馬場未発表時に想定する馬場（空 = 想定なし）
 
-  const load = useCallback(async (forceRefresh: boolean, background: boolean) => {
+  const load = useCallback(async (forceRefresh: boolean, background: boolean, going = "") => {
     try {
       if (forceRefresh || background) setRefreshing(true);
       else setLoading(true);
       setError("");
-      const response = await fetch("/api/races/" + raceId + (forceRefresh ? "?refresh=1" : ""), { cache: "no-store" });
+      const params = new URLSearchParams();
+      if (forceRefresh) params.set("refresh", "1");
+      if (going) params.set("going", going);
+      const query = params.toString();
+      const response = await fetch("/api/races/" + raceId + (query ? "?" + query : ""), { cache: "no-store" });
       const result = (await response.json()) as ResponseData;
       if (!response.ok || !result.raceConditions || !Array.isArray(result.results)) {
         throw new Error(result.error || "レース情報の取得に失敗しました（HTTP " + response.status + "）");
       }
       const savedAt = Date.now();
-      setData(result); setCachedAt(savedAt); saveCachedRace(raceId, result, savedAt);
+      setData(result); setCachedAt(savedAt);
+      if (!going) saveCachedRace(raceId, result, savedAt); // 想定馬場での結果は保存しない
     } catch (err) {
       const message = err instanceof Error ? err.message : "レース情報の取得に失敗しました。";
       if (background || forceRefresh) setError("最新情報への更新に失敗しました。表示中の保存データを利用しています。 " + message);
@@ -567,7 +586,7 @@ export default function RaceDetailPage() {
         <p className="detail-meta">{display(conditions.date)} ・ {display(conditions.venue)}競馬場 ・ {display(conditions.raceNumber)}R
           <br />{display(conditions.startTime)} 発走</p>
       </header>
-      <button type="button" className="refresh-button" onClick={() => void load(true, false)} disabled={refreshing || loading}>
+      <button type="button" className="refresh-button" onClick={() => void load(true, false, assumedGoing)} disabled={refreshing || loading}>
         {refreshing && <span className="loading-spinner" aria-hidden="true" />}
         {refreshing ? "最新情報を取得中…" : "最新情報に更新"}
       </button>
@@ -600,9 +619,18 @@ export default function RaceDetailPage() {
         <div className="prediction-intro">
           <h2>AI予測結果</h2>
           <p>各馬の右側は、機械学習（LightGBM）で予測した3着以内に入る確率。人気・オッズは使っていない。馬名をタップすると、調子偏差値・騎手の今年成績・血統適性などの項目別結果を確認できる。</p>
+          {data.ml?.goingSource !== "announced" && <label className="going-select">
+            馬場状態が未発表のため、想定する馬場を選べる：
+            <select value={assumedGoing} disabled={refreshing || loading} onChange={(event) => {
+              setAssumedGoing(event.target.value); void load(false, true, event.target.value);
+            }}>
+              <option value="">指定なし（良として計算）</option>
+              {["良", "稍重", "重", "不良"].map((going) => <option key={going} value={going}>{going}</option>)}
+            </select>
+          </label>}
           {data.ml?.status === "available" ? <p>
             学習データ：JRA成績表 〜{data.ml.dataUntil}（{data.ml.metrics?.testYear}年の検証で、予測上位3頭の3着以内的中率 {data.ml.metrics ? Math.round(data.ml.metrics.raceTop3Hit * 1000) / 10 : "-"}%）。
-            {data.ml.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
+            {data.ml.goingSource === "user" ? `想定馬場「${conditions.going}」で計算。` : data.ml.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
           </p> : <p>AI予測は利用できない（モデル未学習、または対象外のレース）。</p>}
         </div>
         <section className="horse-results-section">

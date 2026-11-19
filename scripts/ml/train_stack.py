@@ -43,6 +43,50 @@ def top3_hit(race_ids, labels, scores) -> float:
     return hits / total
 
 
+HEAVY_BETA = 1.0  # 採用値: オッズ × 血統の道悪倍率^β（β=1 = 血統の倍率どおり）
+
+
+def heavy_adjustment(data, base, context) -> dict:
+    """道悪未経験の馬が重・不良を走るときの補正の検証.
+
+    対象: 重・不良の重賞で、その芝ダで重・不良の経験がない馬。
+    補正: logit(p) + β·log(血統の道悪倍率)。β=1 を基準に、最尤推定値と年ごとの対数損失を記録する。
+    """
+    rows = []
+    for r in data:
+        k = (r["race_id"], int(r["umaban"]))
+        going, heavy_n = context[k]
+        if going is None or going < 2 or heavy_n != 0 or not r["heavy_fit"]:
+            continue
+        p = base[k]
+        rows.append((r["date"][:4], math.log(p / (1 - p)), math.log(float(r["heavy_fit"])), int(r["label"]), r["race_id"]))
+    if not rows:
+        return {"beta": HEAVY_BETA, "runners": 0}
+    yr = np.array([x[0] for x in rows]); z0 = np.array([x[1] for x in rows])
+    x = np.array([x[2] for x in rows]); y = np.array([x[3] for x in rows])
+
+    def nll(b, idx):
+        q = 1 / (1 + np.exp(-(z0[idx] + b * x[idx])))
+        return float(-np.sum(y[idx] * np.log(q) + (1 - y[idx]) * np.log(1 - q)))
+
+    b = 0.0
+    for _ in range(50):  # ニュートン法で最尤推定
+        q = 1 / (1 + np.exp(-(z0 + b * x)))
+        h = float(np.sum(q * (1 - q) * x ** 2))
+        b += float(np.sum((y - q) * x)) / h
+    se = 1 / math.sqrt(h)
+    idx_all = np.arange(len(y))
+    per_year = {yy: {"runners": int((yr == yy).sum()), "logloss_none": nll(0, np.where(yr == yy)[0]),
+                     "logloss_adopted": nll(HEAVY_BETA, np.where(yr == yy)[0])} for yy in sorted(set(yr))}
+    return {
+        "beta": HEAVY_BETA, "races": len({x[4] for x in rows}), "runners": len(rows),
+        "mle_beta": b, "mle_ci95": [b - 1.96 * se, b + 1.96 * se],
+        "logloss_none": nll(0, idx_all), "logloss_adopted": nll(HEAVY_BETA, idx_all),
+        "years_improved": sum(1 for v in per_year.values() if v["logloss_adopted"] < v["logloss_none"]),
+        "per_year": per_year,
+    }
+
+
 def main() -> None:
     ped = list(csv.DictReader(PED.open(encoding="utf-8")))
     keys = {(r["race_id"], int(r["umaban"])) for r in ped}
@@ -52,12 +96,14 @@ def main() -> None:
     rows, _ = build_dataset(DATA)
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
     base: dict[tuple[str, int], float] = {}
+    context: dict[tuple[str, int], tuple] = {}
     for year in years:
         train = [r for r in rows if r["date"][:4] != year]
         target = [r for r in rows if r["date"][:4] == year and (r["race_id"], int(r["umaban"])) in keys]
         booster = lgb.train(PARAMS, lgb.Dataset(matrix(train), label=[r["label"] for r in train]), num_boost_round=rounds)
         for r, p in zip(target, booster.predict(matrix(target))):
             base[(r["race_id"], int(r["umaban"]))] = float(p)
+            context[(r["race_id"], int(r["umaban"]))] = (r["going"], r["heavy_n"])
         print(f"base model without {year}: {len(target)} graded runners", file=sys.stderr)
 
     data = [r for r in ped if (r["race_id"], int(r["umaban"])) in base]
@@ -93,6 +139,10 @@ def main() -> None:
     result["adopted"] = adopted
     result["coefficients"] = dict(zip(STACK_FEATURES, (round(float(c), 4) for c in lr.coef_[0])))
     print(json.dumps(result, ensure_ascii=False, indent=1), file=sys.stderr)
+
+    heavy = heavy_adjustment(data, base, context)
+    print(json.dumps(heavy, ensure_ascii=False, indent=1), file=sys.stderr)
+    (OUT / "heavy_adjustment.json").write_text(json.dumps(heavy, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
     (OUT / "stack.json").write_text(json.dumps({
         "adopted": adopted, "features": STACK_FEATURES,

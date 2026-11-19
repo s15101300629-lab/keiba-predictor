@@ -252,3 +252,15 @@ footer span { letter-spacing:0; }
 @media (min-width: 640px) {
   .result-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.heavy-note {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-left: 3px solid #e0a040;
+  background: rgba(224, 160, 64, 0.12);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.going-select { display: block; margin: 8px 0; font-size: 12px; }
+.going-select select { margin-left: 6px; }

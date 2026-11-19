@@ -57,3 +57,17 @@ export function addDisplayDeviation(forms: FormDisplay[]): void {
   const sd = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
   for (const f of forms) if (f.raw !== null) f.deviation = sd === 0 ? 50 : 50 + 10 * (f.raw - mean) / sd;
 }
+
+/** netkeiba の全戦績で、同じ芝/ダートの重・不良を走った回数（取消・除外は除く）. */
+export function heavyRunsInHistory(
+  performances: { values: Record<string, string> }[], surface: "芝" | "ダート", raceDate: string | null
+): number {
+  const prefix = surface === "芝" ? "芝" : "ダ";
+  return performances.filter((row) => {
+    const v = row.values;
+    const date = value(v, "日付").replace(/\//g, "-");
+    if (raceDate && date >= raceDate) return false;
+    if (/取|除/.test(value(v, "着順"))) return false;
+    return value(v, "距離").startsWith(prefix) && /^(重|不良)$/.test(value(v, "馬場"));
+  }).length;
+}
