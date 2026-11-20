@@ -1,0 +1,254 @@
+{
+ "note": "重賞（2023〜2026年）の稍重〜不良。logloss は年を1つ外した検証の合計。数が少ないので目安",
+ "wet_runners": 1363,
+ "by_going": {
+  "稍重": {
+   "runners": 450,
+   "coef": [
+    1.323
+   ],
+   "se": [
+    1.357
+   ],
+   "logloss_none": 202.232,
+   "logloss_estimated": 202.35,
+   "logloss_beta1": 201.777,
+   "years_estimated_better": 3
+  },
+  "重": {
+   "runners": 176,
+   "coef": [
+    1.729
+   ],
+   "se": [
+    2.106
+   ],
+   "logloss_none": 83.892,
+   "logloss_estimated": 84.201,
+   "logloss_beta1": 83.609,
+   "years_estimated_better": 3
+  },
+  "不良": {
+   "runners": 50,
+   "coef": [
+    4.925
+   ],
+   "se": [
+    4.181
+   ],
+   "logloss_none": 20.932,
+   "logloss_estimated": 20.638,
+   "logloss_beta1": 20.68,
+   "years_estimated_better": 2
+  },
+  "稍重〜不良": {
+   "runners": 676,
+   "coef": [
+    1.684
+   ],
+   "se": [
+    1.105
+   ],
+   "logloss_none": 307.056,
+   "logloss_estimated": 306.473,
+   "logloss_beta1": 306.066,
+   "years_estimated_better": 3
+  }
+ },
+ "by_ratio": {
+  "〜0.85": {
+   "runners": 53,
+   "actual_top3": 0.1509,
+   "pred_none": 0.2344,
+   "pred_beta1": 0.2048
+  },
+  "0.85〜0.95": {
+   "runners": 202,
+   "actual_top3": 0.1881,
+   "pred_none": 0.218,
+   "pred_beta1": 0.2048
+  },
+  "0.95〜1.05": {
+   "runners": 294,
+   "actual_top3": 0.2279,
+   "pred_none": 0.2365,
+   "pred_beta1": 0.236
+  },
+  "1.05〜1.15": {
+   "runners": 104,
+   "actual_top3": 0.1923,
+   "pred_none": 0.202,
+   "pred_beta1": 0.2137
+  },
+  "1.15〜": {
+   "runners": 23,
+   "actual_top3": 0.087,
+   "pred_none": 0.1165,
+   "pred_beta1": 0.1369
+  }
+ },
+ "weights": {
+  "今 50:25:12.5（倍率の平均）": {
+   "runners": 615,
+   "coef": [
+    1.612
+   ],
+   "se": [
+    1.134
+   ],
+   "logloss_none": 267.191,
+   "logloss_estimated": 266.796,
+   "logloss_beta1": 266.309,
+   "years_estimated_better": 3
+  },
+  "40:35:25": {
+   "runners": 615,
+   "coef": [
+    1.972
+   ],
+   "se": [
+    1.236
+   ],
+   "logloss_none": 267.191,
+   "logloss_estimated": 266.046,
+   "logloss_beta1": 266.193,
+   "years_estimated_better": 3
+  },
+  "均等 1:1:1": {
+   "runners": 615,
+   "coef": [
+    1.958
+   ],
+   "se": [
+    1.253
+   ],
+   "logloss_none": 267.191,
+   "logloss_estimated": 266.046,
+   "logloss_beta1": 266.233,
+   "years_estimated_better": 3
+  },
+  "産駒の重・不良の出走数に比例": {
+   "runners": 615,
+   "coef": [
+    1.719
+   ],
+   "se": [
+    1.073
+   ],
+   "logloss_none": 267.191,
+   "logloss_estimated": 267.094,
+   "logloss_beta1": 266.105,
+   "years_estimated_better": 3
+  },
+  "父だけ": {
+   "runners": 615,
+   "coef": [
+    0.735
+   ],
+   "se": [
+    0.786
+   ],
+   "logloss_none": 267.191,
+   "logloss_estimated": 269.295,
+   "logloss_beta1": 266.807,
+   "years_estimated_better": 1
+  },
+  "母父だけ": {
+   "runners": 615,
+   "coef": [
+    1.029
+   ],
+   "se": [
+    0.729
+   ],
+   "logloss_none": 267.191,
+   "logloss_estimated": 267.413,
+   "logloss_beta1": 266.19,
+   "years_estimated_better": 3
+  },
+  "母母父だけ": {
+   "runners": 615,
+   "coef": [
+    0.45
+   ],
+   "se": [
+    0.779
+   ],
+   "logloss_none": 267.191,
+   "logloss_estimated": 267.115,
+   "logloss_beta1": 267.272,
+   "years_estimated_better": 2
+  },
+  "3頭を別々に推定": {
+   "runners": 615,
+   "coef": [
+    0.618,
+    0.962,
+    0.334
+   ],
+   "se": [
+    0.804,
+    0.737,
+    0.79
+   ],
+   "logloss_none": 267.191,
+   "logloss_estimated": 270.321,
+   "years_estimated_better": 2
+  }
+ },
+ "weights_note": "coef は β（3頭を別々に推定のときは 父・母父・母母父の順）。1列のときの logloss_beta1 は β=1",
+ "by_experience": {
+  "0戦": {
+   "runners": 676,
+   "coef": [
+    1.684
+   ],
+   "se": [
+    1.105
+   ],
+   "logloss_none": 307.056,
+   "logloss_estimated": 306.473,
+   "logloss_beta1": 306.066,
+   "years_estimated_better": 3
+  },
+  "1戦": {
+   "runners": 350,
+   "coef": [
+    -0.764
+   ],
+   "se": [
+    1.486
+   ],
+   "logloss_none": 157.983,
+   "logloss_estimated": 158.929,
+   "logloss_beta1": 158.557,
+   "years_estimated_better": 2
+  },
+  "2戦": {
+   "runners": 175,
+   "coef": [
+    1.71
+   ],
+   "se": [
+    2.103
+   ],
+   "logloss_none": 87.749,
+   "logloss_estimated": 91.113,
+   "logloss_beta1": 87.478,
+   "years_estimated_better": 2
+  },
+  "3戦〜": {
+   "runners": 162,
+   "coef": [
+    -2.921
+   ],
+   "se": [
+    2.884
+   ],
+   "logloss_none": 55.321,
+   "logloss_estimated": 55.208,
+   "logloss_beta1": 55.743,
+   "years_estimated_better": 3
+  }
+ }
+}
