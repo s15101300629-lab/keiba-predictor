@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
-import { addFieldFeatures, addFormDeviation, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, type Store } from "@/app/lib/ml/features";
+import { addFieldFeatures, addFormDeviation, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
 import { predictProbability, type Model } from "@/app/lib/ml/model";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, stackFeatures, stackProbability, stallionRecord,
@@ -42,6 +42,21 @@ type RaceEntry = {
     popularity: string;
   };
 };
+
+// 調教評価（race.netkeiba.com の調教ページ。ログインなしで見える短評と A〜D。scripts/ml/collect_training.py と同じ読み方）
+function parseTrainingPage(html: string): Map<number, { rank: string | null; critic: string | null }> {
+  const out = new Map<number, { rank: string | null; critic: string | null }>();
+  const strip = (t: string) => decodeEntities(t.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim() || null;
+  for (const m of html.matchAll(/<tr class\s*=\s*"OikiriDataHead\d+ HorseList"[^>]*>([\s\S]*?)<\/tr>/g)) {
+    const row = m[1];
+    const umaban = row.match(/class="Umaban">\s*(\d+)/)?.[1];
+    if (!umaban) continue;
+    const critic = row.match(/class="Training_Critic">([\s\S]*?)<\/td>/)?.[1];
+    const rank = row.match(/class="Rank_[^"]*">([\s\S]*?)<\/td>/)?.[1];
+    out.set(Number(umaban), { rank: rank ? strip(rank) : null, critic: critic ? strip(critic) : null });
+  }
+  return out;
+}
 
 // --- 海外のレース（成績表にない）を過去走として足す（依頼者の判断。学習データには海外の走がないので、効き方は検証できていない）---
 const JRA_VENUES = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
@@ -728,7 +743,11 @@ export async function GET(
   try {
     const raceUrl =
       `https://race.netkeiba.com/race/shutuba.html?race_id=${raceId}`;
-    const race = await fetchHtml(raceUrl, 3600, forceRefresh);
+    const [race, trainingPage] = await Promise.all([
+      fetchHtml(raceUrl, 3600, forceRefresh),
+      fetchHtml(`https://race.netkeiba.com/race/oikiri.html?race_id=${raceId}`, 3600, forceRefresh).catch(() => null),
+    ]);
+    const training = trainingPage?.ok ? parseTrainingPage(trainingPage.html) : new Map<number, { rank: string | null; critic: string | null }>();
 
     if (!race.ok) {
       return NextResponse.json(
@@ -904,6 +923,7 @@ export async function GET(
           bodyWeight: entry?.bodyWeight ?? assumedBodyWeight,
           bodyWeightDiff: entry?.bodyWeight == null ? 0 : entry?.bodyWeightChange ?? null,
           extraRuns: overseas,
+          trainRank: TRAIN_RANK[(entry?.horseNumber != null ? training.get(entry.horseNumber)?.rank : null) ?? ""] ?? null,
         });
         return { jockeyKey, trainerKey, features, bodyWeightAssumed: assumedBodyWeight !== null, overseasRuns: overseas.length };
       });
@@ -947,6 +967,7 @@ export async function GET(
           winProbability: winProbs[i], top2Probability: top2Probs[i],
           heavyNote: heavyNotes[i],
           modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior, overseasRuns: rows[i].overseasRuns,
+          training: (() => { const n = entryByHorseId.get(horses[i].horseId)?.horseNumber; return n != null ? training.get(n) ?? null : null; })(),
           jockeyName: rows[i].jockeyKey,
           pace: {
             style: runningStyle(f), posFirstMean: num(f.pos_first_mean), nigeRate: num(f.nige_rate),

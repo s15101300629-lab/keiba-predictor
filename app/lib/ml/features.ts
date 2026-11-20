@@ -37,7 +37,10 @@ export type RunnerInput = {
   bodyWeight: number | null; bodyWeightDiff: number | null;
   // 成績表にない過去走（海外のレース）。store.horses と同じ形。アプリだけで使う（学習データにはない）
   extraRuns?: Store["horses"][string];
+  trainRank?: number | null; // 調教評価 A=4〜D=1（netkeiba の調教ページ）。なければ null
 };
+
+export const TRAIN_RANK: Record<string, number> = { A: 4, B: 3, C: 2, D: 1 };
 
 export type Features = Record<string, number>;
 
@@ -243,6 +246,7 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
     sex: runner.sex !== null && runner.sex in SEX ? SEX[runner.sex] : NaN,
     body_weight: nz(runner.bodyWeight),
     body_weight_diff: runner.bodyWeightDiff ?? NaN,
+    train_rank: nz(runner.trainRank ?? null),
   };
   f.umaban_ratio = Number.isNaN(f.umaban) ? NaN : f.umaban / race.fieldSize;
   Object.assign(f, horseFeatures(store, race, runner.horse, runner.extraRuns));
@@ -295,6 +299,16 @@ export function addFieldFeatures(rows: Features[]): void {
   let formSum = 0;
   for (const x of forms) formSum += x;
   for (const r of rows) r.field_form_mean = forms.length ? formSum / forms.length : NaN;
+  // 調教評価の、出走馬の平均との差と、自分より評価が高い馬の数÷頭数
+  const ranks = rows.map((r) => r.train_rank).filter((x) => !Number.isNaN(x));
+  let rankSum = 0;
+  for (const x of ranks) rankSum += x;
+  const mr = ranks.length ? rankSum / ranks.length : NaN;
+  for (const r of rows) {
+    const v = r.train_rank;
+    r.train_rank_rel = Number.isNaN(v) ? NaN : v - mr;
+    r.train_rank_pos = Number.isNaN(v) ? NaN : ranks.filter((x) => x > v).length / rows.length;
+  }
 }
 
 /** 想定ペース（表示用）。モデルには頭数・割合の数値を入れている. */

@@ -67,7 +67,7 @@ type Prediction = {
   trainer?: { n: number; top3: number; venueN: number; venueTop3: number };
   probability: number; baseProbability: number; pedigreeIncluded: boolean;
   winProbability?: number | null; top2Probability?: number | null;
-  rank: number; modelFormDeviation: number | null; priorRuns: number; overseasRuns?: number;
+  rank: number; modelFormDeviation: number | null; priorRuns: number; overseasRuns?: number; training?: { rank: string | null; critic: string | null } | null;
   heavyNote: {
     applied: boolean; show: boolean; label: string | null; ratio: number;
     before: number; after: number; goingKnown: boolean; beta: number;
@@ -402,6 +402,7 @@ function predictionFacts(p: Prediction): [string, string][] {
   }
   rows.push(["調子偏差値", `${p.modelFormDeviation == null ? "-" : p.modelFormDeviation.toFixed(1)}（成績表の近5走：着順＋タイム差）・過去走 ${p.priorRuns}走` +
     (p.jockeyName ? "" : "・騎手を成績表で特定できず")]);
+  rows.push(["調教評価", p.training?.rank ? `${p.training.rank}${p.training.critic ? "（" + p.training.critic + "）" : ""}` : "未発表（評価なしとして計算）"]);
   if (p.overseasRuns) rows.push(["海外の走", `海外${p.overseasRuns}走を過去走に含めて計算（着順・頭数・格から。海外のレースは学習データにないので参考）`]);
   if (e?.wakuCourseN && e.wakuCourseDiff != null) rows.push(["枠（参考）", `同コースでこの枠の3着内率はコース平均より${e.wakuCourseDiff >= 0 ? "+" : ""}${Math.round(e.wakuCourseDiff * 100)}pt（${e.wakuCourseN}頭）`]);
   return rows;

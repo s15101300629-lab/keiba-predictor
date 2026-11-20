@@ -1,3 +1,6 @@
 # 1行1コマンド。上から順に実行し、data/ml の変化をコマンドごとに commit する
-# 2026-11-20：似たコース（直線の長さ・高低差）での成績の比較（1年ずつ外す）
-cd scripts/ml && python compare_similar_course.py
+# 2026-11-20：調教評価を本体に入れて再学習 → 一致テスト → 道悪補正の決め直し → 年ごとの検証
+cd scripts/ml && python train.py
+node --experimental-strip-types scripts/ml/parity.ts
+cd scripts/ml && python train_stack.py
+cd scripts/ml && python backtest_years.py

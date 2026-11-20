@@ -51,7 +51,10 @@ FEATURES = [
     # 今回の出走馬の中での比較（compare_level.py。タイム指数・クラスの、出走馬平均との差と順位÷頭数、出走馬全体の調子）
     "rel_tidx_mean5", "rank_tidx_mean5", "rel_tidx_best5", "rank_tidx_best5",
     "rel_prize_ratio_mean5", "rank_prize_ratio_mean5", "field_form_mean",
+    # 調教評価（netkeiba の調教ページの A〜D。eval_training_years.py で 2025・2026年とも改善。2024年以前は欠損）
+    "train_rank", "train_rank_rel", "train_rank_pos",
 ]
+TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
 
 FIELD_COMPARE_KEYS = ("tidx_mean5", "tidx_best5", "prize_ratio_mean5")
 NIGE_CAND_RATE = 0.4  # 近5走で最初のコーナー1番手が4割以上 → 逃げ候補
@@ -140,8 +143,25 @@ def victim_umabans(notes: list[str]) -> set[int]:
     return out
 
 
+def load_training_ranks(data_root: Path) -> dict[tuple[str, int], int]:
+    """data/training/*.jsonl（collect_training.py）の調教評価 → (race_id, 馬番): A=4〜D=1."""
+    out = {}
+    for path in sorted((data_root.parent / "training").glob("*.jsonl")):
+        for line in path.open(encoding="utf-8"):
+            try:
+                d = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            for h in d.get("horses", []):
+                v = TRAIN_RANK.get(h.get("rank") or "")
+                if h.get("umaban") and v:
+                    out[(d["race_id"], int(h["umaban"]))] = v
+    return out
+
+
 def load_races(data_root: Path) -> list[dict]:
-    """平地レースを日付・race_id 順に。各出走馬に time_diff（勝ち馬との差, 秒）を付ける."""
+    """平地レースを日付・race_id 順に。各出走馬に time_diff（勝ち馬との差, 秒）と調教評価を付ける."""
+    ranks = load_training_ranks(data_root)
     races = []
     for path in sorted((data_root / "json").glob("*/*.json")):
         day = json.loads(path.read_text(encoding="utf-8"))
@@ -159,7 +179,8 @@ def load_races(data_root: Path) -> list[dict]:
                 td = None
                 if finish is not None and h.get("time_sec") and win_time is not None:
                     td = max(0.0, round(h["time_sec"] - win_time, 1))
-                runners.append({**h, "finish": finish, "time_diff": td, "victim": 1 if h.get("umaban") in victims else 0})
+                runners.append({**h, "finish": finish, "time_diff": td, "victim": 1 if h.get("umaban") in victims else 0,
+                                "train_rank": ranks.get((r["race_id"], h.get("umaban")))})
             races.append({
                 "pace_index": pace_index(r.get("laps"), r.get("distance")),
                 "race_id": r["race_id"], "date": r["date"], "venue": int(day["venue_code"]),
@@ -361,6 +382,7 @@ def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rid
         "sex": SEX.get(runner.get("sex") or "", NAN),
         "body_weight": runner.get("body_weight") or NAN,
         "body_weight_diff": NAN if runner.get("body_weight_diff") is None else runner["body_weight_diff"],
+        "train_rank": runner.get("train_rank") or NAN,
     }
     f["umaban_ratio"] = f["umaban"] / race["field_size"] if not math.isnan(f["umaban"]) else NAN
     f.update(horse_features(horse_runs, race))
@@ -396,6 +418,13 @@ def add_field_features(rows: list[dict]) -> None:
     forms = [r["form_raw"] for r in rows if not math.isnan(r["form_raw"])]
     for r in rows:
         r["field_form_mean"] = sum(forms) / len(forms) if forms else NAN
+    # 調教評価の、出走馬の平均との差と、自分より評価が高い馬の数÷頭数
+    ranks = [r["train_rank"] for r in rows if not math.isnan(r["train_rank"])]
+    mr = sum(ranks) / len(ranks) if ranks else NAN
+    for r in rows:
+        v = r["train_rank"]
+        r["train_rank_rel"] = NAN if math.isnan(v) else v - mr
+        r["train_rank_pos"] = NAN if math.isnan(v) else sum(1 for x in ranks if x > v) / len(rows)
 
 
 def add_form_deviation(rows: list[dict]) -> None:

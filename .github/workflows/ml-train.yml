@@ -32,7 +32,12 @@ jobs:
         with:
           node-version: "22"
 
-      - run: pip install -r scripts/ml/requirements.txt
+      - run: pip install -r scripts/ml/requirements.txt requests
+
+      # 調教評価（netkeiba の調教ページ）を、成績表の新しいレースの分だけ取る（取得済みは飛ばす。1ページ5秒間隔）
+      - name: Collect training ratings
+        working-directory: scripts/ml
+        run: python collect_training.py "$(TZ=Asia/Tokyo date +%Y)"
 
       - name: Train LightGBM
         working-directory: scripts/ml
@@ -56,7 +61,7 @@ jobs:
 
       - name: Commit model
         run: |
-          git add data/ml data/pedigree
+          git add data/ml data/pedigree data/training
           if git diff --cached --quiet; then
             echo "no changes"
             exit 0
