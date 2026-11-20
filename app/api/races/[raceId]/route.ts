@@ -43,6 +43,21 @@ type RaceEntry = {
   };
 };
 
+// 馬体重の発表前に使う値（初出走馬の性別ごとの中央値。学習データ 2020年〜）
+const DEBUT_BODY_WEIGHT: Record<string, number> = { "牡": 476, "牝": 448, "セ": 468 };
+
+/** netkeiba の戦績から、レース日より前の一番新しい馬体重（「480(+2)」の 480）。計不・海外などは飛ばす */
+function previousBodyWeight(performances: { values: Record<string, string> }[], raceDate: string): number | null {
+  let best: { date: string; weight: number } | null = null;
+  for (const p of performances) {
+    const date = (p.values["日付"] ?? "").replace(/\//g, "-");
+    const weight = (p.values["馬体重"] ?? "").match(/^\s*(\d{3})/);
+    if (!weight || !date || date >= raceDate) continue;
+    if (!best || date > best.date) best = { date, weight: Number(weight[1]) };
+  }
+  return best?.weight ?? null;
+}
+
 function detectCharset(contentType: string | null, bytes: Uint8Array) {
   const fromHeader = contentType?.match(/charset\s*=\s*["']?([\w-]+)/i)?.[1];
   const head = new TextDecoder("latin1").decode(bytes.subarray(0, 4096));
@@ -827,9 +842,15 @@ export async function GET(
         fieldSize: activeIdx.length,
         prize1stMan: extractFirstPrize(race.html),
       };
-      const rows = horses.map((horse) => {
+      const rows = horses.map((horse, index) => {
         const entry = entryByHorseId.get(horse.horseId) ?? null;
         const sexAge = entry?.sexAge?.match(/^([牡牝セ])(\d+)$/);
+        // 馬体重は当日の発表。学習データには欠けがないので、発表前は前走の馬体重・増減0 で計算する
+        // （前走の馬体重がない馬は、学習データの初出走馬の性別ごとの中央値。scripts/ml/eval_body_weight.py で検証）
+        const performances = (results[index] as { performances?: { values: Record<string, string> }[] }).performances ?? [];
+        const assumedBodyWeight = entry?.bodyWeight == null
+          ? previousBodyWeight(performances, raceConditions.date!) ?? DEBUT_BODY_WEIGHT[sexAge?.[1] ?? ""] ?? DEBUT_BODY_WEIGHT["牡"]
+          : null;
         const jockeyKey = resolveJockey(entry?.jockey, ml.store, raceInput.date);
         const trainerKey = resolveTrainer(entry?.trainer, ml.store, raceInput.date, horse.name);
         const features = runnerFeatures(ml.store, raceInput, {
@@ -837,9 +858,10 @@ export async function GET(
           waku: entry?.frameNumber ?? null, umaban: entry?.horseNumber ?? null,
           weight: entry?.carriedWeight ?? null,
           age: sexAge ? Number(sexAge[2]) : null, sex: sexAge?.[1] ?? null,
-          bodyWeight: entry?.bodyWeight ?? null, bodyWeightDiff: entry?.bodyWeightChange ?? null,
+          bodyWeight: entry?.bodyWeight ?? assumedBodyWeight,
+          bodyWeightDiff: entry?.bodyWeight == null ? 0 : entry?.bodyWeightChange ?? null,
         });
-        return { jockeyKey, trainerKey, features };
+        return { jockeyKey, trainerKey, features, bodyWeightAssumed: assumedBodyWeight !== null };
       });
       addFormDeviation(activeIdx.map((i) => rows[i].features));
       addFieldFeatures(activeIdx.map((i) => rows[i].features));
@@ -900,6 +922,7 @@ export async function GET(
       const f0 = rows[activeIdx[0]]?.features;
       mlSummary = {
         status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource,
+        bodyWeightAssumed: activeIdx.some((i) => rows[i].bodyWeightAssumed),
         // このレースの結果がすでに学習データに入っている（答えを見て学習した状態）
         raceInTraining: raceConditions.date <= ml.store.lastDate,
         pace: f0 ? {

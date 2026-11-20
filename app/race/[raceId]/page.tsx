@@ -77,7 +77,7 @@ type Prediction = {
 };
 type MlSummary = {
   pace?: { nigeCandidates: number; frontRunners: number; frontRatio: number; expected: string } | null;
-  status: "available" | "unavailable"; dataUntil?: string; goingAssumed?: boolean; pedigreeIncluded?: boolean;
+  status: "available" | "unavailable"; dataUntil?: string; goingAssumed?: boolean; pedigreeIncluded?: boolean; bodyWeightAssumed?: boolean;
   raceInTraining?: boolean;
   goingSource?: "announced" | "user" | "default";
   metrics?: { auc: number; raceTop3Hit: number; testYear: string };
@@ -986,6 +986,7 @@ export default function RaceDetailPage() {
             <p>機械学習（LightGBM）で、3着以内に入る確率を出している。人気・オッズは使っていない。
               学習データ：JRA成績表 〜{data.ml?.dataUntil ?? "-"}。
               {data.ml?.goingSource === "user" ? `想定馬場「${conditions.going}」で計算。` : data.ml?.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
+              {data.ml?.bodyWeightAssumed ? "馬体重が未発表の馬は、前走の馬体重・増減0として計算。" : ""}
               重・不良の経験がない馬が稍重〜不良を走る場合は、血統の道悪倍率で補正する。</p>
           </details>
         </section>
