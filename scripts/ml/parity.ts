@@ -1,7 +1,7 @@
 // Python (scripts/ml) と TypeScript (app/lib/ml) の特徴量・予測値が一致するか確認する。
 //   node --experimental-strip-types scripts/ml/parity.ts
 import { readFileSync } from "node:fs";
-import { addFieldFeatures, addFormDeviation, normJockey, runnerFeatures, type Store } from "../../app/lib/ml/features.ts";
+import { addFieldFeatures, addFormDeviation, addOpponentFeatures, normJockey, runnerFeatures, type Store } from "../../app/lib/ml/features.ts";
 import { predictProbability, type Model } from "../../app/lib/ml/model.ts";
 
 type Row = { race_id: string; date: string; horse: string; turn?: number | null; sband?: number | null; jockey: string | null; trainer: string | null; features: Record<string, number | null>; pred: number };
@@ -22,6 +22,7 @@ for (const raceRows of byRace.values()) {
     date: raceRows[0].date, venue: f0.venue!, surface: f0.surface!, distance: num(f0.distance),
     going: num(f0.going), fieldSize: f0.field_size!, prize1stMan: num(f0.prize_1st),
     turn: raceRows[0].turn ?? null, sband: raceRows[0].sband ?? null,
+    cStraight: num(f0.c_straight), cElev: num(f0.c_elev), cLap: num(f0.c_lap),
   };
   const computed = raceRows.map((row) => runnerFeatures(store, race, {
     horse: row.horse, jockeyKey: normJockey(row.jockey) || null, trainerKey: normJockey(row.trainer) || null,
@@ -33,6 +34,7 @@ for (const raceRows of byRace.values()) {
   }));
   addFormDeviation(computed);
   addFieldFeatures(computed);
+  addOpponentFeatures(store, race, computed, raceRows.map((row) => row.horse));
   raceRows.forEach((row, i) => {
     for (const name of model.features) {
       const expected = row.features[name];

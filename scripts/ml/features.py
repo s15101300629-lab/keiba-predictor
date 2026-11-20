@@ -71,6 +71,14 @@ INDEX_COND = [f"fit_{k}{s}" for k in INDEX_COND_KEYS for s in ("", "_n")] + ["fi
 INDEX_PACE = ["pace_hi", "pace_hi_n", "pace_sl", "pace_sl_n", "pos_std"]
 INDEX_REL = [f"{k}_{s}" for k in ("ab_wmean", "cond_ab") for s in ("d3", "dtop3", "top3_gap", "close")] + ["cond_ab_rank", "cond_ab_dmax"]
 ABILITY_FEATURES += INDEX_GROWTH + INDEX_COND + INDEX_PACE + INDEX_REL
+# 前走レベル・直接対決・似たコース（compare_level.py・compare_similar_course.py の定義。compare_final.py で3年とも改善）
+LEVEL_FEATURES = ["lv_field_form", "lv_field_tidx", "lv_after_n", "lv_after_top3", "lv_beaten_form", "lv_lost_form"]
+H2H_FEATURES = ["h2h_n", "h2h_ahead", "h2h_adj", "h2h_margin"]
+COURSE_FEATURES = ["c_straight", "c_elev", "c_lap", "sim_straight_n", "sim_straight_top3", "band_straight_n", "band_straight_top3",
+                   "band_elev_n", "band_elev_top3", "band_both_n", "band_both_top3"]
+ABILITY_FEATURES += LEVEL_FEATURES + H2H_FEATURES + COURSE_FEATURES
+FORM_SCALE = 6.0  # 直接対決：調子（0〜1）の差 → 先着の見込み（ロジスティック）の傾き
+SIMILAR_STRAIGHT = 50.0
 FEATURES_BEFORE_ABILITY = list(FEATURES)  # 能力指数を入れる前の77項目（compare_*.py の比較の基準）
 FEATURES = FEATURES + ABILITY_FEATURES
 PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
@@ -79,14 +87,31 @@ TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
 INDEX_RUNS = 20  # 4つの指数の「ふだんの能力」・条件ごとの走は、同じ芝ダの指数がある走の新しい順に最大20走
 INDEX_SHRINK = 2.0  # 条件適性 = その条件での（指数 − ふだんの能力）の合計 ÷ (走数 + 2)
 LAYOFF_DAYS = 90
-# コースの直線距離（m）。(競馬場, 芝0/ダ1, 内回り0・外回り1・直線2) → JRA のコース紹介の A コース（compare_similar_course.py と同じ）
-COURSE_STRAIGHT = {
-    (1, 0, 0): 266.1, (2, 0, 0): 262.1, (3, 0, 0): 292.0, (4, 0, 0): 358.7, (4, 0, 1): 658.7, (4, 0, 2): 1000.0,
-    (5, 0, 0): 525.9, (6, 0, 0): 310.0, (6, 0, 1): 310.0, (7, 0, 0): 412.5, (8, 0, 0): 328.4, (8, 0, 1): 403.7,
-    (9, 0, 0): 356.5, (9, 0, 1): 473.6, (10, 0, 0): 293.0,
-    (1, 1, 0): 264.3, (2, 1, 0): 260.3, (3, 1, 0): 295.7, (4, 1, 0): 353.9, (5, 1, 0): 501.6, (6, 1, 0): 308.0,
-    (7, 1, 0): 410.7, (8, 1, 0): 329.1, (9, 1, 0): 352.7, (10, 1, 0): 291.3,
+# コースの (直線距離 m, 高低差 m, 一周 m)。(競馬場, 芝0/ダ1, 内回り0・外回り1・直線2) → JRA のコース紹介の A コース（compare_similar_course.py と同じ）
+COURSE = {
+    (1, 0, 0): (266.1, 0.7, 1640.9), (2, 0, 0): (262.1, 3.5, 1626.6), (3, 0, 0): (292.0, 1.9, 1600.0),
+    (4, 0, 0): (358.7, 0.8, 1623.0), (4, 0, 1): (658.7, 2.2, 2223.0), (4, 0, 2): (1000.0, None, None),
+    (5, 0, 0): (525.9, 2.7, 2083.1),
+    (6, 0, 0): (310.0, 5.3, 1667.1), (6, 0, 1): (310.0, 5.3, 1839.7),
+    (7, 0, 0): (412.5, 3.5, 1705.9),
+    (8, 0, 0): (328.4, 3.1, 1782.8), (8, 0, 1): (403.7, 4.3, 1894.3),
+    (9, 0, 0): (356.5, 1.9, 1689.0), (9, 0, 1): (473.6, 2.4, 2089.0),
+    (10, 0, 0): (293.0, 3.0, 1615.1),
+    (1, 1, 0): (264.3, 0.9, 1487.0), (2, 1, 0): (260.3, 3.5, 1475.8), (3, 1, 0): (295.7, 2.1, 1444.6),
+    (4, 1, 0): (353.9, 0.6, 1472.5), (5, 1, 0): (501.6, 2.5, 1899.0), (6, 1, 0): (308.0, 4.5, 1493.0),
+    (7, 1, 0): (410.7, 3.4, 1530.0), (8, 1, 0): (329.1, 3.0, 1607.6), (9, 1, 0): (352.7, 1.6, 1517.6),
+    (10, 1, 0): (291.3, 2.9, 1445.4),
 }
+
+
+def straight_band(st: float) -> int:
+    return 0 if st < 300 else 1 if st < 400 else 2
+
+
+def elev_band(e: float | None) -> int | None:
+    return None if e is None else 0 if e < 2.0 else 1 if e < 3.5 else 2
+
+
 AB_RUNS = 5  # 能力指数・推定上がりは、今回と同じ芝ダの過去走（指数がある走）の新しい順に最大5走
 AB_DECAY = 0.8  # 直近加重平均の重み 0.8^k
 AGARI_KEYS = ("ag_dev", "ag_rank", "early_gap", "fade")
@@ -223,14 +248,15 @@ def class_band(prize) -> int:
     return 6
 
 
-def course_turn_band(venue: int, surface: int, text: str | None) -> tuple[int | None, int | None]:
-    """成績表のコース欄（「芝・右・外」など）→ (回り 0=右 1=左 2=直線, 直線の区分 0=〜300m 1=〜400m 2=400m〜)."""
+def course_info(venue: int, surface: int, text: str | None) -> dict:
+    """成績表のコース欄（「芝・右・外」など）→ 回り（0=右 1=左 2=直線）・直線の区分（0=〜300m 1=〜400m 2=400m〜）・直線・高低差・一周."""
     text = text or ""
     turn = 0 if "右" in text else 1 if "左" in text else 2 if "直線" in text else None
     outer = 1 if "外" in text.split("・")[-1] and "外内" not in text and "内外" not in text else 0
     layout = 0 if surface == 1 else 2 if "直線" in text else outer
-    st = COURSE_STRAIGHT.get((venue, surface, layout))
-    return turn, None if st is None else 0 if st < 300 else 1 if st < 400 else 2
+    c = COURSE.get((venue, surface, layout))
+    return {"turn": turn, "sband": None if c is None else straight_band(c[0]),
+            "c_straight": None if c is None else c[0], "c_elev": None if c is None else c[1], "c_lap": None if c is None else c[2]}
 
 
 def gap_counts(order: str) -> dict[int, list[int]]:
@@ -400,7 +426,7 @@ def load_races(data_root: Path) -> list[dict]:
                 "field_size": len(starters), "runners": runners,
                 "agari_order": (r["corners"][-2 if len(r["corners"]) >= 2 else -1]["order"] if r.get("corners") else None),
                 "last_3f": r.get("last_3f"),
-                **dict(zip(("turn", "sband"), course_turn_band(int(day["venue_code"]), SURFACE[r["surface"]], r.get("course")))),
+                **course_info(int(day["venue_code"]), SURFACE[r["surface"]], r.get("course")),
             })
     races.sort(key=lambda x: (x["date"], x["race_id"]))
     # ペース判定: 芝ダ×距離帯ごとに pace_index を3等分（0=スロー 1=ミドル 2=ハイ）。結果(着順)は使わない
@@ -447,6 +473,7 @@ class History:
         # (競馬場, 芝ダ, 距離) -> 枠番 -> [出走数, 3着以内数]
         self.course_waku: dict[tuple, dict[int, list[int]]] = defaultdict(lambda: defaultdict(lambda: [0, 0]))
         self.course_waku_events: dict[tuple, list[tuple]] = defaultdict(list)  # アプリ用 store の元
+        self.by_race: dict[str, list[tuple[str, dict]]] = defaultdict(list)  # race_id → [(馬名, その走)]（前走レベル・直接対決用）
 
     def add_race(self, race: dict) -> None:
         for h in race["runners"]:
@@ -460,6 +487,8 @@ class History:
                 "weight": h.get("weight"), "jockey": norm_jockey(h.get("jockey")), "tidx": h.get("tidx"),
                 "trainer": norm_jockey(h.get("trainer")), "victim": h.get("victim", 0),
                 "ab": h.get("ab"), **{k: h.get(k) for k in AGARI_KEYS}, "turn": race["turn"], "sband": race["sband"],
+                "race_id": race["race_id"], "c_straight": race["c_straight"], "c_elev": race["c_elev"],
+                "form_at": h.get("form_at"), "tm5_at": h.get("tm5_at"),
             }
             top3 = 1 if h["finish"] is not None and h["finish"] <= 3 else 0
             tr = norm_jockey(h.get("trainer"))  # 表記ゆれ吸収は騎手と同じ
@@ -472,6 +501,7 @@ class History:
                 cw[1] += top3
                 self.course_waku_events[key].append((race["date"], h["waku"], top3))
             self.horses[h["horse"]].append(run)
+            self.by_race[race["race_id"]].append((h["horse"], run))
             jk = norm_jockey(h.get("jockey"))
             if jk:
                 self.jockeys[jk].append({
@@ -546,6 +576,7 @@ def horse_features(runs: list[dict], race: dict) -> dict:
         f[f"{key}_best"] = (min if key in AGARI_LOWER_BETTER else max)(vals) if vals else NAN
 
     f.update(index_features(runs, race))
+    f.update(similar_course_features(runs, race))
 
     # 脚質・位置取り（近5走のうち通過順位がある走）
     pos = [r for r in runs[-FORM_RUNS:] if r["pos_first"] and r["pos_last"] and r["field"]]
@@ -620,6 +651,80 @@ def index_features(runs: list[dict], race: dict) -> dict:
     else:
         f["pos_std"] = NAN
     return f
+
+
+def similar_course_features(runs: list[dict], race: dict) -> dict:
+    """今回のコースの数値と、同じ芝ダの過去走で 直線が ±50m・直線の区分・高低差の区分・両方が同じコースでの出走数と3着内率."""
+    st, el = race["c_straight"], race["c_elev"]
+    f = {"c_straight": NAN if st is None else st, "c_elev": NAN if el is None else el, "c_lap": NAN if race["c_lap"] is None else race["c_lap"]}
+    prev = [r for r in runs if r["surface"] == race["surface"] and r["c_straight"] is not None]
+    sb, eb = (straight_band(st), elev_band(el)) if st is not None else (None, None)
+    groups = {
+        "sim_straight": [r for r in prev if st is not None and abs(r["c_straight"] - st) <= SIMILAR_STRAIGHT],
+        "band_straight": [r for r in prev if sb is not None and straight_band(r["c_straight"]) == sb],
+        "band_elev": [r for r in prev if eb is not None and elev_band(r["c_elev"]) == eb],
+        "band_both": [r for r in prev if sb is not None and eb is not None
+                      and straight_band(r["c_straight"]) == sb and elev_band(r["c_elev"]) == eb],
+    }
+    for key, sel in groups.items():
+        f[f"{key}_n"] = len(sel)
+        f[f"{key}_top3"] = rate(sum(1 for r in sel if r["finish"] is not None and r["finish"] <= 3), len(sel))
+    return f
+
+
+def _order(finish) -> int:
+    return finish if finish is not None else 99  # 中止・不明は最後
+
+
+def _mean(xs) -> float:
+    xs = [x for x in xs if x is not None and not (isinstance(x, float) and math.isnan(x))]
+    return sum(xs) / len(xs) if xs else NAN
+
+
+def add_opponent_features(rows: list[dict], names: list[str], race: dict, horses: dict, by_race: dict) -> None:
+    """前走レベル（前走の相手のそのときの調子・タイム指数、相手の後続成績、先着した／された相手の調子）と、
+    今回の相手との直接対決（対戦数・先着率・調子から見た見込みとの差・タイム差）. horses・by_race は今回より前の日の走だけ."""
+    today = set(names)
+    for f, h in zip(rows, names):
+        runs = horses.get(h, [])
+        if not runs:
+            for k in LEVEL_FEATURES:
+                f[k] = NAN
+        else:
+            prev = runs[-1]
+            others = [(o, run) for o, run in by_race.get(prev["race_id"], []) if o != h]
+            f["lv_field_form"] = _mean([run["form_at"] for _, run in others])
+            f["lv_field_tidx"] = _mean([run["tm5_at"] for _, run in others])
+            n = top3 = 0
+            for o, _ in others:
+                for x in horses.get(o, []):
+                    if prev["date"] < x["date"] < race["date"]:
+                        n += 1
+                        top3 += 1 if x["finish"] is not None and x["finish"] <= 3 else 0
+            f["lv_after_n"] = n
+            f["lv_after_top3"] = top3 / n if n else NAN
+            f["lv_beaten_form"] = _mean([run["form_at"] for _, run in others if _order(run["finish"]) > _order(prev["finish"])])
+            f["lv_lost_form"] = _mean([run["form_at"] for _, run in others if _order(run["finish"]) < _order(prev["finish"])])
+        n = ahead = 0
+        adj = margin = 0.0
+        for past in runs:
+            for o, run in by_race.get(past["race_id"], []):
+                if o == h or o not in today:
+                    continue
+                if past["finish"] is None and run["finish"] is None:
+                    continue
+                n += 1
+                won = 1 if _order(past["finish"]) < _order(run["finish"]) else 0
+                ahead += won
+                fh, fo = past["form_at"], run["form_at"]
+                expected = 0.5 if fh is None or fo is None else 1 / (1 + math.exp(-FORM_SCALE * (fh - fo)))
+                adj += won - expected
+                if past["time_diff"] is not None and run["time_diff"] is not None:
+                    margin += max(-2.0, min(2.0, run["time_diff"] - past["time_diff"]))
+        f["h2h_n"] = n
+        f["h2h_ahead"] = ahead / n if n else NAN
+        f["h2h_adj"] = adj / n if n else NAN
+        f["h2h_margin"] = margin / n if n else NAN
 
 
 def add_top_gap(rows: list[dict], key: str, with_rank: bool) -> None:
@@ -784,6 +889,10 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                 race_rows.append(f)
             add_form_deviation(race_rows)
             add_field_features(race_rows)
+            add_opponent_features(race_rows, [h["horse"] for h in race["runners"]], race, hist.horses, hist.by_race)
+            for f, h in zip(race_rows, race["runners"]):  # 後のレースの前走レベル・直接対決で使う「そのときの調子・タイム指数」
+                h["form_at"] = None if math.isnan(f["form_raw"]) else round(f["form_raw"], 6)
+                h["tm5_at"] = None if math.isnan(f["tidx_mean5"]) else round(f["tidx_mean5"], 6)
             rows.extend(race_rows)
         for race in same_day:  # 当日のレースは翌日以降の履歴としてだけ使う
             hist.add_race(race)

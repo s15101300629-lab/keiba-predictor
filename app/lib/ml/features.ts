@@ -7,10 +7,12 @@ export type Store = {
   //  pace(0=スロー 1=ミドル 2=ハイ -1=不明), posFirst(最初のコーナーの位置, -1=不明), posLast,
   //  prize(1着賞金・万円), weight(斤量), jockey(names の番号), trainer(names の番号), tidx(タイム指数),
   //  victim(成績表の〔制裁〕で被害馬=1), ab(能力指数), agDev, agRank, earlyGap, fade(推定上がりの指標。scripts/ml/features.py の add_ability),
-  //  turn(回り 0=右 1=左 2=直線), sband(直線の区分 0=〜300m 1=〜400m 2=400m〜)]
+  //  turn(回り 0=右 1=左 2=直線), sband(直線の区分 0=〜300m 1=〜400m 2=400m〜),
+  //  raceId(数値), cStraight(直線 m), cElev(高低差 m), formAt・tm5At(そのレースの前の調子 form_raw・タイム指数の近5走平均)]
   horses: Record<string, [string, number, number, number | null, number, number, number, number, number, number, number,
     number | null, number | null, number, number, number | null, number?,
-    (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?][]>;
+    (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?,
+    (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?][]>;
   names?: string[]; // 騎手・調教師名の一覧
   // [date, venue, surface, distance, top3]
   jockeys: Record<string, [string, number, number, number | null, number][]>;
@@ -28,25 +30,39 @@ export type RaceInput = {
   going: number | null; // 0=良 1=稍重 2=重 3=不良
   fieldSize: number;
   prize1stMan: number | null; // 1着本賞（万円）
-  turn?: number | null; // 回り 0=右 1=左 2=直線（courseTurnBand）
-  sband?: number | null; // 直線の区分 0=〜300m 1=〜400m 2=400m〜（courseTurnBand）
+  turn?: number | null; // 回り 0=右 1=左 2=直線（courseInfo）
+  sband?: number | null; // 直線の区分 0=〜300m 1=〜400m 2=400m〜（courseInfo）
+  cStraight?: number | null; cElev?: number | null; cLap?: number | null; // コースの直線・高低差・一周（m。courseInfo）
 };
 
-// コースの直線距離（m）。"競馬場-芝0/ダ1-内回り0・外回り1・直線2" → JRA のコース紹介の A コース（scripts/ml/features.py の COURSE_STRAIGHT）
-const COURSE_STRAIGHT: Record<string, number> = {
-  "1-0-0": 266.1, "2-0-0": 262.1, "3-0-0": 292.0, "4-0-0": 358.7, "4-0-1": 658.7, "4-0-2": 1000.0,
-  "5-0-0": 525.9, "6-0-0": 310.0, "6-0-1": 310.0, "7-0-0": 412.5, "8-0-0": 328.4, "8-0-1": 403.7,
-  "9-0-0": 356.5, "9-0-1": 473.6, "10-0-0": 293.0,
-  "1-1-0": 264.3, "2-1-0": 260.3, "3-1-0": 295.7, "4-1-0": 353.9, "5-1-0": 501.6, "6-1-0": 308.0,
-  "7-1-0": 410.7, "8-1-0": 329.1, "9-1-0": 352.7, "10-1-0": 291.3,
+// コースの [直線 m, 高低差 m, 一周 m]。"競馬場-芝0/ダ1-内回り0・外回り1・直線2" → JRA のコース紹介の A コース（scripts/ml/features.py の COURSE）
+const COURSE: Record<string, [number, number | null, number | null]> = {
+  "1-0-0": [266.1, 0.7, 1640.9], "2-0-0": [262.1, 3.5, 1626.6], "3-0-0": [292.0, 1.9, 1600.0],
+  "4-0-0": [358.7, 0.8, 1623.0], "4-0-1": [658.7, 2.2, 2223.0], "4-0-2": [1000.0, null, null],
+  "5-0-0": [525.9, 2.7, 2083.1],
+  "6-0-0": [310.0, 5.3, 1667.1], "6-0-1": [310.0, 5.3, 1839.7],
+  "7-0-0": [412.5, 3.5, 1705.9],
+  "8-0-0": [328.4, 3.1, 1782.8], "8-0-1": [403.7, 4.3, 1894.3],
+  "9-0-0": [356.5, 1.9, 1689.0], "9-0-1": [473.6, 2.4, 2089.0],
+  "10-0-0": [293.0, 3.0, 1615.1],
+  "1-1-0": [264.3, 0.9, 1487.0], "2-1-0": [260.3, 3.5, 1475.8], "3-1-0": [295.7, 2.1, 1444.6],
+  "4-1-0": [353.9, 0.6, 1472.5], "5-1-0": [501.6, 2.5, 1899.0], "6-1-0": [308.0, 4.5, 1493.0],
+  "7-1-0": [410.7, 3.4, 1530.0], "8-1-0": [329.1, 3.0, 1607.6], "9-1-0": [352.7, 1.6, 1517.6],
+  "10-1-0": [291.3, 2.9, 1445.4],
 };
+const SIMILAR_STRAIGHT = 50;
+const FORM_SCALE = 6; // 直接対決：調子（0〜1）の差 → 先着の見込み（ロジスティック）の傾き
+const straightBand = (st: number) => (st < 300 ? 0 : st < 400 ? 1 : 2);
+const elevBand = (e: number | null) => (e === null ? null : e < 2.0 ? 0 : e < 3.5 ? 1 : 2);
 
-/** 回り（"右"・"左"・"直線"）と外回りか → [回り, 直線の区分]. features.py の course_turn_band と同じ. */
-export function courseTurnBand(venue: number, surface: number, direction: string | null, outer: boolean): [number | null, number | null] {
+/** 回り（"右"・"左"・"直線"）と外回りか → 回り・直線の区分・直線・高低差・一周. features.py の course_info と同じ. */
+export function courseInfo(venue: number, surface: number, direction: string | null, outer: boolean):
+  { turn: number | null; sband: number | null; cStraight: number | null; cElev: number | null; cLap: number | null } {
   const turn = direction === "右" ? 0 : direction === "左" ? 1 : direction === "直線" ? 2 : null;
   const layout = surface === 1 ? 0 : direction === "直線" ? 2 : outer ? 1 : 0;
-  const st = COURSE_STRAIGHT[`${venue}-${surface}-${layout}`];
-  return [turn, st === undefined ? null : st < 300 ? 0 : st < 400 ? 1 : 2];
+  const c = COURSE[`${venue}-${surface}-${layout}`];
+  return c ? { turn, sband: straightBand(c[0]), cStraight: c[0], cElev: c[1], cLap: c[2] }
+    : { turn, sband: null, cStraight: null, cElev: null, cLap: null };
 }
 
 export type RunnerInput = {
@@ -127,7 +143,7 @@ function horseFeatures(store: Store, race: RaceInput, horse: string, extra?: Sto
       pace: r[8] < 0 ? null : r[8], posFirst: r[9] > 0 ? r[9] : null, posLast: r[10] > 0 ? r[10] : null,
       prize: r[11] ?? null, weight: r[12] ?? null, tidx: r[15] ?? null, victim: r[16] ?? 0,
       ab: r[17] ?? null, ag_dev: r[18] ?? null, ag_rank: r[19] ?? null, early_gap: r[20] ?? null, fade: r[21] ?? null,
-      turn: r[22] ?? null, sband: r[23] ?? null,
+      turn: r[22] ?? null, sband: r[23] ?? null, cStraight: r[25] ?? null, cElev: r[26] ?? null,
     }));
   const f: Features = { n_prior: runs.length };
   if (runs.length) {
@@ -198,6 +214,7 @@ function horseFeatures(store: Store, race: RaceInput, horse: string, extra?: Sto
   }
 
   Object.assign(f, indexFeatures(runs, race));
+  Object.assign(f, similarCourseFeatures(runs, race));
 
   // 脚質・位置取り（近5走のうち通過順位がある走）
   const pos = runs.slice(-FORM_RUNS).filter((r) => r.posFirst && r.posLast && r.field);
@@ -353,6 +370,113 @@ function indexFeatures(runs: IndexRun[], race: RaceInput): Features {
     f.pos_std = Math.sqrt(sq / pos.length);
   } else f.pos_std = NaN;
   return f;
+}
+
+/** 今回のコースの数値と、同じ芝ダの過去走で 直線が ±50m・直線の区分・高低差の区分・両方が同じコースでの出走数と3着内率. */
+function similarCourseFeatures(
+  runs: { surface: number; finish: number | null; cStraight: number | null; cElev: number | null }[], race: RaceInput,
+): Features {
+  const st = race.cStraight ?? null;
+  const el = race.cElev ?? null;
+  const f: Features = { c_straight: st ?? NaN, c_elev: el ?? NaN, c_lap: race.cLap ?? NaN };
+  const prev = runs.filter((r) => r.surface === race.surface && r.cStraight !== null);
+  const sb = st !== null ? straightBand(st) : null;
+  const eb = st !== null ? elevBand(el) : null;
+  const groups: Record<string, typeof prev> = {
+    sim_straight: prev.filter((r) => st !== null && Math.abs(r.cStraight! - st) <= SIMILAR_STRAIGHT),
+    band_straight: prev.filter((r) => sb !== null && straightBand(r.cStraight!) === sb),
+    band_elev: prev.filter((r) => eb !== null && elevBand(r.cElev) === eb),
+    band_both: prev.filter((r) => sb !== null && eb !== null && straightBand(r.cStraight!) === sb && elevBand(r.cElev) === eb),
+  };
+  for (const [key, sel] of Object.entries(groups)) {
+    f[key + "_n"] = sel.length;
+    f[key + "_top3"] = rate(sel.filter((r) => r.finish !== null && r.finish <= 3).length, sel.length);
+  }
+  return f;
+}
+
+type OppRun = { horse: string; date: string; finish: number | null; timeDiff: number | null; formAt: number | null; tm5At: number | null; raceId: number | null };
+const byRaceCache = new WeakMap<Store, Map<number, OppRun[]>>();
+
+/** store の過去走を race_id ごとにまとめる（前走レベル・直接対決用。store ごとに1回だけ作る）. */
+function storeByRace(store: Store): Map<number, OppRun[]> {
+  let m = byRaceCache.get(store);
+  if (m) return m;
+  m = new Map();
+  for (const [horse, runs] of Object.entries(store.horses)) {
+    for (const r of runs) {
+      const rid = r[24] ?? null;
+      if (rid === null) continue;
+      const run: OppRun = { horse, date: r[0], finish: r[6] < 0 ? null : r[6], timeDiff: r[7] < 0 ? null : r[7],
+        formAt: r[27] ?? null, tm5At: r[28] ?? null, raceId: rid };
+      const list = m.get(rid);
+      if (list) list.push(run); else m.set(rid, [run]);
+    }
+  }
+  byRaceCache.set(store, m);
+  return m;
+}
+
+const orderOf = (finish: number | null) => (finish !== null ? finish : 99); // 中止・不明は最後
+const meanOfNullable = (xs: (number | null)[]) => meanOf(xs.filter((x): x is number => x !== null));
+
+/**
+ * 前走レベル（前走の相手のそのときの調子・タイム指数、相手の後続成績、先着した／された相手の調子）と、
+ * 今回の相手との直接対決. features.py の add_opponent_features と同じ。names は rows と同じ順の馬名.
+ * store にない馬（550日より前に最後に走った馬）は数えられない.
+ */
+export function addOpponentFeatures(store: Store, race: RaceInput, rows: Features[], names: string[]): void {
+  const byRace = storeByRace(store);
+  const today = new Set(names);
+  const runsOf = (h: string): OppRun[] => (store.horses[h] ?? []).filter((r) => r[0] < race.date && (r[24] ?? null) !== null)
+    .map((r) => ({ horse: h, date: r[0], finish: r[6] < 0 ? null : r[6], timeDiff: r[7] < 0 ? null : r[7],
+      formAt: r[27] ?? null, tm5At: r[28] ?? null, raceId: r[24] ?? null }));
+  rows.forEach((f, k) => {
+    const h = names[k];
+    const runs = runsOf(h);
+    if (!runs.length) {
+      for (const key of ["lv_field_form", "lv_field_tidx", "lv_after_n", "lv_after_top3", "lv_beaten_form", "lv_lost_form"]) f[key] = NaN;
+    } else {
+      const prev = runs[runs.length - 1];
+      const others = (byRace.get(prev.raceId!) ?? []).filter((o) => o.horse !== h);
+      f.lv_field_form = meanOfNullable(others.map((o) => o.formAt));
+      f.lv_field_tidx = meanOfNullable(others.map((o) => o.tm5At));
+      let n = 0;
+      let top3 = 0;
+      for (const o of others) {
+        for (const x of store.horses[o.horse] ?? []) {
+          if (prev.date < x[0] && x[0] < race.date) {
+            n++;
+            if (x[6] >= 1 && x[6] <= 3) top3++;
+          }
+        }
+      }
+      f.lv_after_n = n;
+      f.lv_after_top3 = n ? top3 / n : NaN;
+      f.lv_beaten_form = meanOfNullable(others.filter((o) => orderOf(o.finish) > orderOf(prev.finish)).map((o) => o.formAt));
+      f.lv_lost_form = meanOfNullable(others.filter((o) => orderOf(o.finish) < orderOf(prev.finish)).map((o) => o.formAt));
+    }
+    let n = 0;
+    let ahead = 0;
+    let adj = 0;
+    let margin = 0;
+    for (const past of runs) {
+      for (const o of byRace.get(past.raceId!) ?? []) {
+        if (o.horse === h || !today.has(o.horse)) continue;
+        if (past.finish === null && o.finish === null) continue;
+        n++;
+        const won = orderOf(past.finish) < orderOf(o.finish) ? 1 : 0;
+        ahead += won;
+        const expected = past.formAt === null || o.formAt === null ? 0.5 : 1 / (1 + Math.exp(-FORM_SCALE * (past.formAt - o.formAt)));
+        adj += won - expected;
+        if (past.timeDiff !== null && o.timeDiff !== null) margin += Math.max(-2, Math.min(2, o.timeDiff - past.timeDiff));
+      }
+    }
+    f.h2h_n = n;
+    f.h2h_ahead = n ? ahead / n : NaN;
+    f.h2h_adj = n ? adj / n : NaN;
+    f.h2h_margin = n ? margin / n : NaN;
+  });
 }
 
 /** 3番目に高い馬との差・上位3頭の平均との差・上位3頭の平均 − 全体の平均・平均から 0.1 以内の馬の割合（・順位・最高との差）. */
