@@ -8,7 +8,8 @@
 - 複勝：logit(p) = a·logit(AI 3着以内) + b·logit(市場 3着以内) + c（市場 3着以内はハービルの式）。a・b・c は前の年で推定
 - 買い方
   - 単勝：期待値 = 合わせた勝率 × 単勝オッズ が閾値以上の馬を全部 100円ずつ
-  - 複勝：過去の複勝オッズは当たった馬の払戻しかないので、期待値は出せない。「合わせた 3着以内 ÷ 市場の 3着以内」が閾値以上の馬を買う
+  - 複勝：過去の複勝オッズは当たった馬の払戻しかないので、期待値は出せない。「合わせた 3着以内 ÷ 市場の 3着以内（市場だけを同じ形で補正したもの）」が
+    閾値以上の馬を買う。補正前の市場（ハービルの式）と比べると、式の癖（人気薄の扱い）を AI の上乗せと取り違えるため
   - 閾値は前の年の回収率で決め（購入 300点以上の中で最大）、その年で試す。評価する年は閾値の決定に使わない
   - 比べるために、AI 単独の確率での期待値・固定の閾値の結果も出す
 - 回収率の幅：レースを選び直すブートストラップ（2,000回）で 95% の範囲。購入点数・的中数も出す
@@ -144,7 +145,13 @@ def main() -> None:
     finish = np.array([r["finish"] if r["finish"] is not None else 99 for r in rows])
     tuned = OUT / "param_tuning.json"
     params = dict(PARAMS, **json.loads(tuned.read_text())["tuning"]["best_params"]) if tuned.exists() else PARAMS
-    pred = predict_years(X, year, {"win": (finish == 1).astype(float), "top3": (finish <= 3).astype(float)}, params)
+    cache = OUT / "cache" / "value_pred.npz"
+    if cache.exists() and list(np.load(cache)["features"]) == FEATURES and len(np.load(cache)["win"]) == len(rows):
+        pred = {k: np.load(cache)[k] for k in ("win", "top3")}
+    else:
+        pred = predict_years(X, year, {"win": (finish == 1).astype(float), "top3": (finish <= 3).astype(float)}, params)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(cache, features=np.array(FEATURES), **pred)
 
     # 評価する年（2023〜）の行だけにする
     keep = np.isin(year, PRED_YEARS)
@@ -198,15 +205,23 @@ def main() -> None:
         comb_win = benter(gs, la, lm, a, b, n)
         lr = LogisticRegression(C=1e6, max_iter=1000).fit(np.column_stack([logit(ai_top3[mp]), logit(mkt_top3[mp])]), is_top3[mp])
         comb_top3 = lr.predict_proba(np.column_stack([logit(ai_top3), logit(mkt_top3)]))[:, 1]
+        # 市場だけを同じ形で補正したもの（ハービルの式の癖・人気薄の過大評価を直す）。AI の上乗せはこれとの比で見る
+        lr_m = LogisticRegression(C=1e6, max_iter=1000).fit(logit(mkt_top3[mp])[:, None], is_top3[mp])
+        mkt_top3_cal = lr_m.predict_proba(logit(mkt_top3)[:, None])[:, 1]
+        # 単勝も同じ：市場だけの条件付きロジット（β だけ）
+        _, b_m = fit_benter(gp, 0 * la, lm, is_win)
+        mkt_win_cal = benter(gs, 0 * la, lm, 0.0, b_m, n)
         yr = {"races": len(gt), "runners": int(mt.sum()),
               "benter_win": {"alpha_ai": a, "beta_market": b},
               "place_coef": {"ai": float(lr.coef_[0][0]), "market": float(lr.coef_[0][1]), "intercept": float(lr.intercept_[0])},
               "logloss_win": {k: float(log_loss(is_win[mt], np.clip(p[mt], 1e-6, 1 - 1e-6))) for k, p in
                               (("ai", ai_win), ("market", mkt_win), ("combined", comb_win))},
               "logloss_top3": {k: float(log_loss(is_top3[mt], p[mt])) for k, p in
-                               (("ai", ai_top3), ("market", mkt_top3), ("combined", comb_top3))}}
+                               (("ai", ai_top3), ("market", mkt_top3), ("market_calibrated", mkt_top3_cal), ("combined", comb_top3))}}
+        yr["logloss_win"]["market_calibrated"] = float(log_loss(is_win[mt], np.clip(mkt_win_cal[mt], 1e-6, 1 - 1e-6)))
+        yr["benter_win"]["beta_market_only"] = b_m
         ev_comb, ev_ai = comb_win * odds, ai_win * odds
-        ratio_place = comb_top3 / mkt_top3
+        ratio_place = comb_top3 / mkt_top3_cal
 
         def choose(score, ret, ths):
             best, best_roi = None, -1
@@ -218,7 +233,7 @@ def main() -> None:
 
         for name, score, ret, ths in (("単勝_合わせた期待値", ev_comb, win_ret, WIN_THRESHOLDS),
                                       ("単勝_AI単独の期待値", ev_ai, win_ret, WIN_THRESHOLDS),
-                                      ("複勝_合わせた確率÷市場", ratio_place, place_ret, PLACE_THRESHOLDS)):
+                                      ("複勝_合わせた確率÷市場(補正後)", ratio_place, place_ret, PLACE_THRESHOLDS)):
             t = choose(score, ret, ths)
             yr[name] = {"threshold_from_prev_year": t,
                         "result": result(mt & (score >= t), ret, race_idx, rng) if t is not None else {"bets": 0},
@@ -229,7 +244,7 @@ def main() -> None:
               file=sys.stderr, flush=True)
     # 3年を通した結果（その年の閾値で買った分の合計）
     tot = {}
-    for name in ("単勝_合わせた期待値", "単勝_AI単独の期待値", "複勝_合わせた確率÷市場"):
+    for name in ("単勝_合わせた期待値", "単勝_AI単独の期待値", "複勝_合わせた確率÷市場(補正後)"):
         bets = sum(out["years"][y][name]["result"].get("bets", 0) for y in TEST_YEARS)
         pay = sum(out["years"][y][name]["result"].get("roi", 0) * 100 * out["years"][y][name]["result"].get("bets", 0) for y in TEST_YEARS)
         hits = sum(out["years"][y][name]["result"].get("hits", 0) for y in TEST_YEARS)
