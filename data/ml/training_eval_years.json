@@ -1,0 +1,72 @@
+{
+ "rounds": 948,
+ "features": [
+  "train_rank",
+  "train_rank_rel",
+  "train_rank_pos"
+ ],
+ "loyo": {
+  "2025": {
+   "test_races": 3352,
+   "coverage": 0.997,
+   "base": {
+    "logloss": 0.4265,
+    "auc": 0.78679,
+    "top3_hit": 0.4946,
+    "top1_win_roi": 0.7361,
+    "top1_place_roi": 0.8293,
+    "debut_logloss": 0.42085
+   },
+   "+調教": {
+    "logloss": 0.4235,
+    "auc": 0.79138,
+    "top3_hit": 0.4967,
+    "top1_win_roi": 0.7637,
+    "top1_place_roi": 0.8215,
+    "debut_logloss": 0.40009
+   }
+  },
+  "2026": {
+   "test_races": 2976,
+   "coverage": 0.996,
+   "base": {
+    "logloss": 0.4263,
+    "auc": 0.79002,
+    "top3_hit": 0.5,
+    "top1_win_roi": 0.7287,
+    "top1_place_roi": 0.8175,
+    "debut_logloss": 0.42453
+   },
+   "+調教": {
+    "logloss": 0.42361,
+    "auc": 0.794,
+    "top3_hit": 0.5028,
+    "top1_win_roi": 0.7344,
+    "top1_place_roi": 0.814,
+    "debut_logloss": 0.40816
+   }
+  }
+ },
+ "forward": {
+  "2026": {
+   "test_races": 2976,
+   "coverage": 0.996,
+   "base": {
+    "logloss": 0.4263,
+    "auc": 0.79002,
+    "top3_hit": 0.5,
+    "top1_win_roi": 0.7287,
+    "top1_place_roi": 0.8175,
+    "debut_logloss": 0.42453
+   },
+   "+調教": {
+    "logloss": 0.42361,
+    "auc": 0.794,
+    "top3_hit": 0.5028,
+    "top1_win_roi": 0.7344,
+    "top1_place_roi": 0.814,
+    "debut_logloss": 0.40816
+   }
+  }
+ }
+}
