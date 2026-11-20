@@ -1,3 +1,3 @@
 # 1行1コマンド。上から順に実行し、data/ml の変化をコマンドごとに commit する
-# 2026-11-20：道悪補正の詳しい検討（重賞の出走馬。馬場ごと・倍率の大きさごと・祖先の重み・経験の量ごと）
-cd scripts/ml && python analyze_heavy_graded.py
+# 2026-11-20：馬体重の発表前の計算方法（前走の馬体重・増減0）の検証
+cd scripts/ml && python eval_body_weight.py
