@@ -47,10 +47,10 @@ def mean(xs):
     return sum(xs) / len(xs) if xs else NAN
 
 
-def main() -> None:
+def add_level_features(rows: list[dict]) -> None:
+    """前走レベル・今回の比較・直接対決の列を rows に足す（rows は build_dataset の全行）."""
     # 各レースの勝ち馬とのタイム差（結果）。特徴量の行には入っていないので、成績表から取る
     time_diff = {(r["race_id"], h["horse"]): h["time_diff"] for r in load_races(DATA) for h in r["runners"]}
-    rows, _ = build_dataset(DATA)
     for r in rows:
         r["time_diff"] = time_diff.get((r["race_id"], r["horse"]))
     races: dict[str, list[dict]] = {}
@@ -127,6 +127,11 @@ def main() -> None:
             r["h2h_adj"] = adj / n if n else NAN
             r["h2h_margin"] = margin / n if n else NAN
 
+
+
+def main() -> None:
+    rows, _ = build_dataset(DATA)
+    add_level_features(rows)
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
     level = ["lv_field_form", "lv_field_tidx", "lv_after_n", "lv_after_top3", "lv_beaten_form", "lv_lost_form"]
     rel = [f"{p}_{k}" for k in ("tidx_mean5", "tidx_best5", "prize_ratio_mean5") for p in ("rel", "rank")] + ["field_form_mean"]

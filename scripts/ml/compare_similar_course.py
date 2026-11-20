@@ -55,7 +55,8 @@ def elev_band(e: float) -> int | None:
     return None if e != e else 0 if e < 2.0 else 1 if e < 3.5 else 2
 
 
-def main() -> None:
+def add_course_features(rows: list[dict]) -> None:
+    """コースの数値と似たコースでの成績の列を rows に足す（rows は build_dataset の全行）."""
     layout = {}
     for path in sorted((DATA / "json").glob("*/*.json")):
         day = json.loads(path.read_text(encoding="utf-8"))
@@ -64,7 +65,6 @@ def main() -> None:
                 text = r.get("course") or ""
                 _, outer = course_of(text)
                 layout[r["race_id"]] = 2 if "直線" in text else outer
-    rows, _ = build_dataset(DATA)
     for r in rows:
         c = COURSE.get((int(r["venue"]), int(r["surface"]), 0 if r["surface"] == 1 else layout.get(r["race_id"], 0)))
         r["c_straight"], r["c_elev"], r["c_lap"] = c if c else (NAN, NAN, NAN)
@@ -88,6 +88,11 @@ def main() -> None:
             for key, sel in groups.items():
                 r[f"{key}_n"] = len(sel)
                 r[f"{key}_top3"] = sum(p["label"] for p in sel) / len(sel) if sel else NAN
+
+
+def main() -> None:
+    rows, _ = build_dataset(DATA)
+    add_course_features(rows)
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
 
     shape = ["c_straight", "c_elev", "c_lap"]
