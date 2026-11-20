@@ -1,6 +1,3 @@
 # 1行1コマンド。上から順に実行し、data/ml の変化をコマンドごとに commit する
-# 2026-11-20：範囲 D（過去走 2019〜・学習 2020〜）で再学習 → 一致テスト → 道悪補正の決め直し → 年ごとの検証
-cd scripts/ml && python train.py
-node --experimental-strip-types scripts/ml/parity.ts
-cd scripts/ml && python train_stack.py
-cd scripts/ml && python backtest_years.py
+# 2026-11-20：道悪補正の詳しい検討（重賞の出走馬。馬場ごと・倍率の大きさごと・祖先の重み・経験の量ごと）
+cd scripts/ml && python analyze_heavy_graded.py
