@@ -5,7 +5,7 @@ name: 学習・検証の実行（作業ブランチ用）
 # クラウドのセッションが再起動しても止まらないように、長い計算はこちらで回す。
 on:
   push:
-    branches: [claude/horse-racing-pdf-conversion-ucigrq]
+    branches: [claude/horse-racing-pdf-conversion-ucigrq, claude/nice-feynman-qgk2q6]
     paths: [.github/ml-run.txt, .github/workflows/ml-run.yml]
   workflow_dispatch:
 

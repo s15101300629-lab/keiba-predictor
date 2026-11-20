@@ -1,5 +1,12 @@
 # 1行1コマンド。上から順に実行し、data/ml の変化をコマンドごとに commit する
-# 2026-11-20：血統（父・母父・母母父の産駒成績、50:25:12.5）を本体モデルに入れて再学習 → 一致テスト → 年ごとの検証
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python train.py
-node --experimental-strip-types scripts/ml/parity.ts
-cd scripts/ml && python backtest_years.py
+# 2026-11-20：精度改善の検証の残り（クラウドのセッションが再起動で止まったため Actions で回す）
+# 表を作る（data/ml/cache は git に入れない。同じジョブの中で使う）
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python cache_dataset.py
+cd scripts/ml && python compare_ability.py build
+cd scripts/ml && python compare_candidates.py build
+cd scripts/ml && python compare_ability2.py build
+# 比較（前年までで学習して 2024〜2026年を予測）
+cd scripts/ml && python compare_ability2.py eval
+cd scripts/ml && python compare_combined.py
+cd scripts/ml && python compare_race_relative.py
+cd scripts/ml && python compare_smoothing.py
