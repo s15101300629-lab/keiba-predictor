@@ -43,7 +43,7 @@ from compare_ability import CACHE as AB_CACHE  # noqa: E402
 from compare_ability import agari_columns, columns, run_abilities  # noqa: E402
 from compare_course import course_of  # noqa: E402
 from compare_similar_course import COURSE, straight_band  # noqa: E402
-from features import FEATURES, load_races  # noqa: E402
+from features import FEATURES_BEFORE_ABILITY as FEATURES, load_races  # noqa: E402
 from train import DATA, OUT, PARAMS, TRAIN_FROM  # noqa: E402
 
 CACHE = OUT / "cache" / "ability2.npz"

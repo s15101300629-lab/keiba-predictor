@@ -56,12 +56,16 @@ FEATURES = [
     # 血統（父・母父・母母父の産駒成績、レース前年まで、50:25:12.5 の平均。compare_pedigree_model.py で4年とも改善）
     # 値は scripts/ml/pedigree_all_features.ts（アプリと同じ app/lib/pedigree.ts の pedigreeModelValues）が作る
     "ped_heavy", "ped_wet", "ped_top3", "ped_dist",
-    # 能力指数（タイム指数 − その日の馬場差 ＋ 斤量の補正）と推定上がり3F（compare_ability.py。3年とも logloss 改善）
+]
+# 能力指数（タイム指数 − その日の馬場差 ＋ 斤量の補正）と推定上がり3F（compare_ability.py。3年とも logloss 改善）
+ABILITY_FEATURES = [
     *[f"ab_{s}" for s in ("wmean", "best", "last", "trend", "std", "n")],
     *[f"ab_{k}_{s}" for k in ("wmean", "best") for s in ("rank", "z", "dmean", "dmax")], "ab_wmean_fstd",
     *[f"{k}_{s}" for k in ("ag_dev", "ag_rank", "early_gap", "fade") for s in ("wmean", "best")],
     *[f"ag_dev_wmean_{s}" for s in ("rank", "z", "dmean", "dmax", "fstd")],
 ]
+FEATURES_BEFORE_ABILITY = list(FEATURES)  # 能力指数を入れる前の77項目（compare_*.py の比較の基準）
+FEATURES = FEATURES + ABILITY_FEATURES
 PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
 

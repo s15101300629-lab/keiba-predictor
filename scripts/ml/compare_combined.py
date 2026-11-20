@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from compare_ability import agari_columns, columns  # noqa: E402
 from compare_candidates import EXTRA  # noqa: E402
 from compare_smoothing import PAIRS, smooth  # noqa: E402
-from features import FEATURES  # noqa: E402
+from features import FEATURES_BEFORE_ABILITY as FEATURES  # noqa: E402
 from train import OUT, PARAMS  # noqa: E402
 from tune_params import evaluate  # noqa: E402
 
