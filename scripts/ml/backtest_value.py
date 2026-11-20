@@ -13,7 +13,7 @@
   - 閾値は前の年の回収率で決め（購入 300点以上の中で最大）、その年で試す。評価する年は閾値の決定に使わない
   - 比べるために、AI 単独の確率での期待値・固定の閾値の結果も出す
 - 回収率の幅：レースを選び直すブートストラップ（2,000回）で 95% の範囲。購入点数・的中数も出す
-- 学習：年 Y の予測は Y 年より前で学習。木の本数は Y−1 年を検証にして決める（tune_params.evaluate と同じ）。パラメータは param_tuning.json の調整後があればそれ
+- 学習：年 Y の予測は Y 年より前で学習。木の本数は Y−1 年を検証にして決める（tune_params.evaluate と同じ）。パラメータは train.py の PARAMS
 - 確定オッズを使うので、レース前に見られるオッズとは少し違う（検証は甘めに出る）
 """
 
@@ -143,8 +143,7 @@ def main() -> None:
     year = np.array([r["date"][:4] for r in rows])
     X = matrix(rows)
     finish = np.array([r["finish"] if r["finish"] is not None else 99 for r in rows])
-    tuned = OUT / "param_tuning.json"
-    params = dict(PARAMS, **json.loads(tuned.read_text())["tuning"]["best_params"]) if tuned.exists() else PARAMS
+    params = PARAMS  # train.py の設定（調整済み）
     cache = OUT / "cache" / "value_pred.npz"
     if cache.exists() and list(np.load(cache)["features"]) == FEATURES and len(np.load(cache)["win"]) == len(rows):
         pred = {k: np.load(cache)[k] for k in ("win", "top3")}

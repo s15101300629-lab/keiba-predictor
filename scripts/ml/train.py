@@ -30,15 +30,19 @@ OUT = REPO / "data" / "ml"
 TRAIN_FROM = "2020-01-01"  # 2019年は過去走の蓄積期間として使い、学習行には入れない（range_comparison.json の D）
 STORE_DAYS = 550  # この日数以内に走った馬だけ store に入れる
 
+# 2026-11-21：Optuna で調整（tune_params.py。検証の年 2023〜2025年、data/ml/param_tuning.json）
 PARAMS = {
     "objective": "binary",
     "learning_rate": 0.03,
-    "num_leaves": 31,
-    "min_data_in_leaf": 100,
-    "feature_fraction": 0.8,
-    "bagging_fraction": 0.8,
+    "num_leaves": 26,
+    "min_data_in_leaf": 137,
+    "feature_fraction": 0.317897,
+    "bagging_fraction": 0.847626,
+    "lambda_l1": 1.819213,
+    "lambda_l2": 0.00385,
+    "min_gain_to_split": 0.2242,
+    "min_sum_hessian_in_leaf": 1.439202,
     "bagging_freq": 1,
-    "lambda_l2": 1.0,
     "verbose": -1,
     "seed": 42,
     "deterministic": True,

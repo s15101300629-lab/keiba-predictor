@@ -80,6 +80,10 @@ def space(trial) -> dict:
     }
 
 
+def study_name(n_features: int) -> str:
+    return "lgb" if n_features == 77 else f"lgb_{n_features}"  # 77項目のときの調整は "lgb"（data/ml/param_tuning.json）
+
+
 def tune(n_trials: int) -> None:
     import optuna
 
@@ -103,11 +107,11 @@ def tune(n_trials: int) -> None:
         trial.set_user_attr("iters", iters)
         return float(np.mean(losses))
 
-    study = optuna.create_study(study_name="lgb", storage=f"sqlite:///{CACHE / 'tune.db'}", load_if_exists=True,
+    study = optuna.create_study(study_name=study_name(X.shape[1]), storage=f"sqlite:///{CACHE / 'tune.db'}", load_if_exists=True,
                                 direction="minimize", sampler=optuna.samplers.TPESampler(seed=0))
-    if not study.trials:  # 今の設定を最初に入れて基準にする
-        study.enqueue_trial({"num_leaves": 31, "min_data_in_leaf": 100, "feature_fraction": 0.8, "bagging_fraction": 0.8,
-                             "lambda_l1": 1e-3, "lambda_l2": 1.0, "min_gain_to_split": 0.0, "min_sum_hessian_in_leaf": 1e-3})
+    if not study.trials:  # 今の設定（train.py の PARAMS）を最初に入れて基準にする
+        study.enqueue_trial({k: PARAMS.get(k, 0.0) for k in ("num_leaves", "min_data_in_leaf", "feature_fraction", "bagging_fraction",
+                                                              "lambda_l1", "lambda_l2", "min_gain_to_split", "min_sum_hessian_in_leaf")})
     done = len([t for t in study.trials if t.state.name == "COMPLETE"])
     study.optimize(objective, n_trials=max(0, n_trials - done))
     print("best", study.best_value, study.best_params, file=sys.stderr)
@@ -141,15 +145,15 @@ def main() -> None:
         return
     import optuna
 
-    study = optuna.load_study(study_name="lgb", storage=f"sqlite:///{CACHE / 'tune.db'}")
-    best = study.best_params
     X, y, year, race_id, finish = load()
+    study = optuna.load_study(study_name=study_name(X.shape[1]), storage=f"sqlite:///{CACHE / 'tune.db'}")
+    best = study.best_params
     out = {"tuning": {"trials": len(study.trials), "val_years": VAL_YEARS, "learning_rate": TUNE_LR,
                       "baseline_val_logloss": study.trials[0].value, "best_val_logloss": study.best_value,
                       "best_val_losses": study.best_trial.user_attrs["losses"], "best_params": best},
            "current": evaluate(X, y, year, race_id, finish, PARAMS),
            "tuned": evaluate(X, y, year, race_id, finish, dict(PARAMS, **best))}
-    (OUT / "param_tuning.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    (OUT / ("param_tuning.json" if X.shape[1] == 77 else "param_tuning_final.json")).write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -4,3 +4,6 @@ npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python compare_a
 cd scripts/ml && python compare_candidates.py build
 cd scripts/ml && python compare_ability2.py build
 cd scripts/ml && python compare_final.py
+# 本番の特徴量（139項目）で調整し直す（今の設定から始めて 25回）→ 今の設定と比べる（param_tuning_final.json）
+cd scripts/ml && python cache_dataset.py
+cd scripts/ml && pip install -q optuna && python tune_params.py tune 25 && python tune_params.py eval
