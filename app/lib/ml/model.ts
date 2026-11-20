@@ -29,3 +29,23 @@ export function predictProbability(model: Model, features: Record<string, number
   const row = model.features.map((name) => features[name] ?? NaN);
   return 1 / (1 + Math.exp(-predictRaw(model, row)));
 }
+
+/**
+ * レースの中で確率の合計を target にそろえる（各馬の logit に同じ値を足す。二分法）。
+ * 3着以内は target = min(3, 頭数 − 0.5)。scripts/ml/tune_params.py の normalize_sum と同じ（2024〜2026年の検証で3年とも logloss 改善）.
+ */
+export function normalizeSum(probs: number[], target: number): number[] {
+  if (!probs.length) return probs;
+  const t = Math.min(target, probs.length - 0.5);
+  const logit = probs.map((p) => Math.log(Math.min(Math.max(p, 1e-12), 1 - 1e-12) / (1 - Math.min(Math.max(p, 1e-12), 1 - 1e-12))));
+  let lo = -10;
+  let hi = 10;
+  for (let k = 0; k < 50; k++) {
+    const c = (lo + hi) / 2;
+    let s = 0;
+    for (const z of logit) s += 1 / (1 + Math.exp(-(z + c)));
+    if (s > t) hi = c; else lo = c;
+  }
+  const c = (lo + hi) / 2;
+  return logit.map((z) => 1 / (1 + Math.exp(-(z + c))));
+}

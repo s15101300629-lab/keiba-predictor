@@ -114,7 +114,7 @@ def build_store(hist, last_date: str) -> dict:
                              -1 if r["pace"] is None else r["pace"],
                              r["pos_first"] or -1, r["pos_last"] or -1,
                              r["prize"], r["weight"], idx(r["jockey"]), idx(r["trainer"]), r["tidx"], r["victim"],
-                             r["ab"], r["ag_dev"], r["ag_rank"], r["early_gap"], r["fade"]] for r in runs]
+                             r["ab"], r["ag_dev"], r["ag_rank"], r["early_gap"], r["fade"], r["turn"], r["sband"]] for r in runs]
     year_start = last_date[:4] + "-01-01"
     prev_year_start = str(int(last_date[:4]) - 1) + "-01-01"
     jockeys = {}
@@ -141,7 +141,7 @@ def build_store(hist, last_date: str) -> dict:
             "trainers": trainers, "names": names,
             "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast",
                           "prize", "weight", "jockey", "trainer", "tidx", "victim",
-                          "ab", "agDev", "agRank", "earlyGap", "fade"],
+                          "ab", "agDev", "agRank", "earlyGap", "fade", "turn", "sband"],
             "rideFields": ["date", "venue", "surface", "distance", "top3"]}
 
 
@@ -230,7 +230,7 @@ def main() -> None:
     last_races = sorted({r["race_id"] for r in rows if r["date"] == store["lastDate"]})[:3]
     sample = [r for r in rows if r["race_id"] in last_races]
     sample_pred = final.predict(matrix(sample))
-    parity = [{"race_id": r["race_id"], "date": r["date"], "horse": r["horse"], "jockey": r["jockey"], "trainer": r["trainer"],
+    parity = [{"race_id": r["race_id"], "date": r["date"], "horse": r["horse"], "turn": r["turn"], "sband": r["sband"], "jockey": r["jockey"], "trainer": r["trainer"],
                "features": {f: (None if isinstance(r[f], float) and math.isnan(r[f]) else r[f]) for f in FEATURES},
                "pred": float(p)} for r, p in zip(sample, sample_pred)]
     (OUT / "parity.json").write_text(json.dumps(parity, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

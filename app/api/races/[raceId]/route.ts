@@ -3,8 +3,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
-import { addFieldFeatures, addFormDeviation, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
-import { predictProbability, type Model } from "@/app/lib/ml/model";
+import { addFieldFeatures, addFormDeviation, courseTurnBand, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
+import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionRecord,
   type StackModel, type StallionRaw, type StallionRecord,
@@ -894,10 +894,15 @@ export async function GET(
     const predictions: (Record<string, unknown> | null)[] = horses.map(() => null);
     if (ml && surfaceName && raceConditions.date) {
       const goingAssumed = raceConditions.going === null;
+      const venueCode = Number(raceId.slice(4, 6));
+      const surfaceCode = surfaceName === "芝" ? 0 : 1;
+      const [turn, sband] = courseTurnBand(venueCode, surfaceCode, raceConditions.direction, raceConditions.courseLayout === "外回り");
       const raceInput = {
         date: raceConditions.date,
-        venue: Number(raceId.slice(4, 6)),
-        surface: surfaceName === "芝" ? 0 : 1,
+        venue: venueCode,
+        surface: surfaceCode,
+        turn,
+        sband,
         distance: raceConditions.distanceMeters,
         going: goingAssumed ? 0 : GOING_CODE[raceConditions.going!] ?? 0,
         fieldSize: activeIdx.length,
@@ -948,7 +953,10 @@ export async function GET(
           going: raceConditions.going, goingAssumedByUser: goingSource === "user",
         };
       });
-      const probs = stacked;
+      // 出走馬の中で3着以内確率の合計を 3 にそろえる（学習データの検証で3年とも logloss 改善。順位は変わらない）
+      const probs = [...stacked];
+      const normalized = normalizeSum(activeIdx.map((i) => stacked[i]), 3);
+      activeIdx.forEach((i, k) => { probs[i] = normalized[k]; });
       // 勝率・連対率。3着以内確率を超えないようにそろえる
       const top2Probs = rows.map((row, i) => ml.top2Model ? Math.min(predictProbability(ml.top2Model, row.features), probs[i]) : null);
       const winProbs = rows.map((row, i) => ml.winModel ? Math.min(predictProbability(ml.winModel, row.features), top2Probs[i] ?? probs[i]) : null);

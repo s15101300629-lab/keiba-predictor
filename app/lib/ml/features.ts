@@ -6,10 +6,11 @@ export type Store = {
   // [date, venue, surface, distance, going(-1=不明), field, finish(-1=中止), timeDiff(-1=不明),
   //  pace(0=スロー 1=ミドル 2=ハイ -1=不明), posFirst(最初のコーナーの位置, -1=不明), posLast,
   //  prize(1着賞金・万円), weight(斤量), jockey(names の番号), trainer(names の番号), tidx(タイム指数),
-  //  victim(成績表の〔制裁〕で被害馬=1), ab(能力指数), agDev, agRank, earlyGap, fade(推定上がりの指標。scripts/ml/features.py の add_ability)]
+  //  victim(成績表の〔制裁〕で被害馬=1), ab(能力指数), agDev, agRank, earlyGap, fade(推定上がりの指標。scripts/ml/features.py の add_ability),
+  //  turn(回り 0=右 1=左 2=直線), sband(直線の区分 0=〜300m 1=〜400m 2=400m〜)]
   horses: Record<string, [string, number, number, number | null, number, number, number, number, number, number, number,
     number | null, number | null, number, number, number | null, number?,
-    (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?][]>;
+    (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?][]>;
   names?: string[]; // 騎手・調教師名の一覧
   // [date, venue, surface, distance, top3]
   jockeys: Record<string, [string, number, number, number | null, number][]>;
@@ -27,7 +28,26 @@ export type RaceInput = {
   going: number | null; // 0=良 1=稍重 2=重 3=不良
   fieldSize: number;
   prize1stMan: number | null; // 1着本賞（万円）
+  turn?: number | null; // 回り 0=右 1=左 2=直線（courseTurnBand）
+  sband?: number | null; // 直線の区分 0=〜300m 1=〜400m 2=400m〜（courseTurnBand）
 };
+
+// コースの直線距離（m）。"競馬場-芝0/ダ1-内回り0・外回り1・直線2" → JRA のコース紹介の A コース（scripts/ml/features.py の COURSE_STRAIGHT）
+const COURSE_STRAIGHT: Record<string, number> = {
+  "1-0-0": 266.1, "2-0-0": 262.1, "3-0-0": 292.0, "4-0-0": 358.7, "4-0-1": 658.7, "4-0-2": 1000.0,
+  "5-0-0": 525.9, "6-0-0": 310.0, "6-0-1": 310.0, "7-0-0": 412.5, "8-0-0": 328.4, "8-0-1": 403.7,
+  "9-0-0": 356.5, "9-0-1": 473.6, "10-0-0": 293.0,
+  "1-1-0": 264.3, "2-1-0": 260.3, "3-1-0": 295.7, "4-1-0": 353.9, "5-1-0": 501.6, "6-1-0": 308.0,
+  "7-1-0": 410.7, "8-1-0": 329.1, "9-1-0": 352.7, "10-1-0": 291.3,
+};
+
+/** 回り（"右"・"左"・"直線"）と外回りか → [回り, 直線の区分]. features.py の course_turn_band と同じ. */
+export function courseTurnBand(venue: number, surface: number, direction: string | null, outer: boolean): [number | null, number | null] {
+  const turn = direction === "右" ? 0 : direction === "左" ? 1 : direction === "直線" ? 2 : null;
+  const layout = surface === 1 ? 0 : direction === "直線" ? 2 : outer ? 1 : 0;
+  const st = COURSE_STRAIGHT[`${venue}-${surface}-${layout}`];
+  return [turn, st === undefined ? null : st < 300 ? 0 : st < 400 ? 1 : 2];
+}
 
 export type RunnerInput = {
   horse: string;
@@ -52,7 +72,10 @@ export const NIGE_CAND_RATE = 0.4; // 近5走で最初のコーナー1番手が4
 export const FRONT_RATIO = 1 / 3; // 最初のコーナーで前3分の1 → 先行
 export const TIME_DIFF_SCALE = 2;
 export const AB_RUNS = 5; // 能力指数・推定上がりは、今回と同じ芝ダの過去走（指数がある走）の新しい順に最大5走
-export const AB_DECAY = 0.8; // 直近加重平均の重み 0.8^k
+export const AB_DECAY = 0.8;
+const INDEX_RUNS = 20; // 4つの指数の「ふだんの能力」・条件ごとの走は、同じ芝ダの指数がある走の新しい順に最大20走
+const INDEX_SHRINK = 2; // 条件適性 = その条件での（指数 − ふだんの能力）の合計 ÷ (走数 + 2)
+const LAYOFF_DAYS = 90; // 直近加重平均の重み 0.8^k
 const AGARI_KEYS = ["ag_dev", "ag_rank", "early_gap", "fade"] as const;
 const AGARI_LOWER_BETTER = new Set(["ag_rank", "early_gap", "fade"]);
 const SEX: Record<string, number> = { "牡": 0, "牝": 1, "セ": 2 };
@@ -104,6 +127,7 @@ function horseFeatures(store: Store, race: RaceInput, horse: string, extra?: Sto
       pace: r[8] < 0 ? null : r[8], posFirst: r[9] > 0 ? r[9] : null, posLast: r[10] > 0 ? r[10] : null,
       prize: r[11] ?? null, weight: r[12] ?? null, tidx: r[15] ?? null, victim: r[16] ?? 0,
       ab: r[17] ?? null, ag_dev: r[18] ?? null, ag_rank: r[19] ?? null, early_gap: r[20] ?? null, fade: r[21] ?? null,
+      turn: r[22] ?? null, sband: r[23] ?? null,
     }));
   const f: Features = { n_prior: runs.length };
   if (runs.length) {
@@ -172,6 +196,8 @@ function horseFeatures(store: Store, race: RaceInput, horse: string, extra?: Sto
     f[key + "_wmean"] = summarizeAbility(vals).wmean;
     f[key + "_best"] = vals.length ? (AGARI_LOWER_BETTER.has(key) ? Math.min(...vals) : Math.max(...vals)) : NaN;
   }
+
+  Object.assign(f, indexFeatures(runs, race));
 
   // 脚質・位置取り（近5走のうち通過順位がある走）
   const pos = runs.slice(-FORM_RUNS).filter((r) => r.posFirst && r.posLast && r.field);
@@ -249,6 +275,105 @@ export function wakuCourse(store: Store, race: RaceInput, waku: number | null): 
     if (e[1] === waku) { n += e[2]; t += e[3]; }
   }
   return { n, diff: n && totalN ? t / n - totalT / totalN : NaN };
+}
+
+type IndexRun = {
+  date: string; venue: number; surface: number; distance: number | null; going: number | null; field: number;
+  pace: number | null; posFirst: number | null; ab: number | null; turn: number | null; sband: number | null;
+};
+
+const meanOf = (xs: number[]) => {
+  if (!xs.length) return NaN;
+  let s = 0;
+  for (const x of xs) s += x;
+  return s / xs.length;
+};
+
+/** 能力指数をもとにした4つの指数（成長・条件適性・展開適性）. features.py の index_features と同じ. */
+function indexFeatures(runs: IndexRun[], race: RaceInput): Features {
+  const past = runs.filter((r) => r.ab !== null);
+  const info: [number | null, number | null][] = past.map((r, i) => {
+    const p = i ? past[i - 1] : null;
+    const ch = p === null || !p.distance || !r.distance ? null : r.distance > p.distance ? 1 : r.distance < p.distance ? -1 : 0;
+    return [ch, p === null ? null : daysBetween(p.date, r.date)];
+  });
+  const sameIdx = past.map((r, i) => (r.surface === race.surface ? i : -1)).filter((i) => i >= 0).reverse();
+  const same = sameIdx.map((i) => past[i]);
+  const ab = same.map((r) => r.ab!);
+  const f: Features = {};
+  const usual = meanOf(ab.slice(0, INDEX_RUNS));
+  // 成長
+  f.g_last2 = ab.length >= 2 ? ab[0] - ab[1] : NaN;
+  f.g_m3_m10 = ab.length >= 4 ? meanOf(ab.slice(0, 3)) - meanOf(ab.slice(0, 10)) : NaN;
+  f.g_last_best = ab.length ? ab[0] - Math.max(...ab.slice(0, 10)) : NaN;
+  let k = 0;
+  while (k + 1 < ab.length && ab[k] > ab[k + 1]) k++;
+  f.g_up_streak = ab.length ? k : NaN;
+  const lay: number[] = [];
+  for (let j = 0; j + 1 < ab.length; j++) {
+    const gap = info[sameIdx[j]][1];
+    if (gap !== null && gap >= LAYOFF_DAYS) lay.push(ab[j] - ab[j + 1]);
+  }
+  f.g_layoff = meanOf(lay);
+  // 条件適性
+  const s20 = same.slice(0, INDEX_RUNS).map((r, j) => [r, sameIdx[j]] as const);
+  const d = race.distance;
+  const wet = race.going !== null && race.going >= 1;
+  const last = past.length ? past[past.length - 1] : null;
+  const change = last === null || !d || !last.distance ? null : d > last.distance ? 1 : d < last.distance ? -1 : 0;
+  const pick = (cond: (r: IndexRun, i: number) => boolean) => s20.filter(([r, i]) => cond(r, i)).map(([r]) => r.ab!);
+  const groups: Record<string, number[]> = {
+    dist: pick((r) => !!d && !!r.distance && Math.abs(r.distance - d) <= 200),
+    venue: pick((r) => r.venue === race.venue),
+    shape: pick((r) => race.sband != null && r.sband === race.sband),
+    going: pick((r) => r.going !== null && (r.going >= 1) === wet),
+    turn: pick((r) => race.turn != null && r.turn === race.turn),
+    change: pick((_, i) => change !== null && info[i][0] === change),
+  };
+  const fit = (sel: number[]): [number, number] => {
+    if (!sel.length || Number.isNaN(usual)) return [NaN, sel.length];
+    let s = 0;
+    for (const x of sel) s += x - usual;
+    return [s / (sel.length + INDEX_SHRINK), sel.length];
+  };
+  for (const [key, sel] of Object.entries(groups)) [f["fit_" + key], f["fit_" + key + "_n"]] = fit(sel);
+  const allab = past.slice(-INDEX_RUNS).map((r) => r.ab!);
+  f.fit_surface = ab.length && allab.length ? usual - meanOf(allab) : NaN;
+  let adj = 0;
+  for (const key of ["dist", "venue", "going"]) if (!Number.isNaN(f["fit_" + key])) adj += f["fit_" + key];
+  f.cond_ab = Number.isNaN(usual) ? NaN : usual + adj;
+  // 展開適性
+  [f.pace_hi, f.pace_hi_n] = fit(pick((r) => r.pace === 2));
+  [f.pace_sl, f.pace_sl_n] = fit(pick((r) => r.pace === 0));
+  const pos = past.slice(-5).filter((r) => r.posFirst && r.field).map((r) => r.posFirst! / r.field);
+  if (pos.length >= 3) {
+    const m = meanOf(pos);
+    let sq = 0;
+    for (const x of pos) sq += (x - m) ** 2;
+    f.pos_std = Math.sqrt(sq / pos.length);
+  } else f.pos_std = NaN;
+  return f;
+}
+
+/** 3番目に高い馬との差・上位3頭の平均との差・上位3頭の平均 − 全体の平均・平均から 0.1 以内の馬の割合（・順位・最高との差）. */
+function addTopGap(rows: Features[], key: string, withRank: boolean): void {
+  const vals = rows.map((r) => r[key]).filter((x) => !Number.isNaN(x)).sort((a, b) => b - a);
+  const m = meanOf(vals);
+  const top3 = meanOf(vals.slice(0, 3));
+  const third = vals.length >= 3 ? vals[2] : vals.length ? vals[vals.length - 1] : NaN;
+  const close = vals.length ? vals.filter((x) => Math.abs(x - m) <= 0.1).length / rows.length : NaN;
+  for (const r of rows) {
+    const v = r[key];
+    const ok = !Number.isNaN(v);
+    r[key + "_d3"] = ok ? v - third : NaN;
+    r[key + "_dtop3"] = ok ? v - top3 : NaN;
+    r[key + "_top3_gap"] = vals.length ? top3 - m : NaN;
+    r[key + "_close"] = close;
+    if (withRank) {
+      r[key + "_rank"] = ok ? (1 + vals.filter((x) => x > v).length) / rows.length : NaN;
+      r[key + "_dmax"] = ok ? v - vals[0] : NaN;
+    }
+  }
 }
 
 /** 新しい順の値の列 → 直近加重平均・最高・前走・傾き（古い→新しい、3走以上）・ばらつき（標準偏差、3走以上）・走数. */
@@ -368,6 +493,8 @@ export function addFieldFeatures(rows: Features[]): void {
   addRelative(rows, "ab_wmean", true);
   addRelative(rows, "ab_best", false);
   addRelative(rows, "ag_dev_wmean", true);
+  addTopGap(rows, "ab_wmean", false);
+  addTopGap(rows, "cond_ab", true);
   // 調教評価の、出走馬の平均との差と、自分より評価が高い馬の数÷頭数
   const ranks = rows.map((r) => r.train_rank).filter((x) => !Number.isNaN(x));
   let rankSum = 0;

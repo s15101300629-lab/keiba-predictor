@@ -64,11 +64,29 @@ ABILITY_FEATURES = [
     *[f"{k}_{s}" for k in ("ag_dev", "ag_rank", "early_gap", "fade") for s in ("wmean", "best")],
     *[f"ag_dev_wmean_{s}" for s in ("rank", "z", "dmean", "dmax", "fstd")],
 ]
+# 能力指数をもとにした4つの指数（compare_ability2.py。どれも3年とも logloss 改善。成長は2年）
+INDEX_GROWTH = ["g_last2", "g_m3_m10", "g_last_best", "g_up_streak", "g_layoff"]
+INDEX_COND_KEYS = ["dist", "venue", "shape", "going", "turn", "change"]
+INDEX_COND = [f"fit_{k}{s}" for k in INDEX_COND_KEYS for s in ("", "_n")] + ["fit_surface", "cond_ab"]
+INDEX_PACE = ["pace_hi", "pace_hi_n", "pace_sl", "pace_sl_n", "pos_std"]
+INDEX_REL = [f"{k}_{s}" for k in ("ab_wmean", "cond_ab") for s in ("d3", "dtop3", "top3_gap", "close")] + ["cond_ab_rank", "cond_ab_dmax"]
+ABILITY_FEATURES += INDEX_GROWTH + INDEX_COND + INDEX_PACE + INDEX_REL
 FEATURES_BEFORE_ABILITY = list(FEATURES)  # 能力指数を入れる前の77項目（compare_*.py の比較の基準）
 FEATURES = FEATURES + ABILITY_FEATURES
 PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
 
+INDEX_RUNS = 20  # 4つの指数の「ふだんの能力」・条件ごとの走は、同じ芝ダの指数がある走の新しい順に最大20走
+INDEX_SHRINK = 2.0  # 条件適性 = その条件での（指数 − ふだんの能力）の合計 ÷ (走数 + 2)
+LAYOFF_DAYS = 90
+# コースの直線距離（m）。(競馬場, 芝0/ダ1, 内回り0・外回り1・直線2) → JRA のコース紹介の A コース（compare_similar_course.py と同じ）
+COURSE_STRAIGHT = {
+    (1, 0, 0): 266.1, (2, 0, 0): 262.1, (3, 0, 0): 292.0, (4, 0, 0): 358.7, (4, 0, 1): 658.7, (4, 0, 2): 1000.0,
+    (5, 0, 0): 525.9, (6, 0, 0): 310.0, (6, 0, 1): 310.0, (7, 0, 0): 412.5, (8, 0, 0): 328.4, (8, 0, 1): 403.7,
+    (9, 0, 0): 356.5, (9, 0, 1): 473.6, (10, 0, 0): 293.0,
+    (1, 1, 0): 264.3, (2, 1, 0): 260.3, (3, 1, 0): 295.7, (4, 1, 0): 353.9, (5, 1, 0): 501.6, (6, 1, 0): 308.0,
+    (7, 1, 0): 410.7, (8, 1, 0): 329.1, (9, 1, 0): 352.7, (10, 1, 0): 291.3,
+}
 AB_RUNS = 5  # 能力指数・推定上がりは、今回と同じ芝ダの過去走（指数がある走）の新しい順に最大5走
 AB_DECAY = 0.8  # 直近加重平均の重み 0.8^k
 AGARI_KEYS = ("ag_dev", "ag_rank", "early_gap", "fade")
@@ -203,6 +221,16 @@ def class_band(prize) -> int:
         if p < cut:
             return i
     return 6
+
+
+def course_turn_band(venue: int, surface: int, text: str | None) -> tuple[int | None, int | None]:
+    """成績表のコース欄（「芝・右・外」など）→ (回り 0=右 1=左 2=直線, 直線の区分 0=〜300m 1=〜400m 2=400m〜)."""
+    text = text or ""
+    turn = 0 if "右" in text else 1 if "左" in text else 2 if "直線" in text else None
+    outer = 1 if "外" in text.split("・")[-1] and "外内" not in text and "内外" not in text else 0
+    layout = 0 if surface == 1 else 2 if "直線" in text else outer
+    st = COURSE_STRAIGHT.get((venue, surface, layout))
+    return turn, None if st is None else 0 if st < 300 else 1 if st < 400 else 2
 
 
 def gap_counts(order: str) -> dict[int, list[int]]:
@@ -372,6 +400,7 @@ def load_races(data_root: Path) -> list[dict]:
                 "field_size": len(starters), "runners": runners,
                 "agari_order": (r["corners"][-2 if len(r["corners"]) >= 2 else -1]["order"] if r.get("corners") else None),
                 "last_3f": r.get("last_3f"),
+                **dict(zip(("turn", "sband"), course_turn_band(int(day["venue_code"]), SURFACE[r["surface"]], r.get("course")))),
             })
     races.sort(key=lambda x: (x["date"], x["race_id"]))
     # ペース判定: 芝ダ×距離帯ごとに pace_index を3等分（0=スロー 1=ミドル 2=ハイ）。結果(着順)は使わない
@@ -430,7 +459,7 @@ class History:
                 "prize": None if race["prize_1st"] is None else race["prize_1st"] / 10000,
                 "weight": h.get("weight"), "jockey": norm_jockey(h.get("jockey")), "tidx": h.get("tidx"),
                 "trainer": norm_jockey(h.get("trainer")), "victim": h.get("victim", 0),
-                "ab": h.get("ab"), **{k: h.get(k) for k in AGARI_KEYS},
+                "ab": h.get("ab"), **{k: h.get(k) for k in AGARI_KEYS}, "turn": race["turn"], "sband": race["sband"],
             }
             top3 = 1 if h["finish"] is not None and h["finish"] <= 3 else 0
             tr = norm_jockey(h.get("trainer"))  # 表記ゆれ吸収は騎手と同じ
@@ -516,6 +545,8 @@ def horse_features(runs: list[dict], race: dict) -> dict:
         f[f"{key}_wmean"] = summarize_ability(vals)["wmean"]
         f[f"{key}_best"] = (min if key in AGARI_LOWER_BETTER else max)(vals) if vals else NAN
 
+    f.update(index_features(runs, race))
+
     # 脚質・位置取り（近5走のうち通過順位がある走）
     pos = [r for r in runs[-FORM_RUNS:] if r["pos_first"] and r["pos_last"] and r["field"]]
     if pos:
@@ -527,6 +558,87 @@ def horse_features(runs: list[dict], race: dict) -> dict:
         for k in ("pos_first_mean", "pos_last_mean", "nige_rate", "senko_rate"):
             f[k] = NAN
     return f
+
+
+def index_features(runs: list[dict], race: dict) -> dict:
+    """能力指数をもとにした4つの指数（成長・条件適性・展開適性。レース内の比較は add_field_features）.
+    使う走は指数がある走だけ（runs は古い順）。距離の延長・短縮と間隔は、その1つ前の「指数がある走」と比べる."""
+    past = [r for r in runs if r["ab"] is not None]
+    info = []  # 各走の (延長1・短縮−1・同じ0, 前の走からの日数)
+    for i, r in enumerate(past):
+        p = past[i - 1] if i else None
+        ch = None if p is None or not p["distance"] or not r["distance"] else (
+            1 if r["distance"] > p["distance"] else -1 if r["distance"] < p["distance"] else 0)
+        info.append((ch, None if p is None else days_between(p["date"], r["date"])))
+    same_idx = [i for i, r in enumerate(past) if r["surface"] == race["surface"]][::-1]  # 新しい順
+    same = [past[i] for i in same_idx]
+    ab = [r["ab"] for r in same]
+    f: dict[str, float] = {}
+    mean = lambda xs: sum(xs) / len(xs) if xs else NAN  # noqa: E731
+    usual = mean(ab[:INDEX_RUNS])
+    # 成長
+    f["g_last2"] = ab[0] - ab[1] if len(ab) >= 2 else NAN
+    f["g_m3_m10"] = mean(ab[:3]) - mean(ab[:10]) if len(ab) >= 4 else NAN
+    f["g_last_best"] = ab[0] - max(ab[:10]) if ab else NAN
+    k = 0
+    while k + 1 < len(ab) and ab[k] > ab[k + 1]:
+        k += 1
+    f["g_up_streak"] = k if ab else NAN
+    f["g_layoff"] = mean([ab[j] - ab[j + 1] for j in range(len(ab) - 1)
+                          if info[same_idx[j]][1] is not None and info[same_idx[j]][1] >= LAYOFF_DAYS])
+    # 条件適性
+    s20 = list(zip(same[:INDEX_RUNS], same_idx[:INDEX_RUNS]))
+    d = race["distance"]
+    wet = race["going"] is not None and race["going"] >= 1
+    last = past[-1] if past else None
+    change = None if last is None or not d or not last["distance"] else (1 if d > last["distance"] else -1 if d < last["distance"] else 0)
+    groups = {
+        "dist": [r["ab"] for r, _ in s20 if d and r["distance"] and abs(r["distance"] - d) <= 200],
+        "venue": [r["ab"] for r, _ in s20 if r["venue"] == race["venue"]],
+        "shape": [r["ab"] for r, _ in s20 if race["sband"] is not None and r["sband"] == race["sband"]],
+        "going": [r["ab"] for r, _ in s20 if r["going"] is not None and (r["going"] >= 1) == wet],
+        "turn": [r["ab"] for r, _ in s20 if race["turn"] is not None and r["turn"] == race["turn"]],
+        "change": [r["ab"] for r, i in s20 if change is not None and info[i][0] == change],
+    }
+
+    def fit(sel):
+        return (NAN if not sel or math.isnan(usual) else sum(x - usual for x in sel) / (len(sel) + INDEX_SHRINK)), len(sel)
+
+    for key, sel in groups.items():
+        f[f"fit_{key}"], f[f"fit_{key}_n"] = fit(sel)
+    allab = [r["ab"] for r in past[-INDEX_RUNS:]]
+    f["fit_surface"] = usual - mean(allab) if ab and allab else NAN
+    adj = [f[f"fit_{k}"] for k in ("dist", "venue", "going") if not math.isnan(f[f"fit_{k}"])]
+    f["cond_ab"] = usual + sum(adj) if not math.isnan(usual) else NAN
+    # 展開適性
+    f["pace_hi"], f["pace_hi_n"] = fit([r["ab"] for r, _ in s20 if r["pace"] == 2])
+    f["pace_sl"], f["pace_sl_n"] = fit([r["ab"] for r, _ in s20 if r["pace"] == 0])
+    pos = [r["pos_first"] / r["field"] for r in past[-5:] if r["pos_first"] and r["field"]]
+    if len(pos) >= 3:
+        m = sum(pos) / len(pos)
+        f["pos_std"] = math.sqrt(sum((x - m) ** 2 for x in pos) / len(pos))
+    else:
+        f["pos_std"] = NAN
+    return f
+
+
+def add_top_gap(rows: list[dict], key: str, with_rank: bool) -> None:
+    """3番目に高い馬との差・上位3頭の平均との差・上位3頭の平均 − 全体の平均・平均から 0.1 以内の馬の割合（・順位・最高との差）."""
+    vals = sorted((r[key] for r in rows if not math.isnan(r[key])), reverse=True)
+    m = sum(vals) / len(vals) if vals else NAN
+    top3 = sum(vals[:3]) / len(vals[:3]) if vals else NAN
+    third = vals[2] if len(vals) >= 3 else (vals[-1] if vals else NAN)
+    close = sum(1 for x in vals if abs(x - m) <= 0.1) / len(rows) if vals else NAN
+    for r in rows:
+        v = r[key]
+        ok = not math.isnan(v)
+        r[f"{key}_d3"] = v - third if ok else NAN
+        r[f"{key}_dtop3"] = v - top3 if ok else NAN
+        r[f"{key}_top3_gap"] = top3 - m if vals else NAN
+        r[f"{key}_close"] = close
+        if with_rank:
+            r[f"{key}_rank"] = (1 + sum(1 for x in vals if x > v)) / len(rows) if ok else NAN
+            r[f"{key}_dmax"] = v - vals[0] if ok else NAN
 
 
 def jockey_features(rides: list[dict], race: dict) -> dict:
@@ -622,6 +734,8 @@ def add_field_features(rows: list[dict]) -> None:
     add_relative(rows, "ab_wmean", True)
     add_relative(rows, "ab_best", False)
     add_relative(rows, "ag_dev_wmean", True)
+    add_top_gap(rows, "ab_wmean", False)
+    add_top_gap(rows, "cond_ab", True)
     # 調教評価の、出走馬の平均との差と、自分より評価が高い馬の数÷頭数
     ranks = [r["train_rank"] for r in rows if not math.isnan(r["train_rank"])]
     mr = sum(ranks) / len(ranks) if ranks else NAN
@@ -664,7 +778,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                 f = runner_features(race, h, hist.horses.get(h["horse"], []), hist.jockeys.get(norm_jockey(h.get("jockey")), []),
                                     hist.trainers.get(norm_jockey(h.get("trainer")), []), {k: list(v) for k, v in course.items()} if course else None)
                 f.update({
-                    "race_id": race["race_id"], "date": race["date"], "horse": h["horse"],
+                    "race_id": race["race_id"], "date": race["date"], "horse": h["horse"], "turn": race["turn"], "sband": race["sband"],
                     "finish": h["finish"], "popularity": h.get("popularity"), "jockey": h.get("jockey"), "trainer": h.get("trainer"), "label": 1 if h["finish"] is not None and h["finish"] <= 3 else 0,
                 })
                 race_rows.append(f)
