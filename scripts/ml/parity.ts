@@ -28,6 +28,7 @@ for (const raceRows of byRace.values()) {
     age: num(row.features.age), sex: row.features.sex === null ? null : ["牡", "牝", "セ"][row.features.sex],
     bodyWeight: num(row.features.body_weight), bodyWeightDiff: num(row.features.body_weight_diff),
     trainRank: num(row.features.train_rank),
+    pedigree: { ped_heavy: num(row.features.ped_heavy), ped_wet: num(row.features.ped_wet), ped_top3: num(row.features.ped_top3), ped_dist: num(row.features.ped_dist) },
   }));
   addFormDeviation(computed);
   addFieldFeatures(computed);

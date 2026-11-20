@@ -1,12 +1,13 @@
 // 成績表の全平地レースの出走馬について、父・母父・母母父の産駒成績（レース前年まで）から血統の特徴量を作る。
 //   npx tsx scripts/ml/pedigree_all_features.ts  -> data/pedigree/all/runner_features.csv
 // 入力：data/pedigree/all/race_horses.json（レース→馬番→馬ID）、horses.json（馬→父・母父・母母父）、data/pedigree/stallions.json
-// 列（祖先 F・MF・MMF ごと）：
+// 列：ped_heavy・ped_wet・ped_top3・ped_dist（父・母父・母母父を 50:25:12.5 で平均。本体モデルの入力。アプリと同じ pedigreeModelValues）
+// ほかに比較用の列（祖先 F・MF・MMF ごと）：
 //   heavy：重・不良の3着内率 ÷ 良（縮小推定）、wet：稍重〜不良 ÷ 良、starts：今回の芝ダでの産駒の出走数、
 //   top3：今回の芝ダでの産駒の3着内率、dist：今回の距離区分の3着内率 ÷ 全距離区分の平均
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { PEDIGREE_SOURCES, stallionAptitude, stallionRecord, type StallionRaw, type StallionRecord } from "@/app/lib/pedigree";
+import { ancestorModelValues, PEDIGREE_MODEL_FEATURES, PEDIGREE_SOURCES, pedigreeModelValues, stallionRecord, type StallionRaw, type StallionRecord } from "@/app/lib/pedigree";
 import type { CompactPedigree } from "./collect_all_pedigree";
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -24,7 +25,7 @@ function record(id: string, role: "sire" | "damsire", throughYear: number): Stal
 }
 
 const cols = PEDIGREE_SOURCES.flatMap((s) => ["heavy", "wet", "starts", "top3", "dist"].map((k) => `${s.position}_${k}`));
-const lines = ["race_id,umaban,horse_id," + cols.join(",")];
+const lines = ["race_id,umaban,horse_id," + [...PEDIGREE_MODEL_FEATURES, ...cols].join(",")];
 let races = 0;
 let missing = 0;
 for (const year of readdirSync(SEISEKI).sort()) {
@@ -38,20 +39,19 @@ for (const year of readdirSync(SEISEKI).sort()) {
       const throughYear = Number(race.date.slice(0, 4)) - 1;
       for (const [umaban, horseId] of Object.entries(map)) {
         const ped = horses[horseId];
-        const values = PEDIGREE_SOURCES.flatMap((s) => {
+        const records = PEDIGREE_SOURCES.map((s) => {
           const id = ped?.[s.position as "F" | "MF" | "MMF"]?.[0];
-          const rec = id ? record(id, s.role as "sire" | "damsire", throughYear) : null;
-          if (!rec) return ["", "", "", "", ""];
-          const apt = stallionAptitude(rec, race.surface, race.distance ?? null);
-          const g = rec.going[race.surface] ?? {};
-          let n = 0;
-          let t = 0;
-          for (const c of Object.values(g)) { if (c) { n += c[0] + c[1] + c[2] + c[3]; t += c[0] + c[1] + c[2]; } }
-          const bands = Object.values(apt.bandRates);
-          const mean = bands.length ? bands.reduce((a, b) => a + b, 0) / bands.length : 0;
-          const dist = apt.band && apt.bandRates[apt.band] !== undefined && mean > 0 ? apt.bandRates[apt.band] / mean : "";
-          return [apt.heavyRatio ?? "", apt.wetRatio ?? "", n, n ? t / n : "", dist];
+          return id ? record(id, s.role as "sire" | "damsire", throughYear) : null;
         });
+        const combined = pedigreeModelValues(records, race.surface, race.distance ?? null);
+        const values = [
+          ...PEDIGREE_MODEL_FEATURES.map((k) => combined[k] ?? ""),
+          ...records.flatMap((rec) => {
+            if (!rec) return ["", "", "", "", ""];
+            const v = ancestorModelValues(rec, race.surface, race.distance ?? null);
+            return [v.ped_heavy ?? "", v.ped_wet ?? "", v.starts, v.ped_top3 ?? "", v.ped_dist ?? ""];
+          }),
+        ];
         lines.push([race.race_id, umaban, horseId, ...values].join(","));
       }
     }

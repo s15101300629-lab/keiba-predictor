@@ -18,7 +18,7 @@ jobs:
   train:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
 
@@ -39,14 +39,24 @@ jobs:
         working-directory: scripts/ml
         run: python collect_training.py "$(TZ=Asia/Tokyo date +%Y)"
 
+      - run: npm install --no-audit --no-fund
+
+      # 血統（本体モデルの入力）: 新しいレースの出走馬の馬ID・父・母父・母母父と、新しい祖先の産駒成績を取り、全出走馬の血統の特徴量を作り直す
+      - name: Collect pedigrees of new runners
+        env:
+          PEDIGREE_CONCURRENCY: "2"
+          PEDIGREE_WAIT_MS: "1000"
+        run: npx tsx scripts/ml/collect_all_pedigree.ts --max-minutes 60
+
+      - name: Build pedigree features for all runners
+        run: npx tsx scripts/ml/pedigree_all_features.ts
+
       - name: Train LightGBM
         working-directory: scripts/ml
         run: python train.py
 
       - name: Check Python/TypeScript feature parity
         run: node --experimental-strip-types scripts/ml/parity.ts
-
-      - run: npm install --no-audit --no-fund
 
       # 2段目（AI確率 + 血統）: 新しい重賞の出走馬の血統を netkeiba から追加取得して学び直す
       - name: Collect pedigrees of graded-race runners

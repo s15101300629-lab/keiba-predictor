@@ -262,3 +262,40 @@ export function stackProbability(model: StackModel, features: Record<string, num
   model.features.forEach((name, i) => { z += model.coef[i] * ((features[name] - model.mean[i]) / model.scale[i]); });
   return 1 / (1 + Math.exp(-z));
 }
+
+// --- 本体モデル（LightGBM）に入れる血統の特徴量（scripts/ml/pedigree_all_features.ts で学習データも同じ関数で作る）---
+export const PEDIGREE_MODEL_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"] as const;
+export type PedigreeModelValues = Record<(typeof PEDIGREE_MODEL_FEATURES)[number], number | null>;
+
+/** 祖先1頭分：道悪倍率・稍重〜不良の倍率・今回の芝ダでの産駒の3着内率・今回の距離区分の得意さ（区分の3着内率 ÷ 全区分の平均）. */
+export function ancestorModelValues(record: StallionRecord, surface: string, distance: number | null): PedigreeModelValues & { starts: number } {
+  const apt = stallionAptitude(record, surface, distance);
+  let n = 0;
+  let t = 0;
+  for (const c of Object.values(record.going[surface] ?? {})) {
+    if (c) { n += starts(c); t += top3(c); }
+  }
+  const bands = Object.values(apt.bandRates);
+  const mean = bands.length ? bands.reduce((a, b) => a + b, 0) / bands.length : 0;
+  return {
+    ped_heavy: apt.heavyRatio, ped_wet: apt.wetRatio, ped_top3: n ? t / n : null,
+    ped_dist: apt.band && apt.bandRates[apt.band] !== undefined && mean > 0 ? apt.bandRates[apt.band] / mean : null,
+    starts: n,
+  };
+}
+
+/** 父・母父・母母父（PEDIGREE_SOURCES の順の records）の値を、50:25:12.5 の重みで平均（値のない祖先は除いて重みを割り直す）. */
+export function pedigreeModelValues(records: (StallionRecord | null)[], surface: string, distance: number | null): PedigreeModelValues {
+  const out = {} as PedigreeModelValues;
+  const per = records.map((r) => (r ? ancestorModelValues(r, surface, distance) : null));
+  for (const key of PEDIGREE_MODEL_FEATURES) {
+    let sum = 0;
+    let w = 0;
+    per.forEach((v, i) => {
+      const x = v?.[key];
+      if (x !== null && x !== undefined) { sum += PEDIGREE_SOURCES[i].weight * x; w += PEDIGREE_SOURCES[i].weight; }
+    });
+    out[key] = w ? sum / w : null;
+  }
+  return out;
+}

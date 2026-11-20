@@ -6,7 +6,7 @@ import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisp
 import { addFieldFeatures, addFormDeviation, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
 import { predictProbability, type Model } from "@/app/lib/ml/model";
 import {
-  PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, stackFeatures, stackProbability, stallionRecord,
+  PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionRecord,
   type StackModel, type StallionRaw, type StallionRecord,
 } from "@/app/lib/pedigree";
 
@@ -923,6 +923,7 @@ export async function GET(
           bodyWeight: entry?.bodyWeight ?? assumedBodyWeight,
           bodyWeightDiff: entry?.bodyWeight == null ? 0 : entry?.bodyWeightChange ?? null,
           extraRuns: overseas,
+          pedigree: pedigreeModelValues(pedigreeRecords[index] ?? [], surfaceName, raceConditions.distanceMeters),
           trainRank: TRAIN_RANK[(entry?.horseNumber != null ? training.get(entry.horseNumber)?.rank : null) ?? ""] ?? null,
         });
         return { jockeyKey, trainerKey, features, bodyWeightAssumed: assumedBodyWeight !== null, overseasRuns: overseas.length };
@@ -933,29 +934,22 @@ export async function GET(
       const useStack = !!ml.stack?.adopted;
       const isHeavy = raceConditions.going === "重" || raceConditions.going === "不良";
       const stacked = baseProbs.map((p, i) => (useStack ? stackProbability(ml.stack!, stackFeatures(p, aptitudes[i], isHeavy)) : p));
-      // 道悪未経験の馬が重・不良を走る場合: オッズ × 血統の道悪倍率^β（2段目に血統が入っているときは二重にかけない）
-      const beta = ml.heavy?.beta ?? 0;
+      // 道悪の後からの補正は 2026-11-20 にやめた（全レースで4年とも悪化。血統の道悪倍率は本体モデルの入力 ped_heavy・ped_wet に入れた）
+      // 表示用：重・不良の経験がない馬に、血統の道悪の得意・苦手を出す
       const heavyNotes = horses.map((_, i) => {
         const apt = aptitudes[i];
         const performances = (results[i] as { performances?: { values: Record<string, string> }[] }).performances ?? [];
         const inexperienced = rows[i].features.heavy_n === 0 && heavyRunsInHistory(performances, surfaceName, raceConditions.date) === 0;
         if (!inexperienced || apt?.heavyRatio == null) return null;
         const label = apt.heavyLabel;
-        // 対象の馬場: heavy_adjustment.json の goings（稍重・重・不良）
-        const applies = !!raceConditions.going && (ml.heavy?.goings ?? ["重", "不良"]).includes(raceConditions.going) && !useStack && beta !== 0;
-        const before = stacked[i];
-        const after = applies
-          ? 1 / (1 + Math.exp(-(Math.log(before / (1 - before)) + beta * Math.log(apt.heavyRatio))))
-          : before;
-        // 判定が「普通」の馬は、補正があっても表示はしない
-        const show = label === "得意" || label === "苦手";
         return {
-          applied: applies, show, label, ratio: apt.heavyRatio, before, after, goingKnown: !goingAssumed, beta,
+          applied: false, show: label === "得意" || label === "苦手", label, ratio: apt.heavyRatio,
+          before: stacked[i], after: stacked[i], goingKnown: !goingAssumed, beta: 0,
           going: raceConditions.going, goingAssumedByUser: goingSource === "user",
         };
       });
-      const probs = stacked.map((p, i) => heavyNotes[i]?.after ?? p);
-      // 勝率・連対率（道悪補正はかけない）。3着以内確率を超えないようにそろえる
+      const probs = stacked;
+      // 勝率・連対率。3着以内確率を超えないようにそろえる
       const top2Probs = rows.map((row, i) => ml.top2Model ? Math.min(predictProbability(ml.top2Model, row.features), probs[i]) : null);
       const winProbs = rows.map((row, i) => ml.winModel ? Math.min(predictProbability(ml.winModel, row.features), top2Probs[i] ?? probs[i]) : null);
       const order = activeIdx.map((i) => ({ p: probs[i], i })).sort((a, b) => b.p - a.p);

@@ -38,6 +38,8 @@ export type RunnerInput = {
   // 成績表にない過去走（海外のレース）。store.horses と同じ形。アプリだけで使う（学習データにはない）
   extraRuns?: Store["horses"][string];
   trainRank?: number | null; // 調教評価 A=4〜D=1（netkeiba の調教ページ）。なければ null
+  // 血統（app/lib/pedigree.ts の pedigreeModelValues。父・母父・母母父の産駒成績の 50:25:12.5 平均）
+  pedigree?: Partial<Record<"ped_heavy" | "ped_wet" | "ped_top3" | "ped_dist", number | null>> | null;
 };
 
 export const TRAIN_RANK: Record<string, number> = { A: 4, B: 3, C: 2, D: 1 };
@@ -248,6 +250,7 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
     body_weight_diff: runner.bodyWeightDiff ?? NaN,
     train_rank: nz(runner.trainRank ?? null),
   };
+  for (const k of ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"] as const) f[k] = runner.pedigree?.[k] ?? NaN;
   f.umaban_ratio = Number.isNaN(f.umaban) ? NaN : f.umaban / race.fieldSize;
   Object.assign(f, horseFeatures(store, race, runner.horse, runner.extraRuns));
   const tr = trainerStats(store, race, runner.trainerKey);

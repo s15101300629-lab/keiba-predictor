@@ -591,11 +591,7 @@ function OverallHorseCard({ horse, total, categories, factors, mark }: {
         </div>}
         {heavy && <p className="heavy-note" role="note">
           ⚠ 道悪（重・不良）未経験・血統は道悪{heavy.label}（血統の道悪倍率 {heavy.ratio.toFixed(2)}倍）。
-          {heavy.applied
-            ? ` 今回は${heavy.going ?? "重・不良"}${heavy.goingAssumedByUser ? "（想定）" : ""}のため、3着以内確率を ${(heavy.before * 100).toFixed(1)}% → ${(heavy.after * 100).toFixed(1)}% に補正（オッズ × 血統の道悪倍率^${heavy.beta.toFixed(2)}）。`
-            : heavy.goingKnown
-              ? " 今回は良のため補正なし。"
-              : " 馬場未発表。稍重〜不良になった場合は補正対象。"}
+          {" 血統の道悪適性は、AIの確率にすでに含めて計算している。"}
         </p>}
         {prediction && <dl className="fact-list">
           {predictionFacts(prediction).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
@@ -989,7 +985,7 @@ export default function RaceDetailPage() {
               学習データ：JRA成績表 〜{data.ml?.dataUntil ?? "-"}。
               {data.ml?.goingSource === "user" ? `想定馬場「${conditions.going}」で計算。` : data.ml?.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
               {data.ml?.bodyWeightAssumed ? "馬体重が未発表の馬は、前走の馬体重・増減0として計算。" : ""}
-              重・不良の経験がない馬が稍重〜不良を走る場合は、血統の道悪倍率で補正する。</p>
+              父・母父・母母父の産駒成績（道悪・芝ダ・距離）も入力に入れている。</p>
           </details>
         </section>
       </section>}

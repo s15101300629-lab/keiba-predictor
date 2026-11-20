@@ -53,7 +53,11 @@ FEATURES = [
     "rel_prize_ratio_mean5", "rank_prize_ratio_mean5", "field_form_mean",
     # 調教評価（netkeiba の調教ページの A〜D。eval_training_years.py で 2025・2026年とも改善。2024年以前は欠損）
     "train_rank", "train_rank_rel", "train_rank_pos",
+    # 血統（父・母父・母母父の産駒成績、レース前年まで、50:25:12.5 の平均。compare_pedigree_model.py で4年とも改善）
+    # 値は scripts/ml/pedigree_all_features.ts（アプリと同じ app/lib/pedigree.ts の pedigreeModelValues）が作る
+    "ped_heavy", "ped_wet", "ped_top3", "ped_dist",
 ]
+PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
 
 FIELD_COMPARE_KEYS = ("tidx_mean5", "tidx_best5", "prize_ratio_mean5")
@@ -159,9 +163,22 @@ def load_training_ranks(data_root: Path) -> dict[tuple[str, int], int]:
     return out
 
 
+def load_pedigree_features(data_root: Path) -> dict[tuple[str, int], dict]:
+    """data/pedigree/all/runner_features.csv → (race_id, 馬番): 血統の特徴量. ファイルがなければ空（全部欠損になる）."""
+    import csv
+    path = data_root.parent / "pedigree" / "all" / "runner_features.csv"
+    out = {}
+    if path.exists():
+        with path.open(encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                out[(r["race_id"], int(r["umaban"]))] = {k: float(r[k]) if r[k] != "" else None for k in PEDIGREE_FEATURES}
+    return out
+
+
 def load_races(data_root: Path) -> list[dict]:
     """平地レースを日付・race_id 順に。各出走馬に time_diff（勝ち馬との差, 秒）と調教評価を付ける."""
     ranks = load_training_ranks(data_root)
+    peds = load_pedigree_features(data_root)
     races = []
     for path in sorted((data_root / "json").glob("*/*.json")):
         day = json.loads(path.read_text(encoding="utf-8"))
@@ -180,7 +197,8 @@ def load_races(data_root: Path) -> list[dict]:
                 if finish is not None and h.get("time_sec") and win_time is not None:
                     td = max(0.0, round(h["time_sec"] - win_time, 1))
                 runners.append({**h, "finish": finish, "time_diff": td, "victim": 1 if h.get("umaban") in victims else 0,
-                                "train_rank": ranks.get((r["race_id"], h.get("umaban")))})
+                                "train_rank": ranks.get((r["race_id"], h.get("umaban"))),
+                                "pedigree": peds.get((r["race_id"], h.get("umaban")))})
             races.append({
                 "pace_index": pace_index(r.get("laps"), r.get("distance")),
                 "race_id": r["race_id"], "date": r["date"], "venue": int(day["venue_code"]),
@@ -384,6 +402,9 @@ def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rid
         "body_weight_diff": NAN if runner.get("body_weight_diff") is None else runner["body_weight_diff"],
         "train_rank": runner.get("train_rank") or NAN,
     }
+    ped = runner.get("pedigree") or {}
+    for k in PEDIGREE_FEATURES:
+        f[k] = NAN if ped.get(k) is None else ped[k]
     f["umaban_ratio"] = f["umaban"] / race["field_size"] if not math.isnan(f["umaban"]) else NAN
     f.update(horse_features(horse_runs, race))
     f.update(jockey_features(jockey_rides, race))
