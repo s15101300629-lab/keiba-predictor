@@ -1,7 +1,8 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { BET_BUDGET, buildCandidates, hitFocusedPlan, returnFocusedPlan, type BetHorse, type BetType, type Plan } from "@/app/lib/bets";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { BET_BUDGET, buildCandidates, hitFocusedPlan, returnFocusedPlan, type BetHorse, type BetType, type Candidate, type Plan } from "@/app/lib/bets";
 import { useParams } from "next/navigation";
+import { marketProbs, normalizeTo, type MarketProbs } from "@/app/lib/market";
 
 type Conditions = {
   raceName: string | null; date: string | null; venue: string | null;
@@ -99,12 +100,17 @@ type ResponseData = {
   results: Horse[]; error?: string; ml?: MlSummary;
 };
 type CachedRace = { savedAt: number; data: ResponseData };
+type OddsMap = Record<string, { min: number; max: number | null }>;
+type OddsData = { ok: boolean; fetchedAt: string; officialTime: string | null; errors: string[]; status?: string | null;
+  win: OddsMap; place: OddsMap; umaren: OddsMap; wide: OddsMap; trio: OddsMap; trifecta: OddsMap };
+type HorseOdds = { win: number | null; place: { min: number; max: number | null } | null; popularity: number | null };
 type FactorScore = { label: string; score: number; starts: number; rate: number; rank: number; rankedCount: number };
 type CategoryRank = { label: string; rank: number | null; total: number; detail: string };
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
 const cacheKey = (id: string) => "keiba-race-detail-v7:" + id;
 const marksCacheKey = (id: string) => "keiba-race-marks-v1:" + id;
+const oddsCacheKey = (id: string) => "keiba-race-odds-v1:" + id;
 const MARK_OPTIONS = ["", "◎", "○", "▲", "△", "☆", "注", "消"];
 
 function readMarks(id: string): Record<string, string> {
@@ -123,6 +129,19 @@ function readMarks(id: string): Record<string, string> {
 function saveMarks(id: string, marks: Record<string, string>) {
   try { window.localStorage.setItem(marksCacheKey(id), JSON.stringify(marks)); }
   catch { /* 保存できない場合も画面操作は継続する */ }
+}
+// 取得したオッズは端末に保存し、タブやページを移っても消えないようにする（「オッズを取得」で毎回取り直す）
+function readCachedOdds(id: string): OddsData | null {
+  try {
+    const raw = window.localStorage.getItem(oddsCacheKey(id));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as OddsData;
+    return parsed && parsed.ok && parsed.win && typeof parsed.fetchedAt === "string" ? parsed : null;
+  } catch { return null; }
+}
+function saveCachedOdds(id: string, odds: OddsData) {
+  try { window.localStorage.setItem(oddsCacheKey(id), JSON.stringify(odds)); }
+  catch { /* 保存できない場合も画面表示は継続する */ }
 }
 function readCachedRace(id: string): CachedRace | null {
   try {
@@ -424,8 +443,8 @@ const BAND_NAMES: Record<string, string> = { "-1400": "〜1400m", "-1800": "〜1
 const bandText = (rates: Record<string, number>) =>
   Object.entries(rates).map(([band, rate]) => `${BAND_NAMES[band] ?? band} ${Math.round(rate * 100)}%`).join("・");
 
-function HorseDetailCard({ horse, mark, onMarkChange }: {
-  horse: Horse; mark: string; onMarkChange: (horseId: string, mark: string) => void;
+function HorseDetailCard({ horse, mark, onMarkChange, odds }: {
+  horse: Horse; mark: string; onMarkChange: (horseId: string, mark: string) => void; odds: HorseOdds | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showAllRuns, setShowAllRuns] = useState(false);
@@ -438,7 +457,9 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
   const damsire = pedigree?.damsire ?? "";
   const facts: [string, string][] = ([
     ["馬体重", entry?.bodyWeight == null ? "" : String(entry.bodyWeight) + "kg"],
-    ["人気", entry?.popularity == null ? "" : String(entry.popularity) + "番人気"],
+    ["人気", odds?.popularity != null ? String(odds.popularity) + "番人気" : entry?.popularity == null ? "" : String(entry.popularity) + "番人気"],
+    ["単勝", odds?.win ? odds.win.toFixed(1) + "倍" : ""],
+    ["複勝", odds?.place ? odds.place.min.toFixed(1) + (odds.place.max ? "〜" + odds.place.max.toFixed(1) : "") + "倍" : ""],
     ["調教師", entry?.trainer ?? ""],
     ["獲得賞金", profileValue("中央獲得賞金") ?? ""],
     ["主な勝ち鞍", profileValue("主な勝ち鞍") ?? ""],
@@ -458,6 +479,7 @@ function HorseDetailCard({ horse, mark, onMarkChange }: {
         <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
         {sire && <small className="horse-blood">{sire}{damsire && <> <i>×</i> 母父{damsire}</>}</small>}
       </span>
+      {odds?.win && <span className="horse-odds"><b>{odds.win.toFixed(1)}</b><small>{odds.popularity}人気</small></span>}
       {/* 印の操作で開閉しないように、クリックの既定動作（summary の開閉）を止める */}
       <span className="horse-mark-slot" onClick={(event) => event.preventDefault()}>
         <select className={"horse-mark-select" + (mark ? " marked" : "")} aria-label={horse.name + "の印"} value={mark}
@@ -652,10 +674,98 @@ function TopPicks({ horses }: { horses: Horse[] }) {
 }
 
 // ===== 買い目（AIの確率から自動で組む。予算 1000円。計算は app/lib/bets.ts） =====
-type OddsMap = Record<string, { min: number; max: number | null }>;
-type OddsData = { ok: boolean; fetchedAt: string; officialTime: string | null; errors: string[]; status?: string | null;
-  win: OddsMap; place: OddsMap; umaren: OddsMap; wide: OddsMap; trio: OddsMap; trifecta: OddsMap };
 const ODDS_FIELD: Record<BetType, keyof OddsData> = { 単勝: "win", 複勝: "place", ワイド: "wide", 馬連: "umaren", "3連複": "trio" };
+const BET_TYPES: BetType[] = ["単勝", "複勝", "ワイド", "馬連", "3連複"];
+
+function OddsBar({ odds, state, error, onLoad }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; onLoad: () => void }) {
+  const missing = odds ? BET_TYPES.filter((t) => !Object.keys((odds[ODDS_FIELD[t]] as OddsMap) ?? {}).length) : [];
+  return <div className="odds-bar">
+    <div className="bet-controls">
+      <span className="odds-bar-title">{odds ? (odds.status === "yoso" ? "予想オッズ" : odds.status === "result" ? "確定オッズ" : "オッズ") : "オッズ未取得"}</span>
+      <button type="button" className="refresh-button" onClick={onLoad} disabled={state === "loading"}>
+        {state === "loading" ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} オッズを取得
+      </button>
+    </div>
+    <p className="bet-note">
+      {odds ? <>netkeiba {odds.officialTime ? odds.officialTime.replace(/^\d{4}-/, "").replace("-", "/") + " 時点" : ""}（取得 {new Date(odds.fetchedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}）
+        {odds.status === "yoso" && <><br /><b className="bet-warn">発売前。netkeiba の予想で、実際のオッズではない</b></>}</>
+        : "押すと netkeiba から今のオッズを取る（押すたびに取り直す。取ったオッズはこの端末に保存する）"}
+      {missing.length > 0 && <><br />まだ出ていない券種：{missing.join("・")}</>}
+      {state === "error" && <><br /><b className="bet-warn">オッズを取得できなかった：{error}</b></>}
+    </p>
+  </div>;
+}
+
+// ===== 市場比較（オッズから見た確率と AI の確率のズレ。計算は app/lib/market.ts） =====
+type GapTarget = "win" | "top2" | "top3";
+const GAP_LABEL: Record<GapTarget, string> = { win: "勝率", top2: "連対率", top3: "3着以内" };
+
+function MarketPanel({ horses, odds, oddsBar, inTraining }: { horses: Horse[]; odds: OddsData | null; oddsBar: ReactNode; inTraining: boolean }) {
+  const [target, setTarget] = useState<GapTarget>("win");
+  const [sort, setSort] = useState<"gap" | "number">("gap");
+  const predicted = horses.filter((h) => h.prediction && h.raceEntry?.horseNumber != null);
+  const market: MarketProbs | null = useMemo(() => odds ? marketProbs(odds, predicted.map((h) => h.raceEntry!.horseNumber!)) : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [odds, horses]);
+  const ai = useMemo(() => {
+    const pick = (f: (h: Horse) => number | null | undefined) => new Map(predicted.filter((h) => f(h) != null && market?.win.has(h.raceEntry!.horseNumber!))
+      .map((h) => [h.raceEntry!.horseNumber!, f(h)!]));
+    return {
+      win: normalizeTo(pick((h) => h.prediction!.winProbability), 1),
+      top2: normalizeTo(pick((h) => h.prediction!.top2Probability), 2),
+      top3: normalizeTo(pick((h) => h.prediction!.probability), 3),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [horses, market]);
+  const rows = predicted.filter((h) => market?.win.has(h.raceEntry!.horseNumber!) && ai[target].has(h.raceEntry!.horseNumber!)).map((h) => {
+    const n = h.raceEntry!.horseNumber!;
+    const a = ai[target].get(n)!;
+    const m = market![target].get(n)!;
+    const win = odds!.win[String(n)]?.min ?? null;
+    const place = odds!.place[String(n)]?.min ?? null;
+    return { h, n, a, m, ratio: m > 0 ? a / m : null, win, place, pop: market!.popularity.get(n) ?? null,
+      ev: target === "win" && win ? ai.win.get(n)! * win : target === "top3" && place ? ai.top3.get(n)! * place : null };
+  }).sort((x, y) => sort === "number" ? x.n - y.n : (y.ratio ?? 0) - (x.ratio ?? 0));
+  const source = target === "top2" ? market?.top2Source : target === "top3" ? market?.top3Source : "単勝";
+  return <section className="bets-panel">
+    {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。ズレは参考として見ること。</p>}
+    {oddsBar}
+    {!odds ? <p className="state-panel">オッズを取得すると、市場（オッズ）の見方とAIの見方のズレを出す。</p>
+      : !market ? <p className="state-panel">オッズが足りないので、市場の確率を出せない。</p> : <>
+        <div className="results-toolbar">
+          <div className="sort-toggle" role="group" aria-label="比べる確率">
+            {(["win", "top2", "top3"] as GapTarget[]).map((t) => <button type="button" key={t} className={target === t ? "active" : ""} onClick={() => setTarget(t)}>{GAP_LABEL[t]}</button>)}
+          </div>
+          <div className="sort-toggle" role="group" aria-label="並び順">
+            <button type="button" className={sort === "gap" ? "active" : ""} onClick={() => setSort("gap")}>ズレ順</button>
+            <button type="button" className={sort === "number" ? "active" : ""} onClick={() => setSort("number")}>馬番順</button>
+          </div>
+        </div>
+        <p className="bet-note">ズレ＝AIの{GAP_LABEL[target]} ÷ 市場の{GAP_LABEL[target]}（{source === "単勝から推定" ? "単勝オッズからハービルの式で推定" : source + "オッズから"}）。1.0より大きいほど、AIが市場より高く見ている。
+          {target !== "top2" && "期待値は AI の確率 × " + (target === "win" ? "単勝" : "複勝（下限）") + "オッズ。"}</p>
+        <ul className="gap-list">
+          {rows.map((r) => <li key={r.h.horseId} className={r.ratio != null && r.ratio >= 1.2 ? "gap-high" : r.ratio != null && r.ratio <= 0.8 ? "gap-low" : ""}>
+            <HorseNumberBadge entry={r.h.raceEntry} />
+            <span className="gap-name"><b>{r.h.name}</b>
+              <small>単勝 {r.win?.toFixed(1) ?? "-"}倍（{r.pop ?? "-"}人気）{r.place ? `・複勝 ${r.place.toFixed(1)}倍` : ""}</small>
+              <span className="gap-bars">
+                <span className="gap-bar"><i>AI</i><span><span className="ai" style={{ width: Math.min(r.a, 1) * 100 + "%" }} /></span><em>{(r.a * 100).toFixed(1)}%</em></span>
+                <span className="gap-bar"><i>市場</i><span><span className="mk" style={{ width: Math.min(r.m, 1) * 100 + "%" }} /></span><em>{(r.m * 100).toFixed(1)}%</em></span>
+              </span>
+            </span>
+            <span className="gap-ratio"><strong>{r.ratio != null ? "×" + r.ratio.toFixed(2) : "-"}</strong>
+              {r.ev != null && <small>期待値 {r.ev.toFixed(2)}</small>}</span>
+          </li>)}
+        </ul>
+        <details className="model-note" open>
+          <summary>ズレの見方と注意</summary>
+          <p>AIの確率は、出走馬の合計を 勝率1・連対率2・3着以内3 にそろえてから比べている（オッズから出す市場の確率と同じ合計）。そのため「AI予測結果」の数字とは少し違う。</p>
+          <p>市場の確率は、オッズの逆数を合計1にそろえたもの（控除の約20〜30%を除く）。発売直後や前日はまだ票が少なく、オッズが大きく動く。ズレは締切に近いオッズで見ること。</p>
+          <p><b className="bet-warn">過去の検証では、ズレが大きい馬ほど実際の成績は市場の確率に近く、回収率は上がっていない。</b>ズレが大きい＝狙い目、とは今のところ言えない（詳しくは gap_backtest.json）。</p>
+        </details>
+      </>}
+  </section>;
+}
 
 function PlanCard({ title, lead, plan, horses, empty }: { title: string; lead: string; plan: Plan | null; horses: Horse[]; empty: string }) {
   return <section className="bet-group">
@@ -687,10 +797,31 @@ function PlanCard({ title, lead, plan, horses, empty }: { title: string; lead: s
   </section>;
 }
 
-function BetsPanel({ raceId, horses, inTraining }: { raceId: string; horses: Horse[]; inTraining: boolean }) {
-  const [odds, setOdds] = useState<OddsData | null>(null);
-  const [oddsState, setOddsState] = useState<"idle" | "loading" | "error">("idle");
-  const [oddsError, setOddsError] = useState("");
+// 券種ごとの期待値（AIの的中確率 × 配当）の上位。上の2パターンが単勝・複勝に寄るときも、馬連・3連複などの候補を見られるように
+function TypeBest({ cands, horses, hasOdds }: { cands: Candidate[]; horses: Horse[]; hasOdds: boolean }) {
+  return <section className="bet-group">
+    <div className="bet-group-head"><h3>券種ごとの候補</h3><span>{hasOdds ? "期待値の高い順・各3点" : "的中確率の高い順・各3点"}</span></div>
+    <p className="bet-note">上の2パターンは確率の計算上、単勝・複勝に寄りやすい（的中率重視は当たりやすい複勝、回収率重視は期待値の高い1〜2点になりやすい）。ここでは券種ごとに候補を出す。期待値1.0は「AIの確率が正しければ回収率100%」の意味。</p>
+    {BET_TYPES.map((type) => {
+      const list = cands.filter((c) => c.type === type && (!hasOdds || c.odds))
+        .sort((a, b) => hasOdds ? b.prob * b.odds! - a.prob * a.odds! : b.prob - a.prob).slice(0, 3);
+      if (!list.length) return <p className="bet-note" key={type}>{type}：オッズがまだ出ていない</p>;
+      return <ul className="bet-list type-best" key={type}>
+        {list.map((c) => <li key={c.type + c.horses.map((h) => h.id).join("-")}>
+          <span className="bet-combo"><em className="bet-type">{c.type}</em>{c.horses.map((h, i) => <span key={h.id}>
+            {i > 0 && <i>-</i>}
+            <HorseNumberBadge entry={horses.find((x) => x.horseId === h.id)?.raceEntry ?? null} />
+          </span>)}</span>
+          <span className="bet-names">{c.horses.map((h) => h.name).join("・")}
+            <small>的中確率 {(c.prob * 100).toFixed(1)}%{c.odds ? `・配当 ${c.odds.toFixed(1)}倍` : ""}</small></span>
+          <strong>{c.odds ? (c.prob * c.odds).toFixed(2) : (c.prob * 100).toFixed(1) + "%"}</strong>
+        </li>)}
+      </ul>;
+    })}
+  </section>;
+}
+
+function BetsPanel({ horses, inTraining, odds, oddsBar }: { horses: Horse[]; inTraining: boolean; odds: OddsData | null; oddsBar: ReactNode }) {
   const hs: BetHorse[] = horses.filter((h) => h.prediction && h.prediction.winProbability != null).map((h) => ({
     id: h.horseId, num: h.raceEntry?.horseNumber ?? null, name: h.name,
     win: h.prediction!.winProbability!, place: h.prediction!.probability,
@@ -700,45 +831,22 @@ function BetsPanel({ raceId, horses, inTraining }: { raceId: string; horses: Hor
       const table = odds ? odds[ODDS_FIELD[type]] as OddsMap : null;
       return table?.[nums.join("-")]?.min ?? null;
     });
-    return { hit: hitFocusedPlan(cands), ret: returnFocusedPlan(cands), count: cands.length };
+    return { hit: hitFocusedPlan(cands), ret: returnFocusedPlan(cands), count: cands.length, cands };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [horses, odds]);
   if (hs.length < 3 || !plans.count) return <p className="state-panel">AIの勝率が出ていないため、買い目を組めない。</p>;
 
-  async function loadOdds() {
-    setOddsState("loading"); setOddsError("");
-    try {
-      const res = await fetch("/api/odds/" + raceId, { cache: "no-store" });
-      const json = await res.json() as OddsData & { error?: string };
-      if (!res.ok || !json.ok) throw new Error(json.errors?.join(" / ") || json.error || "HTTP " + res.status);
-      setOdds(json); setOddsState("idle");
-    } catch (error) {
-      setOddsState("error"); setOddsError(error instanceof Error ? error.message : "取得に失敗した");
-    }
-  }
-
   return <section className="bets-panel">
     {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。買い目は参考として見ること。</p>}
-    <div className="bet-controls">
-      <span className="bet-budget">予算 {BET_BUDGET.toLocaleString()}円</span>
-      <button type="button" className="refresh-button" onClick={() => void loadOdds()} disabled={oddsState === "loading"}>
-        {oddsState === "loading" ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} オッズを取得
-      </button>
-    </div>
-    <p className="bet-note">
-      {odds ? `${odds.status === "yoso" ? "予想オッズ（発売前。netkeiba の予想で、実際のオッズではない）" : "オッズ"}：netkeiba ${odds.officialTime ? odds.officialTime + " 時点" : ""}（取得 ${new Date(odds.fetchedAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}）` : "オッズ未取得。取得すると、払戻を見て買い目を組み直す（回収率重視はオッズが必要）"}
-      {odds && (() => {
-        const missing = (Object.keys(ODDS_FIELD) as BetType[]).filter((t) => !Object.keys((odds[ODDS_FIELD[t]] as OddsMap) ?? {}).length);
-        return missing.length ? <><br />オッズがまだ出ていない券種：{missing.join("・")}（回収率重視はオッズのある券種だけで組む）</> : null;
-      })()}
-      {oddsState === "error" && <><br />オッズを取得できなかった：{oddsError}</>}
-    </p>
+    {oddsBar}
+    <p className="bet-note">予算 {BET_BUDGET.toLocaleString()}円{!odds && "。オッズを取得すると、払戻を見て買い目を組み直す（回収率重視はオッズが必要）"}</p>
     <PlanCard title="的中率重視" horses={horses} plan={plans.hit}
       lead={plans.hit?.usedOdds ? "払戻が予算（1000円）以上になる確率が一番高くなるように、単勝・複勝・ワイド・馬連・3連複から最大5点を選んだ" : "どれか当たる確率が一番高くなるように、最大5点を選んだ（オッズを取得すると、当たって損しない組み方に変わる）"}
       empty="買い目を組めなかった" />
     <PlanCard title="回収率重視" horses={horses} plan={plans.ret}
       lead="期待値（AIの的中確率 × 配当）が高い買い目から、期待回収率が一番高くなる点数（最大5点）を選んだ"
       empty="回収率重視はオッズが必要。上の「オッズを取得」を押す" />
+    <TypeBest cands={plans.cands} horses={horses} hasOdds={!!odds} />
     <details className="model-note">
       <summary>買い目の決め方と注意</summary>
       <p>AIの勝率から、着順を2万回試して（勝率を合計1にそろえ、1着の馬を除いた残りで2着・3着が決まると考える）、買い目ごとの的中確率と、組み合わせたときの「どれか当たる確率」「払戻が予算以上になる確率」「期待回収率」を数えている。候補は勝率・3着以内確率の上位6頭。</p>
@@ -759,9 +867,24 @@ export default function RaceDetailPage() {
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [marks, setMarks] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "bets">("detail");
+  const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "market" | "bets">("detail");
   const [predSort, setPredSort] = useState<"number" | "prob">("number");
   const [assumedGoing, setAssumedGoing] = useState(""); // 馬場未発表時に想定する馬場（空 = 想定なし）
+  const [odds, setOdds] = useState<OddsData | null>(null);
+  const [oddsState, setOddsState] = useState<"idle" | "loading" | "error">("idle");
+  const [oddsError, setOddsError] = useState("");
+  // 「オッズを取得」は押すたびに netkeiba から取り直す（ブラウザ・サーバーのキャッシュを使わない）
+  const loadOdds = useCallback(async () => {
+    setOddsState("loading"); setOddsError("");
+    try {
+      const res = await fetch("/api/odds/" + raceId + "?t=" + Date.now(), { cache: "no-store" });
+      const json = await res.json() as OddsData & { error?: string };
+      if (!res.ok || !json.ok) throw new Error(json.errors?.join(" / ") || json.error || "HTTP " + res.status);
+      setOdds(json); saveCachedOdds(raceId, json); setOddsState("idle");
+    } catch (err) {
+      setOddsState("error"); setOddsError(err instanceof Error ? err.message : "取得に失敗した");
+    }
+  }, [raceId]);
 
   const load = useCallback(async (forceRefresh: boolean, background: boolean, going = "") => {
     try {
@@ -792,6 +915,7 @@ export default function RaceDetailPage() {
       setError("レースIDが正しくありません。"); setLoading(false); setCacheChecked(true); return;
     }
     setMarks(readMarks(raceId));
+    setOdds(readCachedOdds(raceId));
     const cached = readCachedRace(raceId);
     setCacheChecked(true);
     if (cached) {
@@ -807,6 +931,19 @@ export default function RaceDetailPage() {
   const sortedHorses = useMemo(() => [...horses].sort((a, b) => predSort === "prob"
     ? (a.prediction?.rank ?? 999) - (b.prediction?.rank ?? 999)
     : (a.raceEntry?.horseNumber ?? 999) - (b.raceEntry?.horseNumber ?? 999)), [horses, predSort]);
+  const horseOdds = useMemo(() => {
+    const out = new Map<string, HorseOdds>();
+    if (!odds) return out;
+    const nums = horses.map((h) => h.raceEntry?.horseNumber).filter((n): n is number => n != null && !!odds.win[String(n)]?.min);
+    const pop = new Map([...nums].sort((a, b) => odds.win[String(a)].min - odds.win[String(b)].min).map((n, i) => [n, i + 1]));
+    for (const h of horses) {
+      const n = h.raceEntry?.horseNumber;
+      if (n == null) continue;
+      out.set(h.horseId, { win: odds.win[String(n)]?.min ?? null, place: odds.place[String(n)] ?? null, popularity: pop.get(n) ?? null });
+    }
+    return out;
+  }, [odds, horses]);
+  const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} />;
   const handleMarkChange = (horseId: string, mark: string) => {
     setMarks((current) => {
       const next = { ...current };
@@ -845,17 +982,21 @@ export default function RaceDetailPage() {
         <button type="button" role="tab" aria-selected={activeTab === "detail"} className={"race-tab" + (activeTab === "detail" ? " active" : "")}
           onClick={() => setActiveTab("detail")}>レース詳細</button>
         <button type="button" role="tab" aria-selected={activeTab === "prediction"} className={"race-tab" + (activeTab === "prediction" ? " active" : "")}
-          onClick={() => setActiveTab("prediction")}>AI予測結果</button>
+          onClick={() => setActiveTab("prediction")}>AI予測</button>
+        <button type="button" role="tab" aria-selected={activeTab === "market"} className={"race-tab" + (activeTab === "market" ? " active" : "")}
+          onClick={() => setActiveTab("market")}>市場比較</button>
         <button type="button" role="tab" aria-selected={activeTab === "bets"} className={"race-tab" + (activeTab === "bets" ? " active" : "")}
           onClick={() => setActiveTab("bets")}>買い目</button>
       </div>
       {activeTab === "detail" && <div role="tabpanel">
+        {oddsBar}
         <section className="detail-section">
-          {horses.map((horse) => <HorseDetailCard key={horse.horseId} horse={horse}
+          {horses.map((horse) => <HorseDetailCard key={horse.horseId} horse={horse} odds={horseOdds.get(horse.horseId) ?? null}
             mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />)}
         </section>
       </div>}
-      {activeTab === "bets" && <div role="tabpanel"><BetsPanel raceId={raceId} horses={horses} inTraining={!!data.ml?.raceInTraining} /></div>}
+      {activeTab === "bets" && <div role="tabpanel"><BetsPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar} /></div>}
+      {activeTab === "market" && <div role="tabpanel"><MarketPanel horses={horses} odds={odds} oddsBar={oddsBar} inTraining={!!data.ml?.raceInTraining} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         {data.ml?.status === "available" ? <>
           <div className="prediction-summary">

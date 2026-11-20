@@ -470,3 +470,34 @@ footer span { letter-spacing:0; }
 .site-footer-warn { margin-top: 6px !important; color: #c9a85a; }
 .site-footer-brand { margin-top: 10px !important; color: var(--accent); letter-spacing: .2em; font-weight: 700; }
 .month-caption { margin: 16px 0 0; color: var(--accent); font-size: 11px; letter-spacing: .12em; font-weight: 700; }
+
+/* ===== オッズ・市場比較（2026-11-20） ===== */
+.race-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.race-tab { padding-left: 4px; padding-right: 4px; font-size: 12px; white-space: nowrap; }
+.odds-bar { margin-top: 8px; padding: 8px 10px 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.odds-bar .bet-controls { margin-top: 0; }
+.odds-bar-title { font-size: 13px; font-weight: 700; color: var(--text-sub); }
+.horse-odds { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.horse-odds b { color: var(--accent); font-size: 15px; }
+.horse-odds small { color: var(--muted); font-size: 10px; }
+.bets-panel .results-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 12px; }
+.gap-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.gap-list li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.gap-list li.gap-high { border-color: var(--accent); background: #2c2412; }
+.gap-list li.gap-low { opacity: .7; }
+.gap-name { min-width: 0; }
+.gap-name b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gap-name small { display: block; color: var(--muted); font-size: 10px; }
+.gap-bars { display: grid; gap: 2px; margin-top: 4px; }
+.gap-bar { display: grid; grid-template-columns: 24px 1fr 42px; align-items: center; gap: 5px; font-size: 10px; }
+.gap-bar i { font-style: normal; color: var(--muted); }
+.gap-bar > span { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; }
+.gap-bar > span > span { display: block; height: 100%; border-radius: 3px; }
+.gap-bar .ai { background: var(--accent); }
+.gap-bar .mk { background: #8a8470; }
+.gap-bar em { font-style: normal; text-align: right; color: var(--text-sub); font-variant-numeric: tabular-nums; }
+.gap-ratio { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; }
+.gap-ratio strong { font-size: 16px; color: var(--text); }
+.gap-high .gap-ratio strong { color: var(--accent-strong); }
+.gap-ratio small { color: var(--muted); font-size: 10px; white-space: nowrap; }
+.type-best { margin-bottom: 8px; }
