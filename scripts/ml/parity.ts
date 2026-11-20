@@ -40,10 +40,20 @@ for (const raceRows of byRace.values()) {
       const expected = row.features[name];
       const actual = computed[i][name];
       const same = expected === null ? Number.isNaN(actual) : Math.abs(actual - expected) <= 1e-9;
+      if (same && expected !== null && actual !== expected && process.env.PARITY_DEBUG) console.log(`diff ${row.horse} ${name} ${actual - expected}`);
       if (!same) { failures++; console.log(`${row.race_id} ${row.horse} ${name}: python=${expected} ts=${actual}`); }
       else if (expected !== null) worstFeature = Math.max(worstFeature, Math.abs(actual - expected));
     }
-    worstPred = Math.max(worstPred, Math.abs(predictProbability(model, computed[i]) - row.pred));
+    const dp = Math.abs(predictProbability(model, computed[i]) - row.pred);
+    if (dp > 1e-9 && process.env.PARITY_DEBUG) {
+      const base: Record<string, number> = {};
+      for (const [k, v] of Object.entries(row.features)) base[k] = v === null ? NaN : v;
+      for (const name of model.features) {
+        const swapped = { ...base, [name]: computed[i][name] };
+        if (Math.abs(predictProbability(model, swapped) - row.pred) > 1e-9) console.log(`split ${row.horse} ${name} py=${base[name]} ts=${computed[i][name]}`);
+      }
+    }
+    worstPred = Math.max(worstPred, dp);
   });
 }
 console.log(`rows ${rows.length}, feature mismatches ${failures}, max feature diff ${worstFeature}, max prediction diff ${worstPred}`);

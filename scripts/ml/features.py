@@ -126,6 +126,16 @@ SEX = {"牡": 0, "牝": 1, "セ": 2}
 FORM_RUNS = 5
 TIME_DIFF_SCALE = 2.0  # 勝ち馬と2秒差で タイム差成分 = 0
 NAN = float("nan")
+_builtin_sum = sum
+
+
+def sum(xs, start=0):  # noqa: A001
+    """前から順に足すだけの和（TypeScript の for ループと同じ結果にするため）.
+    Python 3.12 以降の組み込み sum は小数を誤差補正して足すので、0 になるはずの値が TS と 1e-17 ずれ、木の分かれ目で予測が変わることがある."""
+    total = start
+    for x in xs:
+        total = total + x
+    return total
 
 
 def norm_going(value: str | None) -> int | None:
