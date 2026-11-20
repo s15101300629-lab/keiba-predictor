@@ -43,6 +43,48 @@ type RaceEntry = {
   };
 };
 
+// --- 海外のレース（成績表にない）を過去走として足す（依頼者の判断。学習データには海外の走がないので、効き方は検証できていない）---
+const JRA_VENUES = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
+const NAR_VENUES = ["門別", "盛岡", "水沢", "浦和", "船橋", "大井", "川崎", "金沢", "笠松", "名古屋", "園田", "姫路", "高知", "佐賀", "帯広", "ばんえい"];
+// 格 → JRA の同じ格の1着賞金の中央値（万円。成績表 2024〜2026年）。条件戦は 1勝クラス とみなす
+const OVERSEAS_PRIZE: [RegExp, number][] = [
+  [/\((?:GI|G1)\)/, 17000], [/\((?:GII|G2)\)/, 5700], [/\((?:GIII|G3)\)/, 4100],
+  [/\(L\)/, 2400], [/\(OP\)/, 2200], [/新馬/, 750], [/未勝利/, 560],
+];
+const OVERSEAS_PRIZE_DEFAULT = 800;
+// 着差がないので、着順ごとの勝ち馬とのタイム差の中央値（成績表 2020年〜）で代える
+const TIME_DIFF_BY_FINISH = [0, 0, 0.2, 0.4, 0.6, 0.7, 0.9, 1.1, 1.2, 1.4, 1.6, 1.7, 1.9, 2.2, 2.4, 2.7, 3.1];
+const OVERSEAS_GOING: Record<string, number> = { "良": 0, "稍": 1, "重": 2, "不": 3 };
+
+function isOverseasVenue(venue: string): boolean {
+  if (!venue) return false;
+  return !JRA_VENUES.some((v) => venue.includes(v)) && !NAR_VENUES.some((v) => venue.includes(v));
+}
+
+/** netkeiba の戦績のうち海外のレースを、store.horses と同じ形の過去走にする. */
+function overseasRuns(performances: { values: Record<string, string> }[]): Store["horses"][string] {
+  const runs: Store["horses"][string] = [];
+  for (const p of performances) {
+    const v = p.values;
+    if (!isOverseasVenue(v["開催"] ?? "")) continue;
+    const date = (v["日付"] ?? "").replace(/\//g, "-");
+    const course = (v["距離"] ?? "").match(/^(芝|ダ)(\d+)/);
+    const field = Number(v["頭数"]);
+    const finish = Number(v["着順"]);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !course || !(field > 1)) continue;
+    const ok = Number.isInteger(finish) && finish > 0;
+    const name = v["レース名"] ?? "";
+    const prize = OVERSEAS_PRIZE.find(([re]) => re.test(name))?.[1] ?? OVERSEAS_PRIZE_DEFAULT;
+    const weight = Number(v["斤量"]);
+    runs.push([
+      date, 0, course[1] === "芝" ? 0 : 1, Number(course[2]), OVERSEAS_GOING[(v["馬場"] ?? "").slice(0, 1)] ?? -1, field,
+      ok ? finish : -1, ok ? TIME_DIFF_BY_FINISH[Math.min(finish, TIME_DIFF_BY_FINISH.length - 1)] : -1,
+      -1, -1, -1, prize, Number.isFinite(weight) && weight > 0 ? weight : null, -1, -1, null, 0,
+    ]);
+  }
+  return runs;
+}
+
 // 馬体重の発表前に使う値（初出走馬の性別ごとの中央値。学習データ 2020年〜）
 const DEBUT_BODY_WEIGHT: Record<string, number> = { "牡": 476, "牝": 448, "セ": 468 };
 
@@ -848,6 +890,7 @@ export async function GET(
         // 馬体重は当日の発表。学習データには欠けがないので、発表前は前走の馬体重・増減0 で計算する
         // （前走の馬体重がない馬は、学習データの初出走馬の性別ごとの中央値。scripts/ml/eval_body_weight.py で検証）
         const performances = (results[index] as { performances?: { values: Record<string, string> }[] }).performances ?? [];
+        const overseas = overseasRuns(performances);
         const assumedBodyWeight = entry?.bodyWeight == null
           ? previousBodyWeight(performances, raceConditions.date!) ?? DEBUT_BODY_WEIGHT[sexAge?.[1] ?? ""] ?? DEBUT_BODY_WEIGHT["牡"]
           : null;
@@ -860,8 +903,9 @@ export async function GET(
           age: sexAge ? Number(sexAge[2]) : null, sex: sexAge?.[1] ?? null,
           bodyWeight: entry?.bodyWeight ?? assumedBodyWeight,
           bodyWeightDiff: entry?.bodyWeight == null ? 0 : entry?.bodyWeightChange ?? null,
+          extraRuns: overseas,
         });
-        return { jockeyKey, trainerKey, features, bodyWeightAssumed: assumedBodyWeight !== null };
+        return { jockeyKey, trainerKey, features, bodyWeightAssumed: assumedBodyWeight !== null, overseasRuns: overseas.length };
       });
       addFormDeviation(activeIdx.map((i) => rows[i].features));
       addFieldFeatures(activeIdx.map((i) => rows[i].features));
@@ -902,7 +946,7 @@ export async function GET(
           probability: probs[i], baseProbability: baseProbs[i], pedigreeIncluded: useStack, rank: rank + 1,
           winProbability: winProbs[i], top2Probability: top2Probs[i],
           heavyNote: heavyNotes[i],
-          modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior,
+          modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior, overseasRuns: rows[i].overseasRuns,
           jockeyName: rows[i].jockeyKey,
           pace: {
             style: runningStyle(f), posFirstMean: num(f.pos_first_mean), nigeRate: num(f.nige_rate),

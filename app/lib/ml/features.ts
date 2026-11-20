@@ -35,6 +35,8 @@ export type RunnerInput = {
   waku: number | null; umaban: number | null; weight: number | null;
   age: number | null; sex: string | null;
   bodyWeight: number | null; bodyWeightDiff: number | null;
+  // 成績表にない過去走（海外のレース）。store.horses と同じ形。アプリだけで使う（学習データにはない）
+  extraRuns?: Store["horses"][string];
 };
 
 export type Features = Record<string, number>;
@@ -76,8 +78,14 @@ export function runComponents(finish: number | null, field: number, timeDiff: nu
 const rate = (top3: number, n: number) => (n ? top3 / n : NaN);
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
 
-function horseFeatures(store: Store, race: RaceInput, horse: string): Features {
-  const runs = (store.horses[horse] ?? [])
+/** store の過去走に、成績表にない過去走（海外）を日付順に足す. */
+function horseRuns(store: Store, horse: string, extra?: Store["horses"][string]): Store["horses"][string] {
+  const base = store.horses[horse] ?? [];
+  return extra?.length ? [...base, ...extra].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)) : base;
+}
+
+function horseFeatures(store: Store, race: RaceInput, horse: string, extra?: Store["horses"][string]): Features {
+  const runs = horseRuns(store, horse, extra)
     .filter((r) => r[0] < race.date)
     .map((r) => ({
       date: r[0], venue: r[1], surface: r[2], distance: r[3],
@@ -237,7 +245,7 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
     body_weight_diff: runner.bodyWeightDiff ?? NaN,
   };
   f.umaban_ratio = Number.isNaN(f.umaban) ? NaN : f.umaban / race.fieldSize;
-  Object.assign(f, horseFeatures(store, race, runner.horse));
+  Object.assign(f, horseFeatures(store, race, runner.horse, runner.extraRuns));
   const tr = trainerStats(store, race, runner.trainerKey);
   Object.assign(f, {
     trainer_n: tr.n, trainer_top3: rate(tr.top3, tr.n), trainer_venue_n: tr.venueN, trainer_venue_top3: rate(tr.venueTop3, tr.venueN),
@@ -245,7 +253,7 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
   const wc = wakuCourse(store, race, runner.waku);
   f.waku_course_n = wc.n;
   f.waku_course_diff = wc.diff;
-  const prior = (store.horses[runner.horse] ?? []).filter((r) => r[0] < race.date);
+  const prior = horseRuns(store, runner.horse, runner.extraRuns).filter((r) => r[0] < race.date);
   const last = prior.length ? prior[prior.length - 1] : null;
   f.weight_change = last && runner.weight && last[12] ? runner.weight - last[12] : NaN;
   const lastJockey = last ? store.names?.[last[13]] ?? "" : "";
