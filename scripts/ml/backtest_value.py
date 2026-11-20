@@ -12,7 +12,9 @@
     閾値以上の馬を買う。補正前の市場（ハービルの式）と比べると、式の癖（人気薄の扱い）を AI の上乗せと取り違えるため
   - 閾値は前の年の回収率で決め（購入 300点以上の中で最大）、その年で試す。評価する年は閾値の決定に使わない
   - 比べるために、AI 単独の確率での期待値・固定の閾値の結果も出す
-- 回収率の幅：レースを選び直すブートストラップ（2,000回）で 95% の範囲。購入点数・的中数も出す
+- 回収率の幅：その年のレースを選び直すブートストラップ（2,000回）で 95% の範囲。購入点数・的中数も出す
+- 比べる基準：roi_market_matched（選んだ馬と同じ「市場の確率の帯」の配分で全馬を買った回収率）。選んだ馬は人気側に寄りやすく、
+  人気薄ほど回収率が低い傾向があるので、「全馬を買う」と比べると AI の上乗せが大きく見える（第三者レビューの指摘）
 - 学習：年 Y の予測は Y 年より前で学習。木の本数は Y−1 年を検証にして決める（tune_params.evaluate と同じ）。パラメータは train.py の PARAMS
 - 確定オッズを使うので、レース前に見られるオッズとは少し違う（検証は甘めに出る）
 """
@@ -114,15 +116,25 @@ def benter(gs, la, lm, a, b, n):
     return p
 
 
-def result(sel, ret, race_idx, rng) -> dict:
-    """sel：買う馬（bool）、ret：100円あたりの払戻（外れは0）."""
+def result(sel, ret, race_idx, rng, pool=None, mkt=None) -> dict:
+    """sel：買う馬（bool）、ret：100円あたりの払戻（外れは0）、pool：その年の行（ブートストラップの母集団）、
+    mkt：市場の確率（あれば、選んだ馬と同じ「市場の確率の帯」の配分で全馬を買ったときの回収率 roi_market_matched も出す）."""
     n = int(sel.sum())
     if n == 0:
         return {"bets": 0}
     out = {"bets": n, "hits": int((ret[sel] > 0).sum()), "roi": float(ret[sel].sum() / (100 * n)),
            "races": int(len(np.unique(race_idx[sel])))}
-    # レースを選び直すブートストラップ
-    races = np.unique(race_idx)
+    if pool is None:
+        pool = np.ones(len(sel), bool)
+    if mkt is not None:
+        # 人気の偏りの分を除く：市場の確率で20等分した帯ごとに、全馬を買った回収率を、選んだ馬の帯の配分で平均する
+        edges = np.quantile(mkt[pool], np.linspace(0, 1, 21)[1:-1])
+        band = np.searchsorted(edges, mkt)
+        all_roi = np.array([ret[pool & (band == b)].sum() / (100 * max(1, (pool & (band == b)).sum())) for b in range(20)])
+        cnt = np.bincount(band[sel], minlength=20)
+        out["roi_market_matched"] = float((cnt * all_roi).sum() / cnt.sum())
+    # レースを選び直すブートストラップ（その年のレースだけ）
+    races = np.unique(race_idx[pool])
     stake = np.bincount(race_idx, weights=sel * 100.0, minlength=race_idx.max() + 1)
     pay = np.bincount(race_idx, weights=np.where(sel, ret, 0.0), minlength=race_idx.max() + 1)
     st, py = stake[races], pay[races]
@@ -230,14 +242,14 @@ def main() -> None:
                     best, best_roi = t, ret[s].sum() / (100 * s.sum())
             return best
 
-        for name, score, ret, ths in (("単勝_合わせた期待値", ev_comb, win_ret, WIN_THRESHOLDS),
-                                      ("単勝_AI単独の期待値", ev_ai, win_ret, WIN_THRESHOLDS),
-                                      ("複勝_合わせた確率÷市場(補正後)", ratio_place, place_ret, PLACE_THRESHOLDS)):
+        for name, score, ret, ths, mkt in (("単勝_合わせた期待値", ev_comb, win_ret, WIN_THRESHOLDS, mkt_win),
+                                           ("単勝_AI単独の期待値", ev_ai, win_ret, WIN_THRESHOLDS, mkt_win),
+                                           ("複勝_合わせた確率÷市場(補正後)", ratio_place, place_ret, PLACE_THRESHOLDS, mkt_top3_cal)):
             t = choose(score, ret, ths)
             yr[name] = {"threshold_from_prev_year": t,
-                        "result": result(mt & (score >= t), ret, race_idx, rng) if t is not None else {"bets": 0},
-                        "fixed": {str(th): result(mt & (score >= th), ret, race_idx, rng) for th in ths}}
-        yr["全馬を買う"] = {"単勝": result(mt, win_ret, race_idx, rng), "複勝": result(mt, place_ret, race_idx, rng)}
+                        "result": result(mt & (score >= t), ret, race_idx, rng, mt, mkt) if t is not None else {"bets": 0},
+                        "fixed": {str(th): result(mt & (score >= th), ret, race_idx, rng, mt, mkt) for th in ths}}
+        yr["全馬を買う"] = {"単勝": result(mt, win_ret, race_idx, rng, mt), "複勝": result(mt, place_ret, race_idx, rng, mt)}
         out["years"][y] = yr
         print(y, json.dumps({k: v for k, v in yr.items() if k.startswith("logloss") or k.startswith("benter")}, ensure_ascii=False),
               file=sys.stderr, flush=True)

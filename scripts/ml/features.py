@@ -342,8 +342,7 @@ def add_ability(races: list[dict], data_root: Path) -> None:
                 sxy += (b[1] - a[1]) * (b[2] - a[2])
                 sxx += (b[1] - a[1]) ** 2
     k = sxy / sxx if sxx else 0.0
-    coef = json.loads((data_root.parent / "ml" / "agari_estimate.json").read_text(encoding="utf-8"))["corner_last-1"]["sec_per_symbol"]
-    w = [coef[","], coef["-"], coef["＝"], coef["join"]]
+    est_coef = json.loads((data_root.parent / "ml" / "agari_estimate.json").read_text(encoding="utf-8"))
     for r in races:
         for h in r["runners"]:
             if h["ab"] is not None:
@@ -352,6 +351,9 @@ def add_ability(races: list[dict], data_root: Path) -> None:
                 h[key] = None
         if not r["agari_order"] or not r["last_3f"]:
             continue
+        # コーナーが2つ以上なら最後から2つ目の係数、1つだけ（短距離の一部）なら最後のコーナーの係数（どちらも estimate_agari.py で決めた値）
+        coef = est_coef["corner_last-1" if r["agari_ncorners"] >= 2 else "corner_last"]["sec_per_symbol"]
+        w = [coef[","], coef["-"], coef["＝"], coef["join"]]
         gaps = gap_counts(r["agari_order"])
         fin = [h for h in r["runners"] if h["finish"] is not None and h.get("time_sec") and h.get("umaban") in gaps]
         if len(fin) < 3:
@@ -435,6 +437,7 @@ def load_races(data_root: Path) -> list[dict]:
                 "going": norm_going(r.get("going")), "prize_1st": (r.get("prize") or [None])[0],
                 "field_size": len(starters), "runners": runners,
                 "agari_order": (r["corners"][-2 if len(r["corners"]) >= 2 else -1]["order"] if r.get("corners") else None),
+                "agari_ncorners": len(r.get("corners") or []),
                 "last_3f": r.get("last_3f"),
                 **course_info(int(day["venue_code"]), SURFACE[r["surface"]], r.get("course")),
             })

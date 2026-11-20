@@ -2,7 +2,7 @@
 
     cd scripts/ml && python backtest_years.py   # → data/ml/backtest_years.json
 
-- 今の特徴量（FEATURES）と、metrics.json の木の本数を使う
+- 今の特徴量（FEATURES）。木の本数は年ごとに、その前年を検証にして決める（2026-11-21 から。前は metrics.json の本数を全部の年に使っていた）
 - 2023年は、それより前の学習データ（2022年は過去走の蓄積用）がないので対象外
 - 指標：AUC・logloss、上位3頭の3着内率（人気上位3頭と比べる）、1位の馬の勝率・3着内率
 """
@@ -19,7 +19,7 @@ from sklearn.metrics import log_loss, roc_auc_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from features import build_dataset  # noqa: E402
-from train import DATA, OUT, PARAMS, TRAIN_FROM, matrix, race_top3_hit  # noqa: E402
+from train import DATA, OUT, PARAMS, TRAIN_FROM, best_rounds, matrix, race_top3_hit, split_rows  # noqa: E402
 
 
 def top1(rows, score):
@@ -38,11 +38,12 @@ def top1(rows, score):
 def main() -> None:
     rows, _ = build_dataset(DATA)
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
-    rounds = json.loads((OUT / "metrics.json").read_text())["best_iteration"]
-    result = {"rounds": rounds, "per_year": {}}
+    result = {"rounds": {}, "per_year": {}}
     for year in ["2024", "2025", "2026"]:
-        tr = [r for r in rows if r["date"][:4] < year]
-        te = [r for r in rows if r["date"][:4] == year]
+        # 木の本数は、評価する年の前年を検証にして決める（評価する年を本数の決定に使わない。train.py の split_rows・best_rounds と同じ）
+        fit, val, tr, te = split_rows(rows, year)
+        rounds = best_rounds(fit, val, [r["label"] for r in fit], [r["label"] for r in val])
+        result["rounds"][year] = rounds
         b = lgb.train(PARAMS, lgb.Dataset(matrix(tr), label=[r["label"] for r in tr]), num_boost_round=rounds)
         p = b.predict(matrix(te))
         y = [r["label"] for r in te]
