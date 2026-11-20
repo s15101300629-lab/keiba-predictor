@@ -27,7 +27,7 @@ from features import FEATURES, build_dataset  # noqa: E402
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data" / "jra-seiseki"
 OUT = REPO / "data" / "ml"
-TRAIN_FROM = "2023-01-01"  # 2022年は履歴の蓄積期間として使い、学習行には入れない
+TRAIN_FROM = "2020-01-01"  # 2019年は過去走の蓄積期間として使い、学習行には入れない（range_comparison.json の D）
 STORE_DAYS = 550  # この日数以内に走った馬だけ store に入れる
 
 PARAMS = {
