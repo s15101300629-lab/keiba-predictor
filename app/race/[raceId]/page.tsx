@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BET_BUDGET, buildCandidates, hitFocusedPlan, returnFocusedPlan, type BetHorse, type BetType, type Plan } from "@/app/lib/bets";
 import { useParams } from "next/navigation";
@@ -817,7 +816,6 @@ export default function RaceDetailPage() {
   };
 
   return <main className="race-detail-shell">
-    <Link href="/" className="back-link">← レース一覧</Link>
     {loading && cacheChecked && !data && <div className="state-panel loading-panel">
       <span className="loading-spinner" aria-hidden="true" /><span>初回データを取得しています…</span>
     </div>}

@@ -119,9 +119,7 @@ export default function Home() {
 
   return (
     <main className="shell">
-      <header className="topbar">
-        <div className="brand"><span className="brand-mark">K</span><div><strong>KEIBA PREDICTOR</strong><small>{month ? `${Number(month)}月の重賞・メインレース` : "開催情報を取得中"}</small></div></div>
-      </header>
+      <p className="month-caption">{month ? `${Number(month)}月の重賞・メインレース` : "開催情報を取得中"}</p>
 
       {loading && (
         <div className="state-panel loading-panel">
