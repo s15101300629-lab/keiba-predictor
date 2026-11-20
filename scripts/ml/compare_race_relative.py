@@ -30,6 +30,8 @@ def race_relative(X, race_id, cols):
     """各列について、出走馬平均との差と、順位（大きい順）÷頭数. 欠損は平均・順位の計算から外す."""
     _, inv = np.unique(race_id, return_inverse=True)
     n_r = np.bincount(inv)
+    srt = np.argsort(inv, kind="stable")
+    groups = np.split(srt, np.flatnonzero(np.diff(inv[srt])) + 1)
     diff, rank = [], []
     for j in cols:
         v = X[:, j]
@@ -38,12 +40,12 @@ def race_relative(X, race_id, cols):
         c = np.bincount(inv[ok], minlength=len(n_r))
         mean = np.where(c > 0, s / np.maximum(c, 1), np.nan)
         diff.append(np.where(ok, v - mean[inv], np.nan))
-        # 順位：同じレース内で値の大きい順（lexsort で race → 値の降順）
-        order = np.lexsort((-np.where(ok, v, -np.inf), inv))
-        start = np.r_[0, np.flatnonzero(inv[order][1:] != inv[order][:-1]) + 1]
-        pos = np.arange(len(v)) - np.repeat(start, np.diff(np.r_[start, len(v)]))
-        r = np.empty(len(v))
-        r[order] = pos + 1
+        # 順位：同じレース内で自分より大きい値の数 + 1（同じ値は同じ順位。行の並び＝着順が漏れないように）
+        r = np.full(len(v), np.nan)
+        for idx in groups:
+            idx = idx[ok[idx]]
+            vals = v[idx]
+            r[idx] = 1 + (vals[None, :] > vals[:, None]).sum(1)
         rank.append(np.where(ok, r / n_r[inv], np.nan))
     return np.column_stack(diff + rank)
 
