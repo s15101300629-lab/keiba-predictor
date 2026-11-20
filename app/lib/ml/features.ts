@@ -6,9 +6,10 @@ export type Store = {
   // [date, venue, surface, distance, going(-1=不明), field, finish(-1=中止), timeDiff(-1=不明),
   //  pace(0=スロー 1=ミドル 2=ハイ -1=不明), posFirst(最初のコーナーの位置, -1=不明), posLast,
   //  prize(1着賞金・万円), weight(斤量), jockey(names の番号), trainer(names の番号), tidx(タイム指数),
-  //  victim(成績表の〔制裁〕で被害馬=1)]
+  //  victim(成績表の〔制裁〕で被害馬=1), ab(能力指数), agDev, agRank, earlyGap, fade(推定上がりの指標。scripts/ml/features.py の add_ability)]
   horses: Record<string, [string, number, number, number | null, number, number, number, number, number, number, number,
-    number | null, number | null, number, number, number | null, number?][]>;
+    number | null, number | null, number, number, number | null, number?,
+    (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?][]>;
   names?: string[]; // 騎手・調教師名の一覧
   // [date, venue, surface, distance, top3]
   jockeys: Record<string, [string, number, number, number | null, number][]>;
@@ -50,6 +51,10 @@ export const FORM_RUNS = 5;
 export const NIGE_CAND_RATE = 0.4; // 近5走で最初のコーナー1番手が4割以上 → 逃げ候補
 export const FRONT_RATIO = 1 / 3; // 最初のコーナーで前3分の1 → 先行
 export const TIME_DIFF_SCALE = 2;
+export const AB_RUNS = 5; // 能力指数・推定上がりは、今回と同じ芝ダの過去走（指数がある走）の新しい順に最大5走
+export const AB_DECAY = 0.8; // 直近加重平均の重み 0.8^k
+const AGARI_KEYS = ["ag_dev", "ag_rank", "early_gap", "fade"] as const;
+const AGARI_LOWER_BETTER = new Set(["ag_rank", "early_gap", "fade"]);
 const SEX: Record<string, number> = { "牡": 0, "牝": 1, "セ": 2 };
 
 export function normJockey(name: string | null | undefined): string {
@@ -98,6 +103,7 @@ function horseFeatures(store: Store, race: RaceInput, horse: string, extra?: Sto
       finish: r[6] < 0 ? null : r[6], timeDiff: r[7] < 0 ? null : r[7],
       pace: r[8] < 0 ? null : r[8], posFirst: r[9] > 0 ? r[9] : null, posLast: r[10] > 0 ? r[10] : null,
       prize: r[11] ?? null, weight: r[12] ?? null, tidx: r[15] ?? null, victim: r[16] ?? 0,
+      ab: r[17] ?? null, ag_dev: r[18] ?? null, ag_rank: r[19] ?? null, early_gap: r[20] ?? null, fade: r[21] ?? null,
     }));
   const f: Features = { n_prior: runs.length };
   if (runs.length) {
@@ -156,6 +162,16 @@ function horseFeatures(store: Store, race: RaceInput, horse: string, extra?: Sto
   f.tidx_mean5 = tx.length ? txSum / tx.length : NaN;
   f.tidx_best5 = tx.length ? Math.max(...tx) : NaN;
   f.tidx_last1 = runs.length && runs[runs.length - 1].tidx !== null ? runs[runs.length - 1].tidx! : NaN;
+
+  // 能力指数・推定上がり（今回と同じ芝ダで指数がある走、新しい順に最大5走）
+  const prev = runs.filter((r) => r.surface === s && r.ab !== null).slice(-AB_RUNS).reverse();
+  for (const [k, v] of Object.entries(summarizeAbility(prev.map((r) => r.ab!)))) f["ab_" + k] = v;
+  const ag = prev.filter((r) => r.ag_dev !== null);
+  for (const key of AGARI_KEYS) {
+    const vals = ag.map((r) => r[key]!);
+    f[key + "_wmean"] = summarizeAbility(vals).wmean;
+    f[key + "_best"] = vals.length ? (AGARI_LOWER_BETTER.has(key) ? Math.min(...vals) : Math.max(...vals)) : NaN;
+  }
 
   // 脚質・位置取り（近5走のうち通過順位がある走）
   const pos = runs.slice(-FORM_RUNS).filter((r) => r.posFirst && r.posLast && r.field);
@@ -235,6 +251,52 @@ export function wakuCourse(store: Store, race: RaceInput, waku: number | null): 
   return { n, diff: n && totalN ? t / n - totalT / totalN : NaN };
 }
 
+/** 新しい順の値の列 → 直近加重平均・最高・前走・傾き（古い→新しい、3走以上）・ばらつき（標準偏差、3走以上）・走数. */
+export function summarizeAbility(vals: number[]): Record<"wmean" | "best" | "last" | "trend" | "std" | "n", number> {
+  const n = vals.length;
+  if (!n) return { wmean: NaN, best: NaN, last: NaN, trend: NaN, std: NaN, n: 0 };
+  let ws = 0;
+  let wv = 0;
+  for (let i = 0; i < n; i++) { const w = AB_DECAY ** i; ws += w; wv += w * vals[i]; }
+  const out = { wmean: wv / ws, best: Math.max(...vals), last: vals[0], trend: NaN, std: NaN, n };
+  if (n >= 3) {
+    const xs = vals.map((_, i) => n - 1 - i);
+    let mx = 0;
+    let my = 0;
+    for (let i = 0; i < n; i++) { mx += xs[i]; my += vals[i]; }
+    mx /= n;
+    my /= n;
+    let sxy = 0;
+    let sxx = 0;
+    let syy = 0;
+    for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (vals[i] - my); sxx += (xs[i] - mx) ** 2; syy += (vals[i] - my) ** 2; }
+    out.trend = sxy / sxx;
+    out.std = Math.sqrt(syy / (n - 1));
+  }
+  return out;
+}
+
+/** 出走馬の中での 順位÷頭数・偏差（平均・母標準偏差で標準化）・平均との差・最高との差（・出走馬のばらつき）. */
+function addRelative(rows: Features[], key: string, withFstd: boolean): void {
+  const vals = rows.map((r) => r[key]).filter((x) => !Number.isNaN(x));
+  let sum = 0;
+  for (const x of vals) sum += x;
+  const m = vals.length ? sum / vals.length : NaN;
+  let sq = 0;
+  for (const x of vals) sq += (x - m) ** 2;
+  const sd = vals.length > 1 ? Math.sqrt(sq / vals.length) : NaN;
+  const top = vals.length ? Math.max(...vals) : NaN;
+  for (const r of rows) {
+    const v = r[key];
+    const ok = !Number.isNaN(v);
+    r[key + "_rank"] = ok ? (1 + vals.filter((x) => x > v).length) / rows.length : NaN;
+    r[key + "_z"] = ok && sd > 0 ? (v - m) / sd : NaN;
+    r[key + "_dmean"] = ok ? v - m : NaN;
+    r[key + "_dmax"] = ok ? v - top : NaN;
+    if (withFstd) r[key + "_fstd"] = sd;
+  }
+}
+
 export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInput): Features {
   const nz = (v: number | null) => (v === null || v === 0 ? NaN : v); // Python の `x or NAN` と同じ
   const f: Features = {
@@ -302,6 +364,10 @@ export function addFieldFeatures(rows: Features[]): void {
   let formSum = 0;
   for (const x of forms) formSum += x;
   for (const r of rows) r.field_form_mean = forms.length ? formSum / forms.length : NaN;
+  // 能力指数・推定上がりの、出走馬の中での比較
+  addRelative(rows, "ab_wmean", true);
+  addRelative(rows, "ab_best", false);
+  addRelative(rows, "ag_dev_wmean", true);
   // 調教評価の、出走馬の平均との差と、自分より評価が高い馬の数÷頭数
   const ranks = rows.map((r) => r.train_rank).filter((x) => !Number.isNaN(x));
   let rankSum = 0;

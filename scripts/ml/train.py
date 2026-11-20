@@ -113,7 +113,8 @@ def build_store(hist, last_date: str) -> dict:
                              -1 if r["time_diff"] is None else r["time_diff"],
                              -1 if r["pace"] is None else r["pace"],
                              r["pos_first"] or -1, r["pos_last"] or -1,
-                             r["prize"], r["weight"], idx(r["jockey"]), idx(r["trainer"]), r["tidx"], r["victim"]] for r in runs]
+                             r["prize"], r["weight"], idx(r["jockey"]), idx(r["trainer"]), r["tidx"], r["victim"],
+                             r["ab"], r["ag_dev"], r["ag_rank"], r["early_gap"], r["fade"]] for r in runs]
     year_start = last_date[:4] + "-01-01"
     prev_year_start = str(int(last_date[:4]) - 1) + "-01-01"
     jockeys = {}
@@ -139,7 +140,8 @@ def build_store(hist, last_date: str) -> dict:
     return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys,
             "trainers": trainers, "names": names,
             "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast",
-                          "prize", "weight", "jockey", "trainer", "tidx", "victim"],
+                          "prize", "weight", "jockey", "trainer", "tidx", "victim",
+                          "ab", "agDev", "agRank", "earlyGap", "fade"],
             "rideFields": ["date", "venue", "surface", "distance", "top3"]}
 
 

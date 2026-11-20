@@ -56,10 +56,19 @@ FEATURES = [
     # 血統（父・母父・母母父の産駒成績、レース前年まで、50:25:12.5 の平均。compare_pedigree_model.py で4年とも改善）
     # 値は scripts/ml/pedigree_all_features.ts（アプリと同じ app/lib/pedigree.ts の pedigreeModelValues）が作る
     "ped_heavy", "ped_wet", "ped_top3", "ped_dist",
+    # 能力指数（タイム指数 − その日の馬場差 ＋ 斤量の補正）と推定上がり3F（compare_ability.py。3年とも logloss 改善）
+    *[f"ab_{s}" for s in ("wmean", "best", "last", "trend", "std", "n")],
+    *[f"ab_{k}_{s}" for k in ("wmean", "best") for s in ("rank", "z", "dmean", "dmax")], "ab_wmean_fstd",
+    *[f"{k}_{s}" for k in ("ag_dev", "ag_rank", "early_gap", "fade") for s in ("wmean", "best")],
+    *[f"ag_dev_wmean_{s}" for s in ("rank", "z", "dmean", "dmax", "fstd")],
 ]
 PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
 
+AB_RUNS = 5  # 能力指数・推定上がりは、今回と同じ芝ダの過去走（指数がある走）の新しい順に最大5走
+AB_DECAY = 0.8  # 直近加重平均の重み 0.8^k
+AGARI_KEYS = ("ag_dev", "ag_rank", "early_gap", "fade")
+AGARI_LOWER_BETTER = ("ag_rank", "early_gap", "fade")
 FIELD_COMPARE_KEYS = ("tidx_mean5", "tidx_best5", "prize_ratio_mean5")
 NIGE_CAND_RATE = 0.4  # 近5走で最初のコーナー1番手が4割以上 → 逃げ候補
 FRONT_RATIO = 1 / 3  # 最初のコーナーで前3分の1 → 先行
@@ -175,6 +184,158 @@ def load_pedigree_features(data_root: Path) -> dict[tuple[str, int], dict]:
     return out
 
 
+def median(xs: list[float]) -> float:
+    xs = sorted(xs)
+    n = len(xs)
+    return NAN if n == 0 else xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
+def class_band(prize) -> int:
+    """1着賞金（円）の区分."""
+    if not prize:
+        return -1
+    p = prize / 10000
+    for i, cut in enumerate((600, 800, 1100, 1600, 2500, 5000)):
+        if p < cut:
+            return i
+    return 6
+
+
+def gap_counts(order: str) -> dict[int, list[int]]:
+    """通過順の文字列 → 馬番: 先頭からの区切りの数 [",", "-", "＝", 記号なし]. （ ）の中は横並びで差 0."""
+    out: dict[int, list[int]] = {}
+    cnt = [0, 0, 0, 0]
+    depth = 0
+    num = ""
+    prev = None
+    for ch in order.replace(" ", "") + "#":
+        if ch.isdigit():
+            num += ch
+            continue
+        if num:
+            if prev == "horse" and depth == 0:
+                cnt[3] += 1
+            out[int(num)] = list(cnt)
+            num = ""
+            prev = "horse"
+        if ch == "(":
+            if prev == "horse" and depth == 0:
+                cnt[3] += 1
+            depth += 1
+            prev = "open"
+        elif ch == ")":
+            depth -= 1
+            prev = "horse"
+        elif ch in (",", "-", "＝"):
+            if depth == 0:
+                cnt[(",", "-", "＝").index(ch)] += 1
+            prev = "sep"
+    return out
+
+
+def add_ability(races: list[dict], data_root: Path) -> None:
+    """各出走馬に 能力指数 ab と推定上がりの指標を付ける（compare_ability.py の ab2・run_agari と同じ定義）.
+
+    能力指数 = タイム指数 − その日の馬場差 − 斤量の係数 ×（斤量 − 55）
+    - その日の馬場差：同じ日・同じ競馬場・芝ダのレースで「勝ち馬のタイム指数 − そのクラス（芝ダ×1着賞金の区分）の勝ち馬の中央値」の中央値 × n/(n+2)
+    - 斤量の係数：同じ馬・同じ芝ダで続けて走ったレースの差分の回帰（原点を通る）
+    推定上がり（その馬の上がり3F）= 走破タイム − 先頭がゴール前600m を通った時刻（勝ちタイム − レースの上がり3F）− そのときの先頭との差
+    - 先頭との差：最後から2つ目のコーナーの隊列の記号の数 × 秒（data/ml/agari_estimate.json。本物の上がりに合わせて決めた係数）
+    - ag_dev：レース内の推定上がりの平均 − 自分（大きいほど速い）、ag_rank：推定上がりの順位÷完走頭数、early_gap：600m 地点での先頭との差、
+      fade：自分の上がり − レースの上がり
+    どれも、そのレースが終わった後に分かる値。過去走としてだけ使う（そのレース自身の特徴量には使わない）."""
+    winner = {}
+    for r in races:
+        w = [h["tidx"] for h in r["runners"] if h["finish"] == 1 and h.get("tidx") is not None]
+        if w:
+            winner[r["race_id"]] = w[0]
+    by_class: dict[tuple, list[float]] = defaultdict(list)
+    for r in races:
+        if r["race_id"] in winner:
+            by_class[(r["surface"], class_band(r["prize_1st"]))].append(winner[r["race_id"]])
+    class_med = {k: median(v) for k, v in by_class.items()}
+    day: dict[tuple, list[float]] = defaultdict(list)
+    for r in races:
+        if r["race_id"] in winner:
+            day[(r["date"], r["venue"], r["surface"])].append(winner[r["race_id"]] - class_med[(r["surface"], class_band(r["prize_1st"]))])
+    variant = {k: median(v) * len(v) / (len(v) + 2) for k, v in day.items()}
+    seq: dict[tuple, list[tuple]] = defaultdict(list)
+    for r in races:
+        v = variant.get((r["date"], r["venue"], r["surface"]), 0.0)
+        for h in r["runners"]:
+            h["ab"] = None if h.get("tidx") is None else h["tidx"] - v
+            if h["ab"] is not None:
+                seq[(h["horse"], r["surface"])].append((r["date"], h.get("weight"), h["ab"]))
+    sxy = sxx = 0.0
+    for xs in seq.values():
+        xs.sort(key=lambda x: x[0])
+        for a, b in zip(xs, xs[1:]):
+            if a[1] and b[1] and b[1] != a[1] and abs(b[2] - a[2]) < 3:
+                sxy += (b[1] - a[1]) * (b[2] - a[2])
+                sxx += (b[1] - a[1]) ** 2
+    k = sxy / sxx if sxx else 0.0
+    coef = json.loads((data_root.parent / "ml" / "agari_estimate.json").read_text(encoding="utf-8"))["corner_last-1"]["sec_per_symbol"]
+    w = [coef[","], coef["-"], coef["＝"], coef["join"]]
+    for r in races:
+        for h in r["runners"]:
+            if h["ab"] is not None:
+                h["ab"] = round(h["ab"] - k * ((h.get("weight") or 55.0) - 55.0), 4)
+            for key in AGARI_KEYS:
+                h[key] = None
+        if not r["agari_order"] or not r["last_3f"]:
+            continue
+        gaps = gap_counts(r["agari_order"])
+        fin = [h for h in r["runners"] if h["finish"] is not None and h.get("time_sec") and h.get("umaban") in gaps]
+        if len(fin) < 3:
+            continue
+        lead600 = min(h["time_sec"] for h in fin) - r["last_3f"]
+        est = {}
+        for h in fin:
+            g = sum(a * b for a, b in zip(w, gaps[h["umaban"]])) + coef["intercept"]
+            est[id(h)] = (h["time_sec"] - lead600 - g, g)
+        m = sum(a for a, _ in est.values()) / len(est)
+        srt = sorted(a for a, _ in est.values())
+        for h in fin:
+            a, g = est[id(h)]
+            h["ag_dev"] = round(m - a, 4)
+            h["ag_rank"] = round((1 + srt.index(a)) / len(est), 4)
+            h["early_gap"] = round(g, 4)
+            h["fade"] = round(a - r["last_3f"], 4)
+
+
+def summarize_ability(vals: list[float]) -> dict:
+    """新しい順の値の列 → 直近加重平均・最高・前走・傾き（古い→新しい、3走以上）・ばらつき（標準偏差、3走以上）・走数."""
+    n = len(vals)
+    if n == 0:
+        return {"wmean": NAN, "best": NAN, "last": NAN, "trend": NAN, "std": NAN, "n": 0}
+    w = [AB_DECAY ** i for i in range(n)]
+    out = {"wmean": sum(a * b for a, b in zip(w, vals)) / sum(w), "best": max(vals), "last": vals[0], "n": n,
+           "trend": NAN, "std": NAN}
+    if n >= 3:
+        xs = list(range(n))[::-1]
+        mx, my = sum(xs) / n, sum(vals) / n
+        out["trend"] = sum((x - mx) * (y - my) for x, y in zip(xs, vals)) / sum((x - mx) ** 2 for x in xs)
+        out["std"] = math.sqrt(sum((y - my) ** 2 for y in vals) / (n - 1))
+    return out
+
+
+def add_relative(rows: list[dict], key: str, with_fstd: bool) -> None:
+    """出走馬の中での 順位÷頭数・偏差（平均・母標準偏差で標準化）・平均との差・最高との差（・出走馬のばらつき）."""
+    vals = [r[key] for r in rows if not math.isnan(r[key])]
+    m = sum(vals) / len(vals) if vals else NAN
+    sd = math.sqrt(sum((v - m) ** 2 for v in vals) / len(vals)) if len(vals) > 1 else NAN
+    top = max(vals) if vals else NAN
+    for r in rows:
+        v = r[key]
+        ok = not math.isnan(v)
+        r[f"{key}_rank"] = (1 + sum(1 for x in vals if x > v)) / len(rows) if ok else NAN
+        r[f"{key}_z"] = (v - m) / sd if ok and sd > 0 else NAN
+        r[f"{key}_dmean"] = v - m if ok else NAN
+        r[f"{key}_dmax"] = v - top if ok else NAN
+        if with_fstd:
+            r[f"{key}_fstd"] = sd
+
+
 def load_races(data_root: Path) -> list[dict]:
     """平地レースを日付・race_id 順に。各出走馬に time_diff（勝ち馬との差, 秒）と調教評価を付ける."""
     ranks = load_training_ranks(data_root)
@@ -205,6 +366,8 @@ def load_races(data_root: Path) -> list[dict]:
                 "surface": SURFACE[r["surface"]], "distance": r.get("distance"),
                 "going": norm_going(r.get("going")), "prize_1st": (r.get("prize") or [None])[0],
                 "field_size": len(starters), "runners": runners,
+                "agari_order": (r["corners"][-2 if len(r["corners"]) >= 2 else -1]["order"] if r.get("corners") else None),
+                "last_3f": r.get("last_3f"),
             })
     races.sort(key=lambda x: (x["date"], x["race_id"]))
     # ペース判定: 芝ダ×距離帯ごとに pace_index を3等分（0=スロー 1=ミドル 2=ハイ）。結果(着順)は使わない
@@ -234,6 +397,7 @@ def load_races(data_root: Path) -> list[dict]:
         for h in r["runners"]:
             t = h.get("time_sec") if h["finish"] is not None else None
             h["tidx"] = None if std is None or not t or not r["distance"] else round((std - t) / r["distance"] * 1000, 4)
+    add_ability(races, data_root)
     for r in races:
         c = cuts.get(pace_group(r["surface"], r["distance"]))
         r["pace"] = None if r["pace_index"] is None or c is None else (0 if r["pace_index"] < c[0] else 2 if r["pace_index"] > c[1] else 1)
@@ -262,6 +426,7 @@ class History:
                 "prize": None if race["prize_1st"] is None else race["prize_1st"] / 10000,
                 "weight": h.get("weight"), "jockey": norm_jockey(h.get("jockey")), "tidx": h.get("tidx"),
                 "trainer": norm_jockey(h.get("trainer")), "victim": h.get("victim", 0),
+                "ab": h.get("ab"), **{k: h.get(k) for k in AGARI_KEYS},
             }
             top3 = 1 if h["finish"] is not None and h["finish"] <= 3 else 0
             tr = norm_jockey(h.get("trainer"))  # 表記ゆれ吸収は騎手と同じ
@@ -336,6 +501,16 @@ def horse_features(runs: list[dict], race: dict) -> dict:
     f["tidx_mean5"] = sum(tx) / len(tx) if tx else NAN
     f["tidx_best5"] = max(tx) if tx else NAN
     f["tidx_last1"] = runs[-1]["tidx"] if runs and runs[-1]["tidx"] is not None else NAN
+
+    # 能力指数・推定上がり（今回と同じ芝ダで指数がある走、新しい順に最大5走）
+    prev = [r for r in runs if r["surface"] == s and r["ab"] is not None][-AB_RUNS:][::-1]
+    for k, v in summarize_ability([r["ab"] for r in prev]).items():
+        f[f"ab_{k}"] = v
+    ag = [r for r in prev if r["ag_dev"] is not None]
+    for key in AGARI_KEYS:
+        vals = [r[key] for r in ag]
+        f[f"{key}_wmean"] = summarize_ability(vals)["wmean"]
+        f[f"{key}_best"] = (min if key in AGARI_LOWER_BETTER else max)(vals) if vals else NAN
 
     # 脚質・位置取り（近5走のうち通過順位がある走）
     pos = [r for r in runs[-FORM_RUNS:] if r["pos_first"] and r["pos_last"] and r["field"]]
@@ -439,6 +614,10 @@ def add_field_features(rows: list[dict]) -> None:
     forms = [r["form_raw"] for r in rows if not math.isnan(r["form_raw"])]
     for r in rows:
         r["field_form_mean"] = sum(forms) / len(forms) if forms else NAN
+    # 能力指数・推定上がりの、出走馬の中での比較
+    add_relative(rows, "ab_wmean", True)
+    add_relative(rows, "ab_best", False)
+    add_relative(rows, "ag_dev_wmean", True)
     # 調教評価の、出走馬の平均との差と、自分より評価が高い馬の数÷頭数
     ranks = [r["train_rank"] for r in rows if not math.isnan(r["train_rank"])]
     mr = sum(ranks) / len(ranks) if ranks else NAN
