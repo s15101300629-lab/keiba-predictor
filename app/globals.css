@@ -450,3 +450,8 @@ footer span { letter-spacing:0; }
 .bet-group.off { opacity: .45; }
 .bet-names small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; white-space: normal; }
 .bet-warn { color: #f0b860; font-weight: 700; }
+.bet-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.bet-summary div { padding: 6px 8px; border-radius: 9px; background: var(--panel-2); }
+.bet-summary small { display: block; color: var(--muted); font-size: 10px; }
+.bet-summary b { color: var(--accent); font-size: 16px; font-variant-numeric: tabular-nums; }
+.bet-type { margin-right: 4px; padding: 1px 5px; border-radius: 5px; background: var(--panel); color: var(--muted); font-size: 10px; font-style: normal; white-space: nowrap; }

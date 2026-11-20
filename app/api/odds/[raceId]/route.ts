@@ -15,6 +15,8 @@ export type OddsResponse = {
   win: Record<string, Odds>; place: Record<string, Odds>; umaren: Record<string, Odds>;
   wide: Record<string, Odds>; trio: Record<string, Odds>; trifecta: Record<string, Odds>;
   errors: string[];
+  // netkeiba の status。"yoso" は発売前の予想オッズ（netkeiba の予想で、実際のオッズではない）
+  status: string | null;
 };
 
 const num = (v: unknown) => {
@@ -57,7 +59,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ rac
   if (!/^\d{12}$/.test(raceId)) return NextResponse.json({ ok: false, error: "invalid race id" }, { status: 400 });
   const result: OddsResponse = {
     ok: false, raceId, fetchedAt: new Date().toISOString(), officialTime: null,
-    win: {}, place: {}, umaren: {}, wide: {}, trio: {}, trifecta: {}, errors: [],
+    win: {}, place: {}, umaren: {}, wide: {}, trio: {}, trifecta: {}, errors: [], status: null,
   };
   await Promise.all(Object.entries(TYPES).map(async ([name, type]) => {
     try {
@@ -65,6 +67,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ rac
       const odds = json.data?.odds ?? {};
       result.officialTime ??= json.data?.official_datetime ?? null;
       if (type === 1) {
+        result.status = json.status ?? null;
         result.win = parseTable(odds["1"]);
         result.place = parseTable(odds["2"]);
       } else {
