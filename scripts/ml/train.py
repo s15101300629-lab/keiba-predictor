@@ -28,7 +28,9 @@ REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data" / "jra-seiseki"
 OUT = REPO / "data" / "ml"
 TRAIN_FROM = "2020-01-01"  # 2019年は過去走の蓄積期間として使い、学習行には入れない（range_comparison.json の D）
-STORE_DAYS = 550  # この日数以内に走った馬だけ store に入れる
+STORE_DAYS = 550  # この日数以内に走った馬は全部の過去走を store に入れる
+STORE_DAYS_LONG = 1100  # 最後の走がそれより前でもこの日数以内なら、近20走だけ入れる（長く休んだ馬が、アプリで初出走扱いにならないように）
+STORE_LONG_RUNS = 20
 
 # 2026-11-21：Optuna で調整（tune_params.py。検証の年 2023〜2025年、data/ml/param_tuning.json）
 PARAMS = {
@@ -99,6 +101,7 @@ def export_model(booster: lgb.Booster) -> dict:
 
 def build_store(hist, last_date: str) -> dict:
     cutoff = (date.fromisoformat(last_date) - timedelta(days=STORE_DAYS)).isoformat()
+    cutoff_long = (date.fromisoformat(last_date) - timedelta(days=STORE_DAYS_LONG)).isoformat()
     horses = {}
     names: list[str] = []  # 騎手・調教師名の一覧（各走には番号だけ入れる）
     name_index: dict[str, int] = {}
@@ -110,7 +113,9 @@ def build_store(hist, last_date: str) -> dict:
         return name_index[name]
 
     for name, runs in hist.horses.items():
-        if runs and runs[-1]["date"] >= cutoff:
+        if runs and runs[-1]["date"] >= cutoff_long:
+            if runs[-1]["date"] < cutoff:
+                runs = runs[-STORE_LONG_RUNS:]
             horses[name] = [[r["date"], r["venue"], r["surface"], r["distance"],
                              -1 if r["going"] is None else r["going"], r["field"],
                              -1 if r["finish"] is None else r["finish"],
@@ -234,8 +239,12 @@ def main() -> None:
     (OUT / "metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
     # parity: 最新日のレースから数レース分、特徴量と予測値を保存
+    # 最終日の3レースに加え、直近60日から無作為に30レース（第三者レビューの提案。いろいろな条件の馬で確かめる）
     last_races = sorted({r["race_id"] for r in rows if r["date"] == store["lastDate"]})[:3]
-    sample = [r for r in rows if r["race_id"] in last_races]
+    since = (date.fromisoformat(store["lastDate"]) - timedelta(days=60)).isoformat()
+    recent = sorted({r["race_id"] for r in rows if since <= r["date"] < store["lastDate"]})
+    last_races += [recent[i] for i in np.random.default_rng(0).choice(len(recent), size=min(30, len(recent)), replace=False)]
+    sample = [r for r in rows if r["race_id"] in set(last_races)]
     sample_pred = final.predict(matrix(sample))
     parity = [{"race_id": r["race_id"], "date": r["date"], "horse": r["horse"], "turn": r["turn"], "sband": r["sband"], "jockey": r["jockey"], "trainer": r["trainer"],
                "features": {f: (None if isinstance(r[f], float) and math.isnan(r[f]) else r[f]) for f in FEATURES},

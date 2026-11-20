@@ -60,7 +60,7 @@ export function courseInfo(venue: number, surface: number, direction: string | n
   { turn: number | null; sband: number | null; cStraight: number | null; cElev: number | null; cLap: number | null } {
   const turn = direction === "右" ? 0 : direction === "左" ? 1 : direction === "直線" ? 2 : null;
   const layout = surface === 1 ? 0 : direction === "直線" ? 2 : outer ? 1 : 0;
-  const c = COURSE[`${venue}-${surface}-${layout}`];
+  const c = COURSE[`${venue}-${surface}-${layout}`] ?? COURSE[`${venue}-${surface}-0`]; // 表にない組み合わせは内回り
   return c ? { turn, sband: straightBand(c[0]), cStraight: c[0], cElev: c[1], cLap: c[2] }
     : { turn, sband: null, cStraight: null, cElev: null, cLap: null };
 }
@@ -366,7 +366,7 @@ function indexFeatures(runs: IndexRun[], race: RaceInput): Features {
   if (pos.length >= 3) {
     const m = meanOf(pos);
     let sq = 0;
-    for (const x of pos) sq += (x - m) ** 2;
+    for (const x of pos) sq += (x - m) * (x - m);
     f.pos_std = Math.sqrt(sq / pos.length);
   } else f.pos_std = NaN;
   return f;
@@ -418,7 +418,8 @@ function storeByRace(store: Store): Map<number, OppRun[]> {
 }
 
 const orderOf = (finish: number | null) => (finish !== null ? finish : 99); // 中止・不明は最後
-const meanOfNullable = (xs: (number | null)[]) => meanOf(xs.filter((x): x is number => x !== null));
+// 足す順番で最後の桁が変わらないよう、小さい順に並べてから足す（features.py の _mean と同じ）
+const meanOfNullable = (xs: (number | null)[]) => meanOf(xs.filter((x): x is number => x !== null).sort((a, b) => a - b));
 
 /**
  * 前走レベル（前走の相手のそのときの調子・タイム指数、相手の後続成績、先着した／された相手の調子）と、
@@ -458,8 +459,8 @@ export function addOpponentFeatures(store: Store, race: RaceInput, rows: Feature
     }
     let n = 0;
     let ahead = 0;
-    let adj = 0;
-    let margin = 0;
+    const adjs: number[] = [];
+    const margins: number[] = [];
     for (const past of runs) {
       for (const o of byRace.get(past.raceId!) ?? []) {
         if (o.horse === h || !today.has(o.horse)) continue;
@@ -468,10 +469,15 @@ export function addOpponentFeatures(store: Store, race: RaceInput, rows: Feature
         const won = orderOf(past.finish) < orderOf(o.finish) ? 1 : 0;
         ahead += won;
         const expected = past.formAt === null || o.formAt === null ? 0.5 : 1 / (1 + Math.exp(-FORM_SCALE * (past.formAt - o.formAt)));
-        adj += won - expected;
-        if (past.timeDiff !== null && o.timeDiff !== null) margin += Math.max(-2, Math.min(2, o.timeDiff - past.timeDiff));
+        adjs.push(won - expected);
+        if (past.timeDiff !== null && o.timeDiff !== null) margins.push(Math.max(-2, Math.min(2, o.timeDiff - past.timeDiff)));
       }
     }
+    // 足す順番で最後の桁が変わらないよう、小さい順に並べてから足す（features.py と同じ）
+    let adj = 0;
+    for (const x of adjs.sort((a, b) => a - b)) adj += x;
+    let margin = 0;
+    for (const x of margins.sort((a, b) => a - b)) margin += x;
     f.h2h_n = n;
     f.h2h_ahead = n ? ahead / n : NaN;
     f.h2h_adj = n ? adj / n : NaN;
@@ -518,7 +524,7 @@ export function summarizeAbility(vals: number[]): Record<"wmean" | "best" | "las
     let sxy = 0;
     let sxx = 0;
     let syy = 0;
-    for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (vals[i] - my); sxx += (xs[i] - mx) ** 2; syy += (vals[i] - my) ** 2; }
+    for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (vals[i] - my); sxx += (xs[i] - mx) * (xs[i] - mx); syy += (vals[i] - my) * (vals[i] - my); }
     out.trend = sxy / sxx;
     out.std = Math.sqrt(syy / (n - 1));
   }
@@ -532,7 +538,7 @@ function addRelative(rows: Features[], key: string, withFstd: boolean): void {
   for (const x of vals) sum += x;
   const m = vals.length ? sum / vals.length : NaN;
   let sq = 0;
-  for (const x of vals) sq += (x - m) ** 2;
+  for (const x of vals) sq += (x - m) * (x - m);
   const sd = vals.length > 1 ? Math.sqrt(sq / vals.length) : NaN;
   const top = vals.length ? Math.max(...vals) : NaN;
   for (const r of rows) {
@@ -658,7 +664,7 @@ export function addFormDeviation(rows: Features[]): void {
   for (const v of vals) sum += v;
   const mean = sum / vals.length;
   let sq = 0;
-  for (const v of vals) sq += (v - mean) ** 2;
+  for (const v of vals) sq += (v - mean) * (v - mean);
   const sd = Math.sqrt(sq / vals.length);
   for (const r of rows) {
     const v = r.form_raw;

@@ -264,7 +264,7 @@ def course_info(venue: int, surface: int, text: str | None) -> dict:
     turn = 0 if "右" in text else 1 if "左" in text else 2 if "直線" in text else None
     outer = 1 if "外" in text.split("・")[-1] and "外内" not in text and "内外" not in text else 0
     layout = 0 if surface == 1 else 2 if "直線" in text else outer
-    c = COURSE.get((venue, surface, layout))
+    c = COURSE.get((venue, surface, layout)) or COURSE.get((venue, surface, 0))  # 表にない組み合わせ（外回りのない競馬場の「外」など）は内回り
     return {"turn": turn, "sband": None if c is None else straight_band(c[0]),
             "c_straight": None if c is None else c[0], "c_elev": None if c is None else c[1], "c_lap": None if c is None else c[2]}
 
@@ -384,8 +384,8 @@ def summarize_ability(vals: list[float]) -> dict:
     if n >= 3:
         xs = list(range(n))[::-1]
         mx, my = sum(xs) / n, sum(vals) / n
-        out["trend"] = sum((x - mx) * (y - my) for x, y in zip(xs, vals)) / sum((x - mx) ** 2 for x in xs)
-        out["std"] = math.sqrt(sum((y - my) ** 2 for y in vals) / (n - 1))
+        out["trend"] = sum((x - mx) * (y - my) for x, y in zip(xs, vals)) / sum((x - mx) * (x - mx) for x in xs)
+        out["std"] = math.sqrt(sum((y - my) * (y - my) for y in vals) / (n - 1))
     return out
 
 
@@ -393,7 +393,7 @@ def add_relative(rows: list[dict], key: str, with_fstd: bool) -> None:
     """出走馬の中での 順位÷頭数・偏差（平均・母標準偏差で標準化）・平均との差・最高との差（・出走馬のばらつき）."""
     vals = [r[key] for r in rows if not math.isnan(r[key])]
     m = sum(vals) / len(vals) if vals else NAN
-    sd = math.sqrt(sum((v - m) ** 2 for v in vals) / len(vals)) if len(vals) > 1 else NAN
+    sd = math.sqrt(sum((v - m) * (v - m) for v in vals) / len(vals)) if len(vals) > 1 else NAN
     top = max(vals) if vals else NAN
     for r in rows:
         v = r[key]
@@ -660,7 +660,7 @@ def index_features(runs: list[dict], race: dict) -> dict:
     pos = [r["pos_first"] / r["field"] for r in past[-5:] if r["pos_first"] and r["field"]]
     if len(pos) >= 3:
         m = sum(pos) / len(pos)
-        f["pos_std"] = math.sqrt(sum((x - m) ** 2 for x in pos) / len(pos))
+        f["pos_std"] = math.sqrt(sum((x - m) * (x - m) for x in pos) / len(pos))
     else:
         f["pos_std"] = NAN
     return f
@@ -690,7 +690,8 @@ def _order(finish) -> int:
 
 
 def _mean(xs) -> float:
-    xs = [x for x in xs if x is not None and not (isinstance(x, float) and math.isnan(x))]
+    """欠損を除いた平均。足す順番で最後の桁が変わらないよう、小さい順に並べてから足す（TS の meanOfNullable と同じ）."""
+    xs = sorted(x for x in xs if x is not None and not (isinstance(x, float) and math.isnan(x)))
     return sum(xs) / len(xs) if xs else NAN
 
 
@@ -719,7 +720,8 @@ def add_opponent_features(rows: list[dict], names: list[str], race: dict, horses
             f["lv_beaten_form"] = _mean([run["form_at"] for _, run in others if _order(run["finish"]) > _order(prev["finish"])])
             f["lv_lost_form"] = _mean([run["form_at"] for _, run in others if _order(run["finish"]) < _order(prev["finish"])])
         n = ahead = 0
-        adj = margin = 0.0
+        adjs: list[float] = []
+        margins: list[float] = []
         for past in runs:
             for o, run in by_race.get(past["race_id"], []):
                 if o == h or o not in today:
@@ -731,9 +733,12 @@ def add_opponent_features(rows: list[dict], names: list[str], race: dict, horses
                 ahead += won
                 fh, fo = past["form_at"], run["form_at"]
                 expected = 0.5 if fh is None or fo is None else 1 / (1 + math.exp(-FORM_SCALE * (fh - fo)))
-                adj += won - expected
+                adjs.append(won - expected)
                 if past["time_diff"] is not None and run["time_diff"] is not None:
-                    margin += max(-2.0, min(2.0, run["time_diff"] - past["time_diff"]))
+                    margins.append(max(-2.0, min(2.0, run["time_diff"] - past["time_diff"])))
+        # 足す順番で最後の桁が変わらないよう、小さい順に並べてから足す（TS と同じ）
+        adj = sum(sorted(adjs), 0.0)
+        margin = sum(sorted(margins), 0.0)
         f["h2h_n"] = n
         f["h2h_ahead"] = ahead / n if n else NAN
         f["h2h_adj"] = adj / n if n else NAN
@@ -871,7 +876,7 @@ def add_form_deviation(rows: list[dict]) -> None:
             r["form_dev"] = NAN if math.isnan(r["form_raw"]) else 50.0
         return
     mean = sum(vals) / len(vals)
-    sd = math.sqrt(sum((v - mean) ** 2 for v in vals) / len(vals))
+    sd = math.sqrt(sum((v - mean) * (v - mean) for v in vals) / len(vals))
     for r in rows:
         v = r["form_raw"]
         r["form_dev"] = NAN if math.isnan(v) else (50.0 if sd == 0 else 50 + 10 * (v - mean) / sd)
