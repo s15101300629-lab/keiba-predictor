@@ -1,0 +1,63 @@
+name: 答え合わせ（当日の結果と AI 予想）
+
+# 毎日 17:31 JST に、JRA のレース結果ページ（accessS）とオッズのページ（accessO）からその日の結果を取り、
+# AI 予想（今の data/ml/model.json）と突き合わせて data/ml/day_check/日付.json を main に保存する。開催のない日は何もしない。
+# 画面の「答え合わせ」（app/results）がこれを読む。成績表 PDF での再学習とは別（学習には使わない）
+on:
+  schedule:
+    - cron: "31 8 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "日付（YYYY-MM-DD。空なら今日）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jra-seiseki
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/ml/requirements.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: pip install -r scripts/ml/requirements.txt requests
+
+      - run: npm install --no-audit --no-fund
+
+      - name: Build pedigree features
+        run: npx tsx scripts/ml/pedigree_all_features.ts
+
+      # 調教評価（netkeiba の調教ページ）も当日分を取って入れる
+      - name: Check results
+        working-directory: scripts/ml
+        run: python check_jra_day.py ${{ github.event.inputs.date }} --training
+
+      - name: Commit
+        run: |
+          git add data/ml/day_check
+          if git diff --cached --quiet; then
+            echo "no changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "day check: $(ls -t data/ml/day_check | head -1)"
+          git pull --rebase --autostash
+          git push

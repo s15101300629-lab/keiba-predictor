@@ -2,6 +2,9 @@
 
     cd scripts/ml && python check_jra_day.py 2026-11-21            # → data/ml/day_check/2026-11-21.json
     cd scripts/ml && python check_jra_day.py 2026-11-21 --training # 調教評価（netkeiba の調教ページ）も取って入れる（Actions で使う）
+    日付を省くと今日（JST）。その日の結果ページがなければ何もしない
+画面の「答え合わせ」（app/results）がこの JSON を読む。毎日 17:30 JST ごろに day-check.yml が動かして main に保存する
+- 確定の単勝・複勝オッズはオッズのページ（accessO、pw151ou…）から取る
 
 成績表 PDF は翌日に出るので、それまでの「当日の答え合わせ」用。学習には使わない（学習は翌日の PDF で ml-train.yml が行う）。
 - 結果ページは POST（cname）で開く。開催中の競馬場の「全レース」ページ（pw01ses01…）を読む
@@ -118,7 +121,8 @@ def parse_race(block: str, date: str, venue_code: str) -> dict | None:
             if h["finish"] == 1:
                 h["owner"], h["breeder"] = winner[1].strip(), winner[2].strip()
     starters = [h for h in results if h["status"] not in ("取消", "除外")]
-    return {"race_no": race_no, "race_name": name, "distance": dist, "course": course, "surface": surface, "going": going,
+    oc = re.search(r"'(pw151ou[^']+)'", block)
+    return {"odds_cname": oc[1] if oc else None, "race_no": race_no, "race_name": name, "distance": dist, "course": course, "surface": surface, "going": going,
             "weather": baba.get("天候"), "prize": [int(prize1[1].replace(",", "")) * 10000] if prize1 else [],
             "race_id": f"{date[:4]}{venue_code}{kai:02d}{day:02d}{race_no:02d}", "date": date, "kai": kai, "day": day,
             "starters": len(starters), "results": results, "laps": laps, "corners": corners, "notes": [],
@@ -138,6 +142,21 @@ def fetch_day(date: str) -> list[dict]:
         blocks = full.split('<table class="basic narrow-xy striped">')[1:]
         races = [parse_race(b, date, cname[1]) for b in blocks]
         races = [r for r in races if r]
+        for r in races:
+            if not r["odds_cname"] or r["surface"] not in ("芝", "ダート"):
+                continue
+            page = post("/JRADB/accessO.html", r["odds_cname"])
+            odds = {}
+            for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", page, re.S):
+                n = re.search(r'<td class="num">(\d+)</td>', tr)
+                t = re.search(r'<td class="odds_tan">(?:<strong[^>]*>)?([\d.]+)<', tr)
+                fm = re.search(r'class="min">([\d.]+)<.*?class="max">([\d.]+)<', tr, re.S)
+                if n and t:
+                    odds[int(n[1])] = (float(t[1]), (float(fm[1]), float(fm[2])) if fm else None)
+            for h in r["results"]:
+                if h["umaban"] in odds:
+                    h["odds"], h["place_odds"] = odds[h["umaban"]]
+            time.sleep(1)
         code, (slug, vname) = cname[1], VENUES[cname[1]]
         days.append({"file": f"jra-html-{date}-{slug}", "year": int(date[:4]), "kai": races[0]["kai"], "venue": slug,
                      "venue_code": code, "venue_name": vname, "day": races[0]["day"], "date": date, "races": races})
@@ -184,10 +203,13 @@ def predict(model: dict, X: np.ndarray) -> np.ndarray:
 
 
 def main() -> None:
-    date = sys.argv[1]
+    from datetime import datetime, timedelta, timezone
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    date = args[0] if args else datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
     days = fetch_day(date)
     if not days:
-        raise SystemExit(f"{date}: 結果ページなし")
+        print(f"{date}: 結果ページなし", file=sys.stderr)
+        return
     flat = [r for d in days for r in d["races"] if r["surface"] in ("芝", "ダート")]
     print(f"{date}: {len(flat)} races", file=sys.stderr, flush=True)
     tmp = Path(tempfile.mkdtemp())
@@ -258,8 +280,9 @@ def main() -> None:
             "race_id": race_id, "venue": next(d["venue_name"] for d in days if race_id[4:6] == d["venue_code"]), "race_no": info["race_no"],
             "race_name": info["race_name"], "course": f'{info["surface"]}{info["distance"]}', "going": info["going"],
             "ai_top3": [{"umaban": rows[i]["umaban"], "horse": rows[i]["horse"], "p": round(float(p[i]), 3),
-                         "finish": res[rows[i]["umaban"]]["finish"], "pop": res[rows[i]["umaban"]]["popularity"]} for i in order[:3]],
-            "result_top3": [{"umaban": h["umaban"], "horse": h["horse"], "pop": h["popularity"],
+                         "finish": res[rows[i]["umaban"]]["finish"], "pop": res[rows[i]["umaban"]]["popularity"],
+                         "odds": res[rows[i]["umaban"]].get("odds")} for i in order[:3]],
+            "result_top3": [{"umaban": h["umaban"], "horse": h["horse"], "pop": h["popularity"], "odds": h.get("odds"),
                              "ai_rank": 1 + [rows[i]["umaban"] for i in order].index(h["umaban"])}
                             for h in sorted((h for h in info["results"] if h["finish"] and h["finish"] <= 3), key=lambda h: h["finish"])],
             "ai_hits": len(top & set(ai3)), "pop_hits": len(top & set(pop3)),

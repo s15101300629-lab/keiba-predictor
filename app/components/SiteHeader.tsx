@@ -12,7 +12,9 @@ export default function SiteHeader() {
         <img src="/logo-mark.png" alt="" className="brand-logo" width={40} height={40} />
         <span><strong>RACEHORSE INSIGHT</strong><small>ANALYTICS</small></span>
       </Link>
-      {onRace && <Link href="/" className="header-back">← レース一覧</Link>}
+      {onRace || pathname.startsWith("/results")
+        ? <Link href="/" className="header-back">← レース一覧</Link>
+        : <Link href="/results" className="header-back">答え合わせ</Link>}
     </div>
   </header>;
 }
