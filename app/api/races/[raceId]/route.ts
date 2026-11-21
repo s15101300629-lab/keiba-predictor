@@ -957,6 +957,9 @@ export async function GET(
           extraRuns: overseas,
           pedigree: pedigreeModelValues(pedigreeRecords[index] ?? [], surfaceName, raceConditions.distanceMeters),
           trainRank: TRAIN_RANK[(entry?.horseNumber != null ? training.get(entry.horseNumber)?.rank : null) ?? ""] ?? null,
+          // 馬主・生産者（netkeiba の馬のプロフィール。名前は features.ts の normOwner で成績表の書き方にそろえる）
+          owner: (results[index] as { profile?: { label: string; value: string }[] | null }).profile?.find((p) => p.label === "馬主")?.value ?? null,
+          breeder: (results[index] as { profile?: { label: string; value: string }[] | null }).profile?.find((p) => p.label.startsWith("生産者"))?.value ?? null,
         });
         return { jockeyKey, trainerKey, features, bodyWeightAssumed: assumedBodyWeight !== null, overseasRuns: overseas.length };
       });

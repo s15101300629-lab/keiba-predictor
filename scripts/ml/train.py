@@ -148,7 +148,13 @@ def build_store(hist, last_date: str) -> dict:
         course_waku[f"{venue}-{surface}-{distance}"] = [[d, w, n, t] for (d, w), (n, t) in sorted(agg.items())]
     # 枠の有利不利（courseWaku）は比較で不採用だったので store には入れない（サイズ削減）
     del course_waku
-    return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys,
+    # 馬主・生産牧場：名前 → [[日付, 出走数, 3着以内], ...]（前年の1月から。アプリは今年・前年の分をレースの日より前で数える）
+    people = {"owner": {}, "breeder": {}}
+    for (kind, name), days in hist.people_days.items():
+        sel = [[d, n, t] for d, (n, t) in sorted(days.items()) if d >= prev_year_start]
+        if sel:
+            people[kind][name] = sel
+    return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys, "people": people,
             "trainers": trainers, "names": names,
             "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast",
                           "prize", "weight", "jockey", "trainer", "tidx", "victim",
@@ -247,7 +253,8 @@ def main() -> None:
     sample = [r for r in rows if r["race_id"] in set(last_races)]
     sample_pred = final.predict(matrix(sample))
     sample_contrib = final.predict(matrix(sample), pred_contrib=True)  # SHAP（LightGBM の TreeSHAP。最後の列は全体の平均）
-    parity = [{"race_id": r["race_id"], "date": r["date"], "horse": r["horse"], "turn": r["turn"], "sband": r["sband"], "jockey": r["jockey"], "trainer": r["trainer"],
+    parity = [{"race_id": r["race_id"], "date": r["date"], "horse": r["horse"], "turn": r["turn"], "sband": r["sband"],
+               "owner": r["owner"], "breeder": r["breeder"], "jockey": r["jockey"], "trainer": r["trainer"],
                "features": {f: (None if isinstance(r[f], float) and math.isnan(r[f]) else r[f]) for f in FEATURES},
                "pred": float(p), "shap": [round(float(x), 10) for x in c]} for r, p, c in zip(sample, sample_pred, sample_contrib)]
     (OUT / "parity.json").write_text(json.dumps(parity, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

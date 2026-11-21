@@ -5,7 +5,7 @@ import { addFieldFeatures, addFormDeviation, addOpponentFeatures, normJockey, ru
 import { predictProbability, type Model } from "../../app/lib/ml/model.ts";
 import { treeShap } from "../../app/lib/ml/shap.ts";
 
-type Row = { race_id: string; date: string; horse: string; shap?: number[]; turn?: number | null; sband?: number | null; jockey: string | null; trainer: string | null; features: Record<string, number | null>; pred: number };
+type Row = { race_id: string; date: string; horse: string; shap?: number[]; owner?: string | null; breeder?: string | null; turn?: number | null; sband?: number | null; jockey: string | null; trainer: string | null; features: Record<string, number | null>; pred: number };
 const root = new URL("../../data/ml/", import.meta.url);
 const store = JSON.parse(readFileSync(new URL("store.json", root), "utf8")) as Store;
 const model = JSON.parse(readFileSync(new URL("model.json", root), "utf8")) as Model;
@@ -31,7 +31,7 @@ for (const raceRows of byRace.values()) {
     waku: num(row.features.waku), umaban: num(row.features.umaban), weight: num(row.features.weight),
     age: num(row.features.age), sex: row.features.sex === null ? null : ["牡", "牝", "セ"][row.features.sex],
     bodyWeight: num(row.features.body_weight), bodyWeightDiff: num(row.features.body_weight_diff),
-    trainRank: num(row.features.train_rank),
+    trainRank: num(row.features.train_rank), owner: row.owner ?? null, breeder: row.breeder ?? null,
     pedigree: { ped_heavy: num(row.features.ped_heavy), ped_wet: num(row.features.ped_wet), ped_top3: num(row.features.ped_top3), ped_dist: num(row.features.ped_dist) },
   }));
   addFormDeviation(computed);

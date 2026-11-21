@@ -20,6 +20,8 @@ export type Store = {
   trainers?: Record<string, [string, number, number][]>;
   // "競馬場-芝ダ-距離" -> [[date, 枠番, 出走数, 3着以内数]]
   courseWaku?: Record<string, [string, number, number, number][]>;
+  // 馬主・生産牧場（normOwner でそろえた名前）→ [[日付, 出走数, 3着以内数], ...]（最終日の前年の1月から）
+  people?: Record<"owner" | "breeder", Record<string, [string, number, number][]>>;
 };
 
 export type RaceInput = {
@@ -77,7 +79,17 @@ export type RunnerInput = {
   trainRank?: number | null; // 調教評価 A=4〜D=1（netkeiba の調教ページ）。なければ null
   // 血統（app/lib/pedigree.ts の pedigreeModelValues。父・母父・母母父の産駒成績の 50:25:12.5 平均）
   pedigree?: Partial<Record<"ped_heavy" | "ped_wet" | "ped_top3" | "ped_dist", number | null>> | null;
+  owner?: string | null; // 馬主（netkeiba のプロフィール）
+  breeder?: string | null; // 生産者（netkeiba のプロフィール「生産者(産地)」。産地の括弧は normOwner で取る）
 };
+
+/** 馬主・生産牧場の名前をそろえる。scripts/ml/features.py の norm_owner と同じ. */
+export function normOwner(name: string | null | undefined): string {
+  if (!name) return "";
+  let s = name.normalize("NFKC").replace(/\((?!株|有)[^()]*\)$/, "");
+  for (const x of [" ", "\u3000", "氏", "(株)", "(有)", "株式会社", "有限会社"]) s = s.split(x).join("");
+  return s;
+}
 
 export const TRAIN_RANK: Record<string, number> = { A: 4, B: 3, C: 2, D: 1 };
 
@@ -233,7 +245,7 @@ function horseFeatures(store: Store, race: RaceInput, horse: string, extra?: Sto
   return f;
 }
 
-export type JockeyStats = { n: number; top3: number; venueN: number; venueTop3: number; courseN: number; courseTop3: number };
+export type JockeyStats = { n: number; top3: number; venueN: number; venueTop3: number; courseN: number; courseTop3: number; pyN: number; pyTop3: number };
 
 /** 今年（レースと同じ暦年）のレース日より前の騎乗を集計. */
 export function jockeyStats(store: Store, race: RaceInput, jockeyKey: string | null): JockeyStats {
@@ -247,7 +259,9 @@ export function jockeyStats(store: Store, race: RaceInput, jockeyKey: string | n
   const [n, top3] = count(() => true);
   const [venueN, venueTop3] = count((r) => r[1] === race.venue);
   const [courseN, courseTop3] = count((r) => r[1] === race.venue && r[2] === race.surface && r[3] === race.distance);
-  return { n, top3, venueN, venueTop3, courseN, courseTop3 };
+  const prevYear = String(Number(year) - 1);
+  const prev = (jockeyKey ? store.jockeys[jockeyKey] ?? [] : []).filter((r) => r[0] < race.date && r[0].slice(0, 4) === prevYear);
+  return { n, top3, venueN, venueTop3, courseN, courseTop3, pyN: prev.length, pyTop3: prev.reduce((a, r) => a + r[4], 0) };
 }
 
 /** netkeiba の厩舎表記（例: 栗東中村）を成績表の調教師名に対応付ける。同じ苗字の調教師がいるので、まずその馬の前走の調教師と照合する. */
@@ -269,16 +283,19 @@ export function resolveTrainer(name: string | null | undefined, store: Store, ra
   return candidates[0].key;
 }
 
-export type TrainerStats = { n: number; top3: number; venueN: number; venueTop3: number };
+export type TrainerStats = { n: number; top3: number; venueN: number; venueTop3: number; pyN: number; pyTop3: number };
 
 /** 今年（レースと同じ暦年）のレース日より前の出走を集計. */
 export function trainerStats(store: Store, race: RaceInput, trainerKey: string | null | undefined): TrainerStats {
   const year = race.date.slice(0, 4);
   const entries = (trainerKey ? store.trainers?.[trainerKey] ?? [] : []).filter((r) => r[0] < race.date && r[0].slice(0, 4) === year);
   const venue = entries.filter((r) => r[1] === race.venue);
+  const prevYear = String(Number(year) - 1);
+  const prev = (trainerKey ? store.trainers?.[trainerKey] ?? [] : []).filter((r) => r[0] < race.date && r[0].slice(0, 4) === prevYear);
   return {
     n: entries.length, top3: entries.reduce((a, r) => a + r[2], 0),
     venueN: venue.length, venueTop3: venue.reduce((a, r) => a + r[2], 0),
+    pyN: prev.length, pyTop3: prev.reduce((a, r) => a + r[2], 0),
   };
 }
 
@@ -573,7 +590,22 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
   const tr = trainerStats(store, race, runner.trainerKey);
   Object.assign(f, {
     trainer_n: tr.n, trainer_top3: rate(tr.top3, tr.n), trainer_venue_n: tr.venueN, trainer_venue_top3: rate(tr.venueTop3, tr.venueN),
+    trainer_n_py: tr.pyN, trainer_top3_py: rate(tr.pyTop3, tr.pyN),
   });
+  // 馬主・生産牧場の今年・前年（store の people。最終日より後の分はない）
+  const y = race.date.slice(0, 4);
+  for (const kind of ["owner", "breeder"] as const) {
+    const name = normOwner(runner[kind]);
+    for (const [suf, yr] of [["y", y], ["py", String(Number(y) - 1)]] as const) {
+      let n = 0;
+      let t = 0;
+      for (const d of (name ? store.people?.[kind]?.[name] : undefined) ?? []) {
+        if (d[0] < race.date && d[0].slice(0, 4) === yr) { n += d[1]; t += d[2]; }
+      }
+      f[`${kind}_n_${suf}`] = n;
+      f[`${kind}_top3_${suf}`] = rate(t, n);
+    }
+  }
   const wc = wakuCourse(store, race, runner.waku);
   f.waku_course_n = wc.n;
   f.waku_course_diff = wc.diff;
@@ -587,6 +619,7 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
     jockey_n: j.n, jockey_top3: rate(j.top3, j.n),
     jockey_venue_n: j.venueN, jockey_venue_top3: rate(j.venueTop3, j.venueN),
     jockey_course_n: j.courseN, jockey_course_top3: rate(j.courseTop3, j.courseN),
+    jockey_n_py: j.pyN, jockey_top3_py: rate(j.pyTop3, j.pyN),
   });
   return f;
 }

@@ -81,6 +81,11 @@ FORM_SCALE = 6.0  # 直接対決：調子（0〜1）の差 → 先着の見込�
 SIMILAR_STRAIGHT = 50.0
 FEATURES_BEFORE_ABILITY = list(FEATURES)  # 能力指数を入れる前の77項目（compare_*.py の比較の基準）
 FEATURES = FEATURES + ABILITY_FEATURES
+FEATURES_BEFORE_PEOPLE = list(FEATURES)  # 馬主などを入れる前の160項目
+# 馬主・生産牧場の今年・前年の成績、騎手・調教師の前年の成績（compare_owner.py。3年とも改善、2026-11-21）
+PEOPLE_FEATURES = ["owner_n_y", "owner_top3_y", "owner_n_py", "owner_top3_py", "breeder_n_y", "breeder_top3_y", "breeder_n_py", "breeder_top3_py",
+                   "jockey_n_py", "jockey_top3_py", "trainer_n_py", "trainer_top3_py"]
+FEATURES = FEATURES + PEOPLE_FEATURES
 PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
 
@@ -145,6 +150,18 @@ def norm_going(value: str | None) -> int | None:
         if value.endswith(key):
             return GOING[key]
     return None
+
+
+def norm_owner(name: str | None) -> str:
+    """馬主・生産牧場の名前をそろえる（成績表と netkeiba の書き方の違い：空白、氏、(株)(有)、株式会社、生産者の「(安平町)」など）.
+    app/lib/ml/features.ts の normOwner と同じ."""
+    if not name:
+        return ""
+    s = unicodedata.normalize("NFKC", name)
+    s = re.sub(r"\((?!株|有)[^()]*\)$", "", s)  # 末尾の (産地) を取る
+    for x in (" ", "\u3000", "氏", "(株)", "(有)", "株式会社", "有限会社"):
+        s = s.replace(x, "")
+    return s
 
 
 def norm_jockey(name: str | None) -> str:
@@ -486,7 +503,9 @@ class History:
         # (競馬場, 芝ダ, 距離) -> 枠番 -> [出走数, 3着以内数]
         self.course_waku: dict[tuple, dict[int, list[int]]] = defaultdict(lambda: defaultdict(lambda: [0, 0]))
         self.course_waku_events: dict[tuple, list[tuple]] = defaultdict(list)  # アプリ用 store の元
-        self.by_race: dict[str, list[tuple[str, dict]]] = defaultdict(list)  # race_id → [(馬名, その走)]（前走レベル・直接対決用）
+        self.by_race: dict[str, list[tuple[str, dict]]] = defaultdict(list)
+        self.people: dict[tuple, list[int]] = defaultdict(lambda: [0, 0])  # ("owner"|"breeder", 名前, 年) → [出走数, 3着以内]
+        self.people_days: dict[tuple, dict[str, list[int]]] = defaultdict(dict)  # ("owner"|"breeder", 名前) → 日付 → [出走数, 3着以内]（アプリ用 store の元）  # race_id → [(馬名, その走)]（前走レベル・直接対決用）
 
     def add_race(self, race: dict) -> None:
         for h in race["runners"]:
@@ -515,6 +534,15 @@ class History:
                 self.course_waku_events[key].append((race["date"], h["waku"], top3))
             self.horses[h["horse"]].append(run)
             self.by_race[race["race_id"]].append((h["horse"], run))
+            for kind in ("owner", "breeder"):
+                name = norm_owner(h.get(kind))
+                if name:
+                    c = self.people[(kind, name, race["date"][:4])]
+                    c[0] += 1
+                    c[1] += top3
+                    dd = self.people_days[(kind, name)].setdefault(race["date"], [0, 0])
+                    dd[0] += 1
+                    dd[1] += top3
             jk = norm_jockey(h.get("jockey"))
             if jk:
                 self.jockeys[jk].append({
@@ -778,6 +806,9 @@ def jockey_features(rides: list[dict], race: dict) -> dict:
     agg("jockey", lambda r: True)
     agg("jockey_venue", lambda r: r["venue"] == race["venue"])
     agg("jockey_course", lambda r: r["venue"] == race["venue"] and r["surface"] == race["surface"] and r["distance"] == race["distance"])
+    prev = [r for r in rides if r["date"][:4] == str(int(year) - 1)]
+    f["jockey_n_py"] = len(prev)
+    f["jockey_top3_py"] = rate(sum(r["top3"] for r in prev), len(prev))
     return f
 
 
@@ -786,10 +817,24 @@ def trainer_features(entries: list[dict], race: dict) -> dict:
     year = race["date"][:4]
     this_year = [r for r in entries if r["date"][:4] == year]
     venue = [r for r in this_year if r["venue"] == race["venue"]]
+    prev = [r for r in entries if r["date"][:4] == str(int(year) - 1)]
     return {
         "trainer_n": len(this_year), "trainer_top3": rate(sum(r["top3"] for r in this_year), len(this_year)),
         "trainer_venue_n": len(venue), "trainer_venue_top3": rate(sum(r["top3"] for r in venue), len(venue)),
+        "trainer_n_py": len(prev), "trainer_top3_py": rate(sum(r["top3"] for r in prev), len(prev)),
     }
+
+
+def people_features(people: dict, owner: str | None, breeder: str | None, race: dict) -> dict:
+    """馬主・生産牧場の今年・前年の出走数と3着内率（レースの日より前の分）."""
+    f: dict[str, float] = {}
+    y = race["date"][:4]
+    for kind, name in (("owner", norm_owner(owner)), ("breeder", norm_owner(breeder))):
+        for suf, yr in (("y", y), ("py", str(int(y) - 1))):
+            n, t = people.get((kind, name, yr), (0, 0)) if name else (0, 0)
+            f[f"{kind}_n_{suf}"] = n
+            f[f"{kind}_top3_{suf}"] = rate(t, n)
+    return f
 
 
 def waku_features(course: dict, waku) -> dict:
@@ -803,7 +848,7 @@ def waku_features(course: dict, waku) -> dict:
 
 
 def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rides: list[dict],
-                    trainer_entries: list[dict] = (), course: dict | None = None) -> dict:
+                    trainer_entries: list[dict] = (), course: dict | None = None, people: dict | None = None) -> dict:
     f = {
         "surface": race["surface"], "distance": race["distance"],
         "going": NAN if race["going"] is None else race["going"],
@@ -823,6 +868,7 @@ def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rid
     f.update(horse_features(horse_runs, race))
     f.update(jockey_features(jockey_rides, race))
     f.update(trainer_features(list(trainer_entries), race))
+    f.update(people_features(people or {}, runner.get("owner"), runner.get("breeder"), race))
     f.update(waku_features(course or {}, runner.get("waku")))
     w, jk = runner.get("weight"), norm_jockey(runner.get("jockey"))
     last = horse_runs[-1] if horse_runs else None
@@ -899,10 +945,12 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
             for h in race["runners"]:
                 course = hist.course_waku.get((race["venue"], race["surface"], race["distance"]))
                 f = runner_features(race, h, hist.horses.get(h["horse"], []), hist.jockeys.get(norm_jockey(h.get("jockey")), []),
-                                    hist.trainers.get(norm_jockey(h.get("trainer")), []), {k: list(v) for k, v in course.items()} if course else None)
+                                    hist.trainers.get(norm_jockey(h.get("trainer")), []), {k: list(v) for k, v in course.items()} if course else None,
+                                    hist.people)
                 f.update({
                     "race_id": race["race_id"], "date": race["date"], "horse": h["horse"], "turn": race["turn"], "sband": race["sband"],
-                    "finish": h["finish"], "popularity": h.get("popularity"), "jockey": h.get("jockey"), "trainer": h.get("trainer"), "label": 1 if h["finish"] is not None and h["finish"] <= 3 else 0,
+                    "finish": h["finish"], "popularity": h.get("popularity"), "jockey": h.get("jockey"), "trainer": h.get("trainer"),
+                    "owner": h.get("owner"), "breeder": h.get("breeder"), "label": 1 if h["finish"] is not None and h["finish"] <= 3 else 0,
                 })
                 race_rows.append(f)
             add_form_deviation(race_rows)
