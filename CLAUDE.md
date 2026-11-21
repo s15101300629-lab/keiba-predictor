@@ -292,8 +292,8 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
   - 1年分（約4.6万頭）で十分安定しているので、今のまま（直前1年・前向き）
 - オッズ：`/api/odds/[raceId]`。発売前は netkeiba の status が "yoso"（予想オッズ）で、単勝しか出ない（2026-11-20 金曜のマイルCS で確認。ほかの券種は "history odds empty"）。画面に「予想オッズ」と出す。複勝は type 1 の odds["2"] から取る作り。G1 は金曜から前売りがあり、金曜夜のマイルCS で全券種の実際のオッズが取れた（status "middle"）。前売り直後は票が少なく、人気薄のオッズが大きく動く
 - 取得したオッズは端末（localStorage `keiba-race-odds-v1:<raceId>`）に保存し、タブやページを移っても消えない。「オッズを取得」は押すたびに取り直す。取得ボタンは3つのタブすべてに出す
-- 天候・馬場（2026-11-21）：JRA の馬場情報ページ（`https://www.jra.go.jp/keiba/baba/index.html`・`index2.html`・`index3.html`・`index4.html`、開催中の競馬場ごと、Shift_JIS）を優先する（`app/lib/jraBaba.ts`、10分ためる）。同じ競馬場・同じ開催日のページがあれば、その天候と芝／ダートの馬場を使い、画面に「天候・馬場：JRA（○時現在）」と出す。当日は9時ごろ、前日は正午ごろに更新される
-  - JRA に同じ日のページがないときは netkeiba の出馬表から読む。netkeiba の書き方は 2026-11 に変わった（天候はアイコンの aria-label、発表前は「予報」、馬場は `<span class="Item03|Item04">`）。天候が「予報」のときは、netkeiba の馬場も発表前とみなして使わない（想定の馬場を選べる）
+- 天候・馬場（2026-11-21）：JRA の馬場情報ページ（`https://www.jra.go.jp/keiba/baba/index.html`・`index2.html`・`index3.html`・`index4.html`、開催中の競馬場ごと、Shift_JIS）から取る（`app/lib/jraBaba.ts`、10分ためる）。同じ競馬場・同じ開催日のページがあれば、その天候と芝／ダートの馬場を使い、画面に「天候・馬場：JRA（○時現在）」と出す。当日は9時ごろ、前日は正午ごろに更新される
+  - netkeiba の天候・馬場は使わない（依頼者の指示）。JRA に同じ日のページがないときは未発表（想定の馬場を選べる）
   - この環境（クラウドのセッション）から netkeiba を取ると、User-Agent が "node" だと 400 になることがある（2026-11-21）。ブラウザのふりをして回避することはしない
 - 画面の確認：dev サーバーを立てて Playwright（iPhone 13 の画面サイズ）でスクショを撮る。ログインの cookie `app_auth` は、`AUTH_SECRET` を鍵にした `APP_PASSWORD` の HMAC-SHA256（base64url）。www.netkeiba.com はこの環境から接続できないため、レース一覧は仮のデータを差し込む。レース詳細は API の結果を保存して差し込むと速い
 
