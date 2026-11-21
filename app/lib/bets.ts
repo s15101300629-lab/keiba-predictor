@@ -59,13 +59,15 @@ function sampleOrders(hs: BetHorse[]): Int16Array {
 const pairs = <T,>(xs: T[]) => xs.flatMap((a, i) => xs.slice(i + 1).map((b) => [a, b]));
 const triples = <T,>(xs: T[]) => xs.flatMap((a, i) => xs.slice(i + 1).flatMap((b, j) => xs.slice(i + j + 2).map((c) => [a, b, c])));
 
-export function buildCandidates(hs: BetHorse[], oddsOf: (type: BetType, nums: (number | null)[]) => number | null): Candidate[] {
+export function buildCandidates(hs: BetHorse[], oddsOf: (type: BetType, nums: (number | null)[]) => number | null,
+  exclude: Set<string> = new Set()): Candidate[] {
   if (hs.length < 3) return [];
   const orders = sampleOrders(hs);
   const idx = new Map(hs.map((h, i) => [h.id, i]));
   const placeK = hs.length <= 7 ? 2 : 3; // 複勝は7頭以下だと2着まで
-  const topWin = [...hs].sort((a, b) => b.win - a.win).slice(0, TOP_HORSES);
-  const topPlace = [...hs].sort((a, b) => b.place - a.place).slice(0, TOP_HORSES);
+  const pool = hs.filter((h) => !exclude.has(h.id)); // 買い目の候補にする馬（着順の試行には全馬を使う）
+  const topWin = [...pool].sort((a, b) => b.win - a.win).slice(0, TOP_HORSES);
+  const topPlace = [...pool].sort((a, b) => b.place - a.place).slice(0, TOP_HORSES);
   const defs: { type: BetType; horses: BetHorse[]; hit: (o: number[]) => boolean }[] = [
     ...topWin.map((h) => ({ type: "単勝" as const, horses: [h], hit: (o: number[]) => o[0] === idx.get(h.id) })),
     ...topPlace.map((h) => ({ type: "複勝" as const, horses: [h], hit: (o: number[]) => o.slice(0, placeK).includes(idx.get(h.id)!) })),
@@ -160,4 +162,13 @@ export function returnFocusedPlan(all: Candidate[]): Plan | null {
     if (!best || plan.expectedReturn! > best.expectedReturn!) best = plan;
   }
   return best;
+}
+
+/**
+ * おすすめ（買い目タブ。2026-11-21）：複勝・ワイドだけで、最大5点。「割高」の馬は候補から外す（cands は exclude 済みで作る）。
+ * 複勝とワイドのオッズがあれば「払戻が予算以上になる確率」、なければ「どれか当たる確率」が一番高くなるように1点ずつ足す。
+ * 期待回収率は出さない（過去の検証で100%を超える買い方がないため）.
+ */
+export function recommendedPlan(all: Candidate[]): Plan | null {
+  return hitFocusedPlan(all.filter((c) => c.type === "複勝" || c.type === "ワイド"));
 }

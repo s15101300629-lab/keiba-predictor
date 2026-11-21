@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { BET_BUDGET, buildCandidates, hitFocusedPlan, returnFocusedPlan, type BetHorse, type BetType, type Candidate, type Plan } from "@/app/lib/bets";
+import { BET_BUDGET, buildCandidates, recommendedPlan, type BetHorse, type BetType } from "@/app/lib/bets";
 import { useParams } from "next/navigation";
 import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
 
@@ -415,7 +415,7 @@ function HorseDetailCard({ horse, mark, onMarkChange, odds }: {
   horse: Horse; mark: string; onMarkChange: (horseId: string, mark: string) => void; odds: HorseOdds | null;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [showAllRuns, setShowAllRuns] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const entry = horse.raceEntry;
   const profile = horse.profile ?? [];
   const profileValue = (label: string) => profile.find((item) => item.label.includes(label))?.value;
@@ -437,17 +437,16 @@ function HorseDetailCard({ horse, mark, onMarkChange, odds }: {
       `${cross.name} ${cross.generations}${cross.percentage === null ? "" : `（${cross.percentage}%）`}`).join("、")],
   ] as [string, string][]).filter(([, value]) => value !== "" && value !== "-");
   const pedigreeRows = (pedigree?.ancestors ?? []).filter((ancestor) => ancestor.generation <= 3);
-  const runs = showAllRuns ? histories : histories.slice(0, 5);
+  const recent = histories.slice(0, 5);
   const v = (run: { values: Record<string, string> }, key: string) => run.values[key] ?? "";
   return <details className="horse-detail" onToggle={(event) => setExpanded(event.currentTarget.open)}>
-    <summary className="horse-summary">
+    <summary className="horse-summary entry-row">
       <HorseNumberBadge entry={entry} />
       <span className="horse-main">
         <b>{horse.name}</b>
-        <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
-        {sire && <small className="horse-blood">{sire}{damsire && <> <i>×</i> 母父{damsire}</>}</small>}
+        <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) : null].filter(Boolean).join("・")}</small>
       </span>
-      {odds?.win && <span className="horse-odds"><b>{odds.win.toFixed(1)}</b><small>{odds.popularity}人気</small></span>}
+      <span className="ai-odds">{odds?.win ? <><b className={odds.popularity != null && odds.popularity <= 3 ? "fav" : ""}>{odds.win.toFixed(1)}</b><small>{odds.popularity}番人気</small></> : <small>-</small>}</span>
       {/* 印の操作で開閉しないように、クリックの既定動作（summary の開閉）を止める */}
       <span className="horse-mark-slot" onClick={(event) => event.preventDefault()}>
         <select className={"horse-mark-select" + (mark ? " marked" : "")} aria-label={horse.name + "の印"} value={mark}
@@ -455,52 +454,66 @@ function HorseDetailCard({ horse, mark, onMarkChange, odds }: {
           {MARK_OPTIONS.map((option) => <option key={option || "none"} value={option}>{option || "印"}</option>)}
         </select>
       </span>
-      <span className="horse-expand">{expanded ? "－" : "＋"}</span>
     </summary>
-    {expanded && <div className="horse-body">
-      {facts.length > 0 && <dl className="fact-list">
-        {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-      </dl>}
-      {histories.length > 0 && <div className="detail-block">
-        <h4>戦績（{histories.length}走）</h4>
-        <div className="history-table-wrap">
-          <table className="history-table run-table">
-            <thead><tr><th>日付</th><th>レース</th><th>着順</th><th>人気</th><th>距離</th><th>馬場</th><th>タイム</th><th>着差</th><th>通過</th><th>上り</th><th>騎手</th><th>斤量</th><th>馬体重</th></tr></thead>
-            <tbody>{runs.map((run, index) => {
-              const finish = Number(v(run, "着順"));
-              return <tr key={index}>
-                <td>{v(run, "日付").slice(2)}</td>
-                <td className="run-race"><span>{v(run, "開催")}</span>{v(run, "レース名")}</td>
-                <td className={"run-finish" + (finish >= 1 && finish <= 3 ? " place-" + finish : "")}>{v(run, "着順")}<small>/{v(run, "頭数")}</small></td>
-                <td>{v(run, "人気")}</td><td>{v(run, "距離")}</td><td>{v(run, "馬場")}</td><td>{v(run, "タイム")}</td>
-                <td>{v(run, "着差")}</td><td>{v(run, "通過")}</td><td>{v(run, "上り")}</td><td>{v(run, "騎手")}</td>
-                <td>{v(run, "斤量")}</td><td>{v(run, "馬体重")}</td>
-              </tr>;
-            })}</tbody>
-          </table>
-        </div>
-        {histories.length > 5 && <button type="button" className="more-button" onClick={() => setShowAllRuns((s) => !s)}>
-          {showAllRuns ? "近5走だけ表示" : `全${histories.length}走を表示`}
-        </button>}
+    {expanded && <div className="horse-body entry-body">
+      {recent.length > 0 && <div className="entry-runs">
+        <h4>近5走</h4>
+        {recent.map((run, index) => {
+          const finish = Number(v(run, "着順"));
+          return <div className="entry-run" key={index}>
+            <span className="entry-run-date">{v(run, "日付").slice(2)}</span>
+            <span className="entry-run-race">{v(run, "レース名")}<small>{[v(run, "距離"), v(run, "馬場"), v(run, "騎手")].filter(Boolean).join(" ")}</small></span>
+            <span className={"entry-run-finish" + (finish >= 1 && finish <= 3 ? " place-" + finish : "")}><b>{v(run, "着順")}</b><small>/{v(run, "頭数")}着</small>
+              {v(run, "着差") && finish !== 1 && <small>{v(run, "着差")}秒差</small>}</span>
+          </div>;
+        })}
       </div>}
-      {pedigreeRows.length > 0 && <div className="detail-block">
-        <h4>血統（3代）</h4>
-        <div className="history-table-wrap">
-          <table className="pedigree-table">
-            <tbody>{pedigreeRows.filter((ancestor) => ancestor.generation === 3).map((ancestor) => {
-              const parent = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 2));
-              const grand = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 1));
-              const first = ancestor.position.endsWith("F");
-              const side = ancestor.position.startsWith("F") ? "sire-side" : "dam-side";
-              return <tr key={ancestor.position} className={side}>
-                {ancestor.position.slice(1) === "FF" && grand && <td rowSpan={4} className="ped-1"><b>{grand.name}</b></td>}
-                {first && parent && <td rowSpan={2} className="ped-2">{parent.name}</td>}
-                <td className="ped-3">{ancestor.name}{ancestor.country ? `（${ancestor.country}）` : ""}</td>
-              </tr>;
-            })}</tbody>
-          </table>
-        </div>
-      </div>}
+      <p className="entry-blood">父 <b>{sire || "-"}</b>　母 {pedigree?.dam ?? "-"}　母父 {damsire || "-"}</p>
+      <p className="entry-sub">{[entry?.bodyWeight != null ? "馬体重 " + entry.bodyWeight + "kg" : null, entry?.trainer ? "調教師 " + entry.trainer : null,
+        odds?.place ? "複勝 " + odds.place.min.toFixed(1) + (odds.place.max ? "〜" + odds.place.max.toFixed(1) : "") + "倍" : null].filter(Boolean).join("　")}</p>
+      <button type="button" className="more-button" onClick={() => setShowMore((x) => !x)}>{showMore ? "閉じる" : "もっと見る（全戦績・血統表など）"}</button>
+      {showMore && <>
+        {facts.length > 0 && <dl className="fact-list">
+          {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+        </dl>}
+        {histories.length > 0 && <div className="detail-block">
+          <h4>戦績（{histories.length}走）</h4>
+          <div className="history-table-wrap">
+            <table className="history-table run-table">
+              <thead><tr><th>日付</th><th>レース</th><th>着順</th><th>人気</th><th>距離</th><th>馬場</th><th>タイム</th><th>着差</th><th>通過</th><th>上り</th><th>騎手</th><th>斤量</th><th>馬体重</th></tr></thead>
+              <tbody>{histories.map((run, index) => {
+                const finish = Number(v(run, "着順"));
+                return <tr key={index}>
+                  <td>{v(run, "日付").slice(2)}</td>
+                  <td className="run-race"><span>{v(run, "開催")}</span>{v(run, "レース名")}</td>
+                  <td className={"run-finish" + (finish >= 1 && finish <= 3 ? " place-" + finish : "")}>{v(run, "着順")}<small>/{v(run, "頭数")}</small></td>
+                  <td>{v(run, "人気")}</td><td>{v(run, "距離")}</td><td>{v(run, "馬場")}</td><td>{v(run, "タイム")}</td>
+                  <td>{v(run, "着差")}</td><td>{v(run, "通過")}</td><td>{v(run, "上り")}</td><td>{v(run, "騎手")}</td>
+                  <td>{v(run, "斤量")}</td><td>{v(run, "馬体重")}</td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+        </div>}
+        {pedigreeRows.length > 0 && <div className="detail-block">
+          <h4>血統（3代）</h4>
+          <div className="history-table-wrap">
+            <table className="pedigree-table">
+              <tbody>{pedigreeRows.filter((ancestor) => ancestor.generation === 3).map((ancestor) => {
+                const parent = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 2));
+                const grand = pedigreeRows.find((item) => item.position === ancestor.position.slice(0, 1));
+                const first = ancestor.position.endsWith("F");
+                const side = ancestor.position.startsWith("F") ? "sire-side" : "dam-side";
+                return <tr key={ancestor.position} className={side}>
+                  {ancestor.position.slice(1) === "FF" && grand && <td rowSpan={4} className="ped-1"><b>{grand.name}</b></td>}
+                  {first && parent && <td rowSpan={2} className="ped-2">{parent.name}</td>}
+                  <td className="ped-3">{ancestor.name}{ancestor.country ? `（${ancestor.country}）` : ""}</td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+        </div>}
+      </>}
     </div>}
   </details>;
 }
@@ -625,93 +638,57 @@ function OddsBar({ odds, state, error, onLoad, compact = false }: { odds: OddsDa
   </div>;
 }
 
-function PlanCard({ title, lead, plan, horses, empty }: { title: string; lead: string; plan: Plan | null; horses: Horse[]; empty: string }) {
-  return <section className="bet-group">
-    <div className="bet-group-head"><h3>{title}</h3>
-      {plan && <span>{plan.tickets.length}点・{BET_BUDGET.toLocaleString()}円</span>}</div>
-    <p className="bet-note">{lead}</p>
-    {!plan ? <p className="bet-note">{empty}</p> : <>
-      <div className="bet-summary">
-        <div><small>どれか当たる確率</small><b>{(plan.hitProb * 100).toFixed(1)}%</b></div>
-        {plan.profitProb !== null && <div><small>払戻が予算以上</small><b>{(plan.profitProb * 100).toFixed(1)}%</b></div>}
-        {plan.expectedReturn !== null && <div><small>期待回収率</small><b>{Math.round(plan.expectedReturn * 100)}%</b></div>}
-      </div>
-      <ul className="bet-list">
-        {plan.tickets.map(({ c, stake }) => <li key={c.type + c.horses.map((h) => h.id).join("-")}>
-          <span className="bet-combo"><em className="bet-type">{c.type}</em>{c.horses.map((h, i) => <span key={h.id}>
-            {i > 0 && <i>-</i>}
-            <HorseNumberBadge entry={horses.find((x) => x.horseId === h.id)?.raceEntry ?? null} />
-          </span>)}</span>
-          <span className="bet-names">{c.horses.map((h) => h.name).join("・")}
-            <small>的中確率 {(c.prob * 100).toFixed(1)}%{c.odds ? `・配当 ${c.odds.toFixed(1)}倍・期待値 ${(c.prob * c.odds).toFixed(2)}` : ""}
-              {c.odds && stake ? `・払戻 ${Math.round(stake * c.odds).toLocaleString()}円` : ""}</small>
-          </span>
-          <strong>{stake.toLocaleString()}円</strong>
-        </li>)}
-      </ul>
-      {plan.payoutRange && plan.payoutRange[0] < BET_BUDGET && <p className="bet-note"><b className="bet-warn">1点だけの的中だと払戻が予算を下回る買い目がある（当たっても損）</b></p>}
-      {!plan.usedOdds && <p className="bet-note"><b className="bet-warn">オッズがないので払戻は分からない。複勝を細かく分けると、当たっても予算を下回ることが多い</b></p>}
-    </>}
-  </section>;
-}
-
-// 券種ごとの期待値（AIの的中確率 × 配当）の上位。上の2パターンが単勝・複勝に寄るときも、馬連・3連複などの候補を見られるように
-function TypeBest({ cands, horses, hasOdds }: { cands: Candidate[]; horses: Horse[]; hasOdds: boolean }) {
-  return <section className="bet-group">
-    <div className="bet-group-head"><h3>券種ごとの候補</h3><span>{hasOdds ? "期待値の高い順・各3点" : "的中確率の高い順・各3点"}</span></div>
-    <p className="bet-note">上の2パターンは確率の計算上、単勝・複勝に寄りやすい（的中率重視は当たりやすい複勝、回収率重視は期待値の高い1〜2点になりやすい）。ここでは券種ごとに候補を出す。期待値1.0は「AIの確率が正しければ回収率100%」の意味。</p>
-    {BET_TYPES.map((type) => {
-      const list = cands.filter((c) => c.type === type && (!hasOdds || c.odds))
-        .sort((a, b) => hasOdds ? b.prob * b.odds! - a.prob * a.odds! : b.prob - a.prob).slice(0, 3);
-      if (!list.length) return <p className="bet-note" key={type}>{type}：オッズがまだ出ていない</p>;
-      return <ul className="bet-list type-best" key={type}>
-        {list.map((c) => <li key={c.type + c.horses.map((h) => h.id).join("-")}>
-          <span className="bet-combo"><em className="bet-type">{c.type}</em>{c.horses.map((h, i) => <span key={h.id}>
-            {i > 0 && <i>-</i>}
-            <HorseNumberBadge entry={horses.find((x) => x.horseId === h.id)?.raceEntry ?? null} />
-          </span>)}</span>
-          <span className="bet-names">{c.horses.map((h) => h.name).join("・")}
-            <small>的中確率 {(c.prob * 100).toFixed(1)}%{c.odds ? `・配当 ${c.odds.toFixed(1)}倍` : ""}</small></span>
-          <strong>{c.odds ? (c.prob * c.odds).toFixed(2) : (c.prob * 100).toFixed(1) + "%"}</strong>
-        </li>)}
-      </ul>;
-    })}
-  </section>;
-}
-
-function BetsPanel({ horses, inTraining, odds, oddsBar }: { horses: Horse[]; inTraining: boolean; odds: OddsData | null; oddsBar: ReactNode }) {
-  const hs: BetHorse[] = horses.filter((h) => h.prediction && h.prediction.winProbability != null).map((h) => ({
-    id: h.horseId, num: h.raceEntry?.horseNumber ?? null, name: h.name,
-    win: h.prediction!.winProbability!, place: h.prediction!.probability,
-  }));
-  const plans = useMemo(() => {
-    const cands = buildCandidates(hs, (type, nums) => {
-      const table = odds ? odds[ODDS_FIELD[type]] as OddsMap : null;
-      return table?.[nums.join("-")]?.min ?? null;
+function BetsPanel({ horses, inTraining, odds, oddsBar, values }: {
+  horses: Horse[]; inTraining: boolean; odds: OddsData | null; oddsBar: ReactNode; values: Map<number, ValueResult> | null;
+}) {
+  // 着順の試行に使う勝率：市場（単勝オッズの逆数を合計1に）に、AI予想の目安の倍率（合わせた3着以内 ÷ 市場）を掛けたもの。
+  // 3着以内の確率は、AIと市場を合わせた確率（AI予想の目安と同じ）。AI 単独の確率は使わない（検証で回収率が大きく下がったため）
+  const plan = useMemo(() => {
+    if (!odds || !values) return null;
+    const rows = horses.filter((h) => h.raceEntry?.horseNumber != null && values.has(h.raceEntry.horseNumber) && odds.win[String(h.raceEntry.horseNumber)]?.min);
+    const inv = rows.map((h) => 1 / odds.win[String(h.raceEntry!.horseNumber!)].min);
+    const invSum = inv.reduce((x, y) => x + y, 0);
+    const hs: BetHorse[] = rows.map((h, i) => {
+      const v = values.get(h.raceEntry!.horseNumber!)!;
+      return { id: h.horseId, num: h.raceEntry!.horseNumber!, name: h.name, win: (inv[i] / invSum) * v.ratio, place: v.combined };
     });
-    return { hit: hitFocusedPlan(cands), ret: returnFocusedPlan(cands), count: cands.length, cands };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [horses, odds]);
-  if (hs.length < 3 || !plans.count) return <p className="state-panel">AIの勝率が出ていないため、買い目を組めない。</p>;
+    const exclude = new Set(rows.filter((h) => values.get(h.raceEntry!.horseNumber!)!.label === "割高").map((h) => h.horseId));
+    const cands = buildCandidates(hs, (type, nums) => {
+      const table = odds[ODDS_FIELD[type]] as OddsMap;
+      return table?.[nums.join("-")]?.min ?? null;
+    }, exclude);
+    return { plan: recommendedPlan(cands), excluded: exclude.size };
+  }, [horses, odds, values]);
 
   return <section className="bets-panel">
     {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。買い目は参考として見ること。</p>}
     {oddsBar}
-    <p className="bet-note">予算 {BET_BUDGET.toLocaleString()}円{!odds && "。オッズを取得すると、払戻を見て買い目を組み直す（回収率重視はオッズが必要）"}</p>
-    <PlanCard title="的中率重視" horses={horses} plan={plans.hit}
-      lead={plans.hit?.usedOdds ? "払戻が予算（1000円）以上になる確率が一番高くなるように、単勝・複勝・ワイド・馬連・3連複から最大5点を選んだ" : "どれか当たる確率が一番高くなるように、最大5点を選んだ（オッズを取得すると、当たって損しない組み方に変わる）"}
-      empty="買い目を組めなかった" />
-    <PlanCard title="回収率重視" horses={horses} plan={plans.ret}
-      lead="期待値（AIの的中確率 × 配当）が高い買い目から、期待回収率が一番高くなる点数（最大5点）を選んだ"
-      empty="回収率重視はオッズが必要。上の「オッズを取得」を押す" />
-    <TypeBest cands={plans.cands} horses={horses} hasOdds={!!odds} />
-    <details className="model-note">
-      <summary>買い目の決め方と注意</summary>
-      <p>AIの勝率から、着順を2万回試して（勝率を合計1にそろえ、1着の馬を除いた残りで2着・3着が決まると考える）、買い目ごとの的中確率と、組み合わせたときの「どれか当たる確率」「払戻が予算以上になる確率」「期待回収率」を数えている。候補は勝率・3着以内確率の上位6頭。</p>
-      <p>買い目の的中確率は勝率から計算しているので、「AI予測結果」の3着以内確率とは少し違う。</p>
-      <p>予算は100円単位。オッズがあるときは、どれが当たっても払戻がほぼ同じになるように配当の逆数に比例させ、ないときは的中確率に比例させる。複勝・ワイドの配当は幅の下限で計算する。</p>
-      <p>期待回収率はAIの確率が正しい前提の値。過去の検証では、AIだけが高く見ている（期待値が高く見える）馬ほど実際には当たりにくく、AIの1位の馬を買い続けた回収率は単勝 約76%・複勝 約84%で100%を下回る。回収率重視の買い目も、100%を超えるとは限らない。</p>
-    </details>
+    {!odds ? <p className="state-panel">買い目はオッズを使って組む。上の「オッズを取得」を押す。</p>
+      : !plan?.plan ? <p className="state-panel">買い目を組めなかった（オッズかAIの確率が足りない）。</p>
+        : <article className="bet-plan simple-plan">
+          <div className="bet-plan-head">
+            <h3>おすすめ（予算 {BET_BUDGET.toLocaleString()}円）</h3>
+            <span>{plan.plan.tickets.length}点</span>
+          </div>
+          <div className="simple-plan-stats">
+            <div><small>どれか当たる</small><b>{Math.round(plan.plan.hitProb * 100)}%</b></div>
+            {plan.plan.profitProb != null && <div><small>払戻が1,000円以上</small><b>{Math.round(plan.plan.profitProb * 100)}%</b></div>}
+          </div>
+          <ul className="simple-tickets">
+            {plan.plan.tickets.map((t) => {
+              const entries = t.c.horses.map((bh) => horses.find((h) => h.horseId === bh.id)?.raceEntry ?? null);
+              return <li key={t.c.type + t.c.key}>
+                <span className="ticket-type">{t.c.type}</span>
+                <span className="ticket-nums">{entries.map((e, i) => <span key={i}>{i > 0 && <i>-</i>}<HorseNumberBadge entry={e} /></span>)}</span>
+                <span className="ticket-name">{t.c.horses.map((h) => h.name).join("・")}
+                  {t.c.odds != null && <small>{t.c.odds.toFixed(1)}倍 → 当たると {Math.round(t.stake * t.c.odds).toLocaleString()}円</small>}</span>
+                <b className="ticket-stake">{t.stake.toLocaleString()}円</b>
+              </li>;
+            })}
+          </ul>
+          <p className="bet-note">複勝・ワイドだけで組んだ。AI予想で「割高」の馬{plan.excluded ? `（${plan.excluded}頭）` : ""}は外した。
+            確率はAIと市場（オッズ）を合わせたもの。<b className="bet-warn">過去の検証では、この考え方で買っても回収率は約8割で、長く続けて勝てるとは言えない。</b></p>
+        </article>}
   </section>;
 }
 
@@ -883,7 +860,7 @@ export default function RaceDetailPage() {
             mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />)}
         </section>
       </div>}
-      {activeTab === "bets" && <div role="tabpanel"><BetsPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar} /></div>}
+      {activeTab === "bets" && <div role="tabpanel"><BetsPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar} values={values} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         {data.ml?.status === "available" ? <>
           <div className="ai-conditions">
