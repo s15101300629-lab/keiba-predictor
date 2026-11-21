@@ -44,8 +44,8 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-sm rounded-xl bg-white p-8 shadow">
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">
-          競馬予想アプリ
+        <h1 className="mb-4">
+          <img src="/logo.png" alt="Racehorse Insight Analytics" className="mx-auto w-56 rounded-lg" />
         </h1>
 
         <p className="mb-6 text-sm text-gray-600">

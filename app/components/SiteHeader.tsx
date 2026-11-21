@@ -9,8 +9,8 @@ export default function SiteHeader() {
   return <header className="site-header">
     <div className="site-header-inner">
       <Link href="/" className="brand" aria-label="トップへ戻る">
-        <span className="brand-mark">K</span>
-        <span><strong>KEIBA PREDICTOR</strong><small>JRA 重賞・メインレースの AI 予想</small></span>
+        <img src="/logo-mark.png" alt="" className="brand-logo" width={40} height={40} />
+        <span><strong>RACEHORSE INSIGHT</strong><small>ANALYTICS ・ JRA の AI 予想</small></span>
       </Link>
       {onRace && <Link href="/" className="header-back">← レース一覧</Link>}
     </div>

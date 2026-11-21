@@ -4,10 +4,10 @@ import SiteFooter from "./components/SiteFooter";
 import SiteHeader from "./components/SiteHeader";
 
 export const metadata: Metadata = {
-  title: "KEIBA PREDICTOR",
+  title: "Racehorse Insight Analytics",
   description: "自分専用のJRA競馬予想・分析アプリ",
-  applicationName: "KEIBA PREDICTOR",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "KEIBA" },
+  applicationName: "Racehorse Insight Analytics",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Racehorse Insight" },
 };
 export const viewport: Viewport = {
   width: "device-width",

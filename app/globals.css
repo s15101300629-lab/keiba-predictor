@@ -460,6 +460,7 @@ footer span { letter-spacing:0; }
 .site-header { border-bottom: 1px solid var(--line); background: linear-gradient(180deg, #15110a, var(--bg)); }
 .site-header-inner { width: min(100% - 32px, 900px); margin: 0 auto; height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .site-header .brand { color: var(--text); text-decoration: none; }
+.site-header .brand-logo { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: #000; }
 .site-header .brand-mark { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(145deg, var(--accent-strong), var(--accent)); color: #1a1405; font-size: 19px; }
 .site-header .brand strong { font-size: 12px; letter-spacing: .14em; color: var(--accent-strong); }
 .site-header .brand small { margin-top: 3px; font-size: 9px; letter-spacing: .08em; }

@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  if (path === "/login" || path === "/api/login") {
+  if (path === "/login" || path === "/api/login" || /^\/(logo|logo-mark|icon|apple-icon)\.png$/.test(path)) {
     return NextResponse.next();
   }
 
