@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { BET_BUDGET, buildCandidates, recommendedPlan, type BetHorse, type BetType } from "@/app/lib/bets";
+import { rankByType, type BetHorse, type BetType } from "@/app/lib/bets";
 import { useParams } from "next/navigation";
 import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
 
@@ -638,12 +638,15 @@ function OddsBar({ odds, state, error, onLoad, compact = false }: { odds: OddsDa
   </div>;
 }
 
+const VALUE_EV = 1.0; // 期待値がこれ以上なら「妙味あり」
+const LONGSHOT_POP = 6; // この人気以下の馬を含む買い目に「穴」
+
 function BetsPanel({ horses, inTraining, odds, oddsBar, values }: {
   horses: Horse[]; inTraining: boolean; odds: OddsData | null; oddsBar: ReactNode; values: Map<number, ValueResult> | null;
 }) {
-  // 着順の試行に使う勝率：市場（単勝オッズの逆数を合計1に）に、AI予想の目安の倍率（合わせた3着以内 ÷ 市場）を掛けたもの。
-  // 3着以内の確率は、AIと市場を合わせた確率（AI予想の目安と同じ）。AI 単独の確率は使わない（検証で回収率が大きく下がったため）
-  const plan = useMemo(() => {
+  // 的中確率は AI と市場を合わせたもの（AI予想の目安と同じ valueLabels）。着順の試行の勝率は「市場の勝率 × 目安の倍率」、複勝は合わせた3着以内確率。
+  // AI 単独の確率は使わない（検証で、AI 単独の期待値で買うと回収率が約69%に下がったため）
+  const result = useMemo(() => {
     if (!odds || !values) return null;
     const rows = horses.filter((h) => h.raceEntry?.horseNumber != null && values.has(h.raceEntry.horseNumber) && odds.win[String(h.raceEntry.horseNumber)]?.min);
     const inv = rows.map((h) => 1 / odds.win[String(h.raceEntry!.horseNumber!)].min);
@@ -652,43 +655,48 @@ function BetsPanel({ horses, inTraining, odds, oddsBar, values }: {
       const v = values.get(h.raceEntry!.horseNumber!)!;
       return { id: h.horseId, num: h.raceEntry!.horseNumber!, name: h.name, win: (inv[i] / invSum) * v.ratio, place: v.combined };
     });
-    const exclude = new Set(rows.filter((h) => values.get(h.raceEntry!.horseNumber!)!.label === "割高").map((h) => h.horseId));
-    const cands = buildCandidates(hs, (type, nums) => {
-      const table = odds[ODDS_FIELD[type]] as OddsMap;
-      return table?.[nums.join("-")]?.min ?? null;
-    }, exclude);
-    return { plan: recommendedPlan(cands), excluded: exclude.size };
+    const pop = new Map([...rows].sort((x, y) => odds.win[String(x.raceEntry!.horseNumber!)].min - odds.win[String(y.raceEntry!.horseNumber!)].min)
+      .map((h, i) => [h.horseId, i + 1]));
+    const ranked = rankByType(hs, new Map(hs.map((h, i) => [h.id, inv[i] / invSum])), (type) => (odds[ODDS_FIELD[type]] as OddsMap) ?? null,
+      new Map(hs.map((h) => [h.id, h.place])));
+    return { ranked, pop };
   }, [horses, odds, values]);
 
   return <section className="bets-panel">
     {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。買い目は参考として見ること。</p>}
     {oddsBar}
-    {!odds ? <p className="state-panel">買い目はオッズを使って組む。上の「オッズを取得」を押す。</p>
-      : !plan?.plan ? <p className="state-panel">買い目を組めなかった（オッズかAIの確率が足りない）。</p>
-        : <article className="bet-plan simple-plan">
-          <div className="bet-plan-head">
-            <h3>おすすめ（予算 {BET_BUDGET.toLocaleString()}円）</h3>
-            <span>{plan.plan.tickets.length}点</span>
-          </div>
-          <div className="simple-plan-stats">
-            <div><small>どれか当たる</small><b>{Math.round(plan.plan.hitProb * 100)}%</b></div>
-            {plan.plan.profitProb != null && <div><small>払戻が1,000円以上</small><b>{Math.round(plan.plan.profitProb * 100)}%</b></div>}
-          </div>
-          <ul className="simple-tickets">
-            {plan.plan.tickets.map((t) => {
-              const entries = t.c.horses.map((bh) => horses.find((h) => h.horseId === bh.id)?.raceEntry ?? null);
-              return <li key={t.c.type + t.c.key}>
-                <span className="ticket-type">{t.c.type}</span>
-                <span className="ticket-nums">{entries.map((e, i) => <span key={i}>{i > 0 && <i>-</i>}<HorseNumberBadge entry={e} /></span>)}</span>
-                <span className="ticket-name">{t.c.horses.map((h) => h.name).join("・")}
-                  {t.c.odds != null && <small>{t.c.odds.toFixed(1)}倍 → 当たると {Math.round(t.stake * t.c.odds).toLocaleString()}円</small>}</span>
-                <b className="ticket-stake">{t.stake.toLocaleString()}円</b>
-              </li>;
-            })}
-          </ul>
-          <p className="bet-note">複勝・ワイドだけで組んだ。AI予想で「割高」の馬{plan.excluded ? `（${plan.excluded}頭）` : ""}は外した。
-            確率はAIと市場（オッズ）を合わせたもの。<b className="bet-warn">過去の検証では、この考え方で買っても回収率は約8割で、長く続けて勝てるとは言えない。</b></p>
-        </article>}
+    {!odds ? <p className="state-panel">買い目はオッズを使って出す。上の「オッズを取得」を押す。</p>
+      : !result ? <p className="state-panel">買い目を出せなかった（オッズかAIの確率が足りない）。</p>
+        : <>
+          {BET_TYPES.map((type) => {
+            const list = result.ranked[type];
+            return <article className="bet-type-card" key={type}>
+              <h3>{type}<small>期待値の高い順</small></h3>
+              {!list.length ? <p className="bet-note">この券種のオッズがまだ出ていない</p> : <ul className="simple-tickets">
+                {list.map((t) => {
+                  const entries = t.horses.map((bh) => horses.find((h) => h.horseId === bh.id)?.raceEntry ?? null);
+                  const longshot = t.horses.some((h) => (result.pop.get(h.id) ?? 0) >= LONGSHOT_POP);
+                  return <li key={t.key} className={t.ev >= VALUE_EV ? "value" : ""}>
+                    <span className="ticket-nums">{entries.map((e, i) => <span key={i}>{i > 0 && <i>-</i>}<HorseNumberBadge entry={e} /></span>)}</span>
+                    <span className="ticket-name">{t.horses.map((h) => h.name).join("・")}
+                      <small>{t.odds.toFixed(1)}倍・的中 {(t.prob * 100).toFixed(t.prob < 0.1 ? 1 : 0)}%・AI上乗せ ×{t.uplift.toFixed(2)}</small></span>
+                    <span className="ticket-ev">
+                      <span className="ticket-tags">{t.ev >= VALUE_EV && <em className="ai-value good">妙味あり</em>}{longshot && <em className="tag-ana">穴</em>}</span>
+                      <b>{t.ev.toFixed(2)}</b><small>期待値</small>
+                    </span>
+                  </li>;
+                })}
+              </ul>}
+            </article>;
+          })}
+          <details className="model-note" open>
+            <summary>見方と注意</summary>
+            <p>期待値＝的中確率 × オッズ（100円がいくらになって返ってくるかの見込み。1.0以上で「妙味あり」）。「穴」は{LONGSHOT_POP}番人気以下の馬を含む買い目。複勝・ワイドのオッズは幅の下限で計算。</p>
+            <p>的中確率＝その券種のオッズから見た確率 × AIによる上乗せ（AIの評価を合わせたときの的中率 ÷ 合わせないときの的中率）。券種ごとの売れ方の癖は除き、AIが足した分だけが期待値に出る。的中率が約0.1%未満の組は、推定がぶれるので出さない。</p>
+            <p>AIだけの確率で出すと人気薄が大量に「妙味あり」になるが、過去の検証ではその多くがAIの見込み違いだった（AIだけの期待値で単勝を買うと回収率 約69%）。</p>
+            <p><b className="bet-warn">過去の検証があるのは単勝・複勝だけ（AIの目安で「妙味あり」の馬の複勝回収率は約8割で、100%に届いていない）。馬連・ワイド・3連複は、過去の全組み合わせのオッズがないため検証できていない。</b>組み合わせの確率はハービルの式（勝率から2着・3着を順に決める）による近似。</p>
+          </details>
+        </>}
   </section>;
 }
 

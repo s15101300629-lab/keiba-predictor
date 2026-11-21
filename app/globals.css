@@ -596,3 +596,19 @@ footer span { letter-spacing:0; }
 .ticket-name { min-width: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ticket-name small { display: block; color: var(--muted); font-size: 10px; }
 .ticket-stake { font-size: 16px; color: var(--accent); }
+
+/* ===== 買い目（2026-11-21：券種ごとに期待値の上位3点） ===== */
+.bet-type-card { margin-top: 10px; padding: 10px 12px 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.bet-type-card h3 { margin: 0 0 2px; font-size: 15px; }
+.bet-type-card h3 small { margin-left: 8px; color: var(--muted); font-size: 10px; font-weight: 400; }
+.bet-type-card .simple-tickets li { grid-template-columns: auto 1fr auto; padding: 8px 0; }
+.bet-type-card .simple-tickets li:last-child { border-bottom: 0; }
+.bet-type-card .simple-tickets li.value .ticket-ev b { color: #8be3a1; }
+.ticket-ev { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; min-width: 64px; }
+.ticket-ev b { font-size: 17px; color: var(--text); font-variant-numeric: tabular-nums; }
+.ticket-ev small { color: var(--muted); font-size: 9px; }
+.ticket-tags { display: flex; gap: 3px; margin-bottom: 2px; }
+.ticket-tags em { font-style: normal; }
+.ticket-tags .ai-value { min-width: 0; padding: 1px 6px; font-size: 10px; }
+.tag-ana { padding: 1px 6px; border-radius: 999px; background: #4a2a10; border: 1px solid #c77a2a; color: #ffb36b; font-size: 10px; font-weight: 700; }
+.bet-type-card .ticket-name small { white-space: normal; }

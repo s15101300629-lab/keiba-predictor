@@ -31,12 +31,12 @@ function rng(seed: number) {
 }
 
 /** 上位3着の並びを SAMPLES 回つくる（各回 [1着, 2着, 3着] の馬の番号＝hs の添字）. */
-function sampleOrders(hs: BetHorse[]): Int16Array {
+function sampleOrders(hs: BetHorse[], samples = SAMPLES): Int16Array {
   const total = hs.reduce((s, h) => s + h.win, 0);
   const w = hs.map((h) => h.win / total);
-  const out = new Int16Array(SAMPLES * 3);
+  const out = new Int16Array(samples * 3);
   const rand = rng(12345);
-  for (let s = 0; s < SAMPLES; s++) {
+  for (let s = 0; s < samples; s++) {
     let left = 1;
     const used: number[] = [];
     for (let k = 0; k < 3; k++) {
@@ -164,11 +164,68 @@ export function returnFocusedPlan(all: Candidate[]): Plan | null {
   return best;
 }
 
+export type RankedTicket = { type: BetType; horses: BetHorse[]; key: string; odds: number; prob: number; ev: number; uplift: number };
+const RANK_SAMPLES = 60000;
+const MIN_BASE_COUNT = 60; // 市場だけの試行でこの回数（約0.1%）未満しか出ない組は、上乗せの推定がぶれるので出さない
+
 /**
- * おすすめ（買い目タブ。2026-11-21）：複勝・ワイドだけで、最大5点。「割高」の馬は候補から外す（cands は exclude 済みで作る）。
- * 複勝とワイドのオッズがあれば「払戻が予算以上になる確率」、なければ「どれか当たる確率」が一番高くなるように1点ずつ足す。
- * 期待回収率は出さない（過去の検証で100%を超える買い方がないため）.
+ * 券種ごとの期待値の上位（買い目タブ。2026-11-21）。全頭・全組み合わせから、期待値（的中確率 × オッズ）の高い順に perType 点ずつ。
+ * 的中確率 ＝ その券種のオッズから見た確率（オッズの逆数を、単勝・馬連・3連複は合計1、ワイドは合計3にそろえる）× AI による上乗せ。
+ * 上乗せ ＝ AI を合わせた勝率で着順を試したときの的中率 ÷ 市場の勝率だけで試したときの的中率（同じ乱数で RANK_SAMPLES 回。ハービルの式）。
+ * 単勝オッズから出した組の確率と、その券種の売れ方（人気薄の組の扱い）はもともと食い違うので、券種自身のオッズを土台にして AI の分だけを足す。
+ * 複勝だけは、AI予想の目安と同じ「合わせた3着以内確率」（placeProb）を使う。
+ * hs の win：AI を合わせた勝率、marketWin：市場の勝率（どちらも合計はそろえなくてよい）。
  */
-export function recommendedPlan(all: Candidate[]): Plan | null {
-  return hitFocusedPlan(all.filter((c) => c.type === "複勝" || c.type === "ワイド"));
+export function rankByType(hs: BetHorse[], marketWin: Map<string, number>, oddsTable: (type: BetType) => Record<string, { min: number }> | null,
+  placeProb: Map<string, number>, perType = 3): Record<BetType, RankedTicket[]> {
+  const out: Record<BetType, RankedTicket[]> = { 単勝: [], 複勝: [], ワイド: [], 馬連: [], "3連複": [] };
+  if (hs.length < 3 || hs.some((h) => h.num == null)) return out;
+  const tilted = sampleOrders(hs, RANK_SAMPLES);
+  const base = sampleOrders(hs.map((h) => ({ ...h, win: marketWin.get(h.id) ?? 0 })), RANK_SAMPLES);
+  const placeK = hs.length <= 7 ? 2 : 3;
+  const count = (orders: Int16Array) => {
+    const c: Record<BetType, Map<string, number>> = { 単勝: new Map(), 複勝: new Map(), ワイド: new Map(), 馬連: new Map(), "3連複": new Map() };
+    const add = (t: BetType, idx: number[]) => {
+      const key = idx.map((i) => hs[i].num!).sort((x, y) => x - y).join("-");
+      c[t].set(key, (c[t].get(key) ?? 0) + 1);
+    };
+    for (let s = 0; s < RANK_SAMPLES; s++) {
+      const a = orders[s * 3], b = orders[s * 3 + 1], d = orders[s * 3 + 2];
+      add("単勝", [a]);
+      add("馬連", [a, b]);
+      add("ワイド", [a, b]); add("ワイド", [a, d]); add("ワイド", [b, d]);
+      add("3連複", [a, b, d]);
+    }
+    return c;
+  };
+  const ct = count(tilted);
+  const cb = count(base);
+  const byNum = new Map(hs.map((h) => [h.num!, h]));
+  const POOL_TOTAL: Record<BetType, number> = { 単勝: 1, 複勝: placeK, ワイド: 3, 馬連: 1, "3連複": 1 };
+  for (const t of ["単勝", "複勝", "ワイド", "馬連", "3連複"] as BetType[]) {
+    const table = oddsTable(t);
+    if (!table) continue;
+    const entries = Object.entries(table).filter(([key, v]) => v.min > 0 && key.split("-").every((x) => byNum.has(Number(x))));
+    if (!entries.length) continue;
+    const invSum = entries.reduce((s, [, v]) => s + 1 / v.min, 0);
+    const list: RankedTicket[] = [];
+    for (const [key, v] of entries) {
+      const horses = key.split("-").map((x) => byNum.get(Number(x))!);
+      let prob: number;
+      let uplift = 1;
+      if (t === "複勝") {
+        prob = placeProb.get(horses[0].id) ?? 0;
+        const pool = (1 / v.min / invSum) * POOL_TOTAL[t];
+        uplift = pool > 0 ? prob / pool : 1;
+      } else {
+        const nb = cb[t].get(key) ?? 0;
+        if (nb < MIN_BASE_COUNT) continue;
+        uplift = (ct[t].get(key) ?? 0) / nb;
+        prob = Math.min(1, (1 / v.min / invSum) * POOL_TOTAL[t] * uplift);
+      }
+      list.push({ type: t, horses, key, odds: v.min, prob, ev: prob * v.min, uplift });
+    }
+    out[t] = list.sort((x, y) => y.ev - x.ev).slice(0, perType);
+  }
+  return out;
 }
