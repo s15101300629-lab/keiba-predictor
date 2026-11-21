@@ -99,8 +99,6 @@ function parseRaces(html: string, raceDate: string): RaceItem[] {
     const grade = parseGrade(`${title} ${textOf(item)}`);
     const isMain = raceNumber === 11;
 
-    if (!isMain && !grade) continue;
-
     const labels: string[] = [];
     if (isMain) labels.push("メイン");
     if (grade) labels.push(`重賞 ${grade}`);
@@ -202,7 +200,7 @@ export async function GET() {
         raceDates,
         raceCount: races.length,
         races,
-        filter: "日本時間の今日から当月末までに開催される日の各競馬場の11R（メイン）および重賞のみ。平場は除外。",
+        filter: "日本時間の今日から当月末までに開催される日の全レース（isMain・grade でメイン・重賞が分かる）。",
       },
       {
         headers: {

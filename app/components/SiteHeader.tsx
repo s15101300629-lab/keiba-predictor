@@ -14,7 +14,7 @@ export default function SiteHeader() {
       </Link>
       {onRace || pathname.startsWith("/results")
         ? <Link href="/" className="header-back">← レース一覧</Link>
-        : <Link href="/results" className="header-back">答え合わせ</Link>}
+        : <Link href="/results" className="header-back">AI成績</Link>}
     </div>
   </header>;
 }

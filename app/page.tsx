@@ -29,7 +29,7 @@ type RaceListResponse = {
 
 const VENUE_ORDER = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
 const CLIENT_CACHE_TTL_MS = 10 * 60 * 1000;
-const RACE_LIST_CACHE_KEY = "keiba-race-list-v1";
+const RACE_LIST_CACHE_KEY = "keiba-race-list-v2"; // v2：全レース（以前は重賞・メインだけ）
 type CachedRaceList = { savedAt: number; data: RaceListResponse };
 
 function getJstToday() {
@@ -67,6 +67,7 @@ export default function Home() {
   const [raceDates, setRaceDates] = useState<string[]>([]);
   const [month, setMonth] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [venue, setVenue] = useState("注目"); // 「注目」＝全場の重賞・メイン、競馬場名＝その場の全レース
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -111,15 +112,22 @@ export default function Home() {
     return () => { active = false; };
   }, []);
 
-  // 選んだ日のレースを発走時刻順に並べる
-  const dayRaces = useMemo(() => races
-    .filter((race) => race.raceDate === selectedDate)
-    .sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99") ||
-      VENUE_ORDER.indexOf(a.venue) - VENUE_ORDER.indexOf(b.venue)), [races, selectedDate]);
+  // 選んだ日の競馬場（タブ）。「注目」は全場の重賞・メインを発走時刻順、競馬場のタブはその場の全レースをレース番号順
+  const venues = useMemo(() => [...new Set(races.filter((r) => r.raceDate === selectedDate).map((r) => r.venue))]
+    .sort((a, b) => VENUE_ORDER.indexOf(a) - VENUE_ORDER.indexOf(b)), [races, selectedDate]);
+  const dayRaces = useMemo(() => {
+    const day = races.filter((race) => race.raceDate === selectedDate);
+    if (venue === "注目" || !venues.includes(venue)) {
+      return day.filter((r) => r.isMain || r.grade)
+        .sort((a, b) => (a.startTime ?? "99:99").localeCompare(b.startTime ?? "99:99") ||
+          VENUE_ORDER.indexOf(a.venue) - VENUE_ORDER.indexOf(b.venue));
+    }
+    return day.filter((r) => r.venue === venue).sort((a, b) => a.raceNumber - b.raceNumber);
+  }, [races, selectedDate, venue, venues]);
 
   return (
     <main className="shell">
-      <p className="month-caption">{month ? `${Number(month)}月の重賞・メインレース` : "開催情報を取得中"}</p>
+      <p className="month-caption">{month ? `${Number(month)}月の開催` : "開催情報を取得中"}</p>
 
       {loading && (
         <div className="state-panel loading-panel">
@@ -152,6 +160,15 @@ export default function Home() {
               </button>
             ))}
           </div>
+          <div className="venue-tabs" role="tablist" aria-label="競馬場">
+            {["注目", ...venues].map((v) => (
+              <button key={v} type="button" role="tab" aria-selected={venue === v || (v === "注目" && !venues.includes(venue))}
+                className={venue === v || (v === "注目" && !venues.includes(venue)) ? "venue-tab active" : "venue-tab"}
+                onClick={() => setVenue(v)}>
+                {v === "注目" ? "重賞・メイン" : v}
+              </button>
+            ))}
+          </div>
           {dayRaces.length === 0
             ? <div className="state-panel">この日の表示対象レースはありません。</div>
             : <div className="race-list">{dayRaces.map((race) => <RaceCard race={race} key={race.raceId} />)}</div>}
@@ -173,7 +190,8 @@ function RaceCard({ race, dateLabel }: { race: RaceItem; dateLabel?: string }) {
   const surface = race.course?.startsWith("芝") ? "turf" : race.course?.startsWith("ダ") ? "dirt" : "";
   return (
     <Link href={`/race/${race.raceId}`} className="race-card race-card-link">
-      <span className={"grade-badge " + (race.grade ? race.grade.toLowerCase() : "main")}>{race.grade ?? "メイン"}</span>
+      <span className={"grade-badge " + (race.grade ? race.grade.toLowerCase() : race.isMain ? "main" : "plain")}>
+        {race.grade ?? (race.isMain ? "メイン" : `${race.raceNumber}R`)}</span>
       <div className="race-info">
         <div className="race-title">{title}</div>
         <p>
