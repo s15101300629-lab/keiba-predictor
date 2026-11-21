@@ -167,6 +167,7 @@ type RaceConditions = {
   courseLayout: string | null;
   courseLetter: string | null;
   weather: string | null;
+  weatherForecast: boolean; // netkeiba の天候が「予報」（まだ発表前）
   going: string | null;
   fieldStatus: Record<string, string>;
 };
@@ -199,8 +200,15 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
   const layoutMatch = trackDetail.match(/(?:[（(]\s*)?(外|内)(?:\s|[A-D]|[）)]|$)/);
   const courseLetterMatch = trackDetail.match(/(?:^|[\s（(])([A-D])(?:コース)?(?=$|[\s）)/])/);
 
-  const weatherMatch = conditionText.match(/天候\s*[:：]\s*(小雨|小雪|晴|曇|雨|雪)/);
-  const goingMatch = conditionText.match(/馬場\s*[:：]\s*(稍重|不良|良|重)/);
+  // 天候・馬場：前の書き方は「天候:晴 / 馬場:良」。2026-11 の書き方は、天候がアイコン（aria-label="晴"、発表前は直前に「予報」）、
+  // 馬場は <span class="Item03|Item04"> 良</span> の文字だけ
+  const raceDataHtml = raceDataMatch?.[1] ?? "";
+  const weatherMatch = conditionText.match(/天候\s*[:：]\s*(小雨|小雪|晴|曇|雨|雪)/)
+    ?? raceDataHtml.match(/Icon_Weather[^>]*aria-label=["'](小雨|小雪|晴|曇|雨|雪)["']/);
+  const weatherForecast = /<span>\s*予報\s*<\/span>/.test(raceDataHtml);
+  const goingRaw = conditionText.match(/馬場\s*[:：]\s*(稍重|不良|良|重)/)?.[1]
+    ?? raceDataHtml.match(/class=["']Item0[34]["'][^>]*>\s*(稍重|不良|良|重|稍|不)\s*</)?.[1] ?? null;
+  const goingMatch = goingRaw ? [goingRaw, goingRaw === "稍" ? "稍重" : goingRaw === "不" ? "不良" : goingRaw] : null;
 
   const raceNumber = Number(raceId.slice(-2));
   const date = dateMatch
@@ -242,6 +250,7 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
     courseLayout,
     courseLetter: courseLetterMatch?.[1] ?? null,
     weather,
+    weatherForecast,
     going,
     fieldStatus: {
       raceName: raceNameMatch ? "available" : "unavailable",

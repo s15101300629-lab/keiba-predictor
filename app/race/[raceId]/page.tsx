@@ -9,7 +9,7 @@ type Conditions = {
   raceName: string | null; date: string | null; venue: string | null;
   raceNumber: number | null; startTime: string | null; surface: string | null;
   distanceMeters: number | null; direction: string | null; courseLayout: string | null;
-  courseLetter: string | null; weather: string | null; going: string | null;
+  courseLetter: string | null; weather: string | null; weatherForecast?: boolean; going: string | null;
 };
 type Entry = {
   frameNumber: number | null; horseNumber: number | null; sexAge: string | null;
@@ -845,7 +845,7 @@ export default function RaceDetailPage() {
             [conditions.surface, conditions.distanceMeters ? conditions.distanceMeters + "m" : null].filter(Boolean).join(""),
             [conditions.direction, conditions.courseLayout, conditions.courseLetter ? conditions.courseLetter + "コース" : null].filter(Boolean).join(" "),
             data.horseCount ? data.horseCount + "頭" : "",
-            "天候 " + (conditions.weather ?? "未発表"),
+            "天候 " + (conditions.weather ? conditions.weather + (conditions.weatherForecast ? "（予報）" : "") : "未発表"),
             "馬場 " + (data.ml?.goingSource === "user" ? "未発表" : conditions.going ?? "未発表"),
           ].filter((value) => value !== "").map((value) => <span className="condition-chip" key={value}>{value}</span>)}
         </div>
