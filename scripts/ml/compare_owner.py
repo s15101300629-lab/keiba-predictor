@@ -41,7 +41,8 @@ def norm_name(s: str | None) -> str:
     return s
 
 
-def main() -> None:
+def owner_features() -> dict:
+    """(race_id, 馬名) → 馬主・生産牧場の今年・前年、騎手・調教師の前年の出走数と3着内率."""
     races = load_races(DATA)
     counts: dict[tuple, list[int]] = defaultdict(lambda: [0, 0])  # (種類, 名前, 年) -> [出走数, 3着以内]
     feats: dict[tuple, dict] = {}
@@ -76,6 +77,11 @@ def main() -> None:
                         c = counts[(kind, name, y)]
                         c[0] += 1; c[1] += top3
 
+    return feats
+
+
+def main() -> None:
+    feats = owner_features()
     rows, _ = build_dataset(DATA)
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
     extra = [f for g in GROUPS.values() for f in g]
