@@ -84,6 +84,7 @@ export type ValueModel = {
   fitted_year: string;
   combined: { ai: number; market: number; intercept: number };
   market_only: { market: number; intercept: number };
+  win?: { ai: number; market: number; fitted_year: string }; // 勝率の合わせ方（条件付きロジット。AI印の▲）
   bands: Record<string, [number, number]>;
   evidence?: Record<string, Record<string, { bets: number; hits: number; roi: number; roi_market_matched: number }>>;
 };

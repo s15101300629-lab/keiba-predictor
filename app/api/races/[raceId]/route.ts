@@ -562,7 +562,7 @@ type HeavyAdjustment = {
 };
 let mlAssets: Promise<{
   model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
-  winModel: Model | null; top2Model: Model | null; valueModel: unknown;
+  winModel: Model | null; top2Model: Model | null; valueModel: unknown; marksEvidence: unknown;
 } | null> | null = null;
 function loadMlAssets() {
   mlAssets ??= (async () => {
@@ -578,9 +578,14 @@ function loadMlAssets() {
       // 勝率（1着）・連対率（2着以内）のモデル（scripts/ml/train.py が書き出す）。なければ出さない
       // 画面の目安（妙味あり・妥当・割高）の係数（scripts/ml/backtest_value.py が書き出す）。なければ目安は出さない
       const valueModel = await readFile(path.join(dir, "value_combine.json"), "utf8").then((text) => JSON.parse(text) as unknown).catch(() => null);
+      // AI印の過去の成績（scripts/ml/backtest_marks.py。▲は決め方 B）
+      const marksEvidence = await readFile(path.join(dir, "marks_backtest.json"), "utf8").then((text) => {
+        const json = JSON.parse(text) as { years: Record<string, Record<string, unknown>> };
+        return Object.fromEntries(Object.entries(json.years).map(([y, v]) => [y, { marks: v.triangle_B, popLe3: v.pop_le3 }]));
+      }).catch(() => null);
       const [winModel, top2Model] = await Promise.all(["model_win.json", "model_top2.json"].map((name) =>
         readFile(path.join(dir, name), "utf8").then((text) => JSON.parse(text) as Model).catch(() => null)));
-      return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel };
+      return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence };
     } catch {
       mlAssets = null; // 次のリクエストで再試行
       return null;
@@ -961,14 +966,15 @@ export async function GET(
       activeIdx.forEach((i, k) => { probs[i] = normalized[k]; });
       // 勝率・連対率。3着以内確率を超えないようにそろえる
       const top2Probs = rows.map((row, i) => ml.top2Model ? Math.min(predictProbability(ml.top2Model, row.features), probs[i]) : null);
-      const winProbs = rows.map((row, i) => ml.winModel ? Math.min(predictProbability(ml.winModel, row.features), top2Probs[i] ?? probs[i]) : null);
+      const baseWinProbs = rows.map((row) => ml.winModel ? predictProbability(ml.winModel, row.features) : null); // AI印の◎・▲（そろえる前の勝率）
+      const winProbs = rows.map((_, i) => baseWinProbs[i] != null ? Math.min(baseWinProbs[i]!, top2Probs[i] ?? probs[i]) : null);
       const order = activeIdx.map((i) => ({ p: probs[i], i })).sort((a, b) => b.p - a.p);
       order.forEach(({ i }, rank) => {
         const f = rows[i].features;
         const num = (v: number) => (Number.isNaN(v) ? null : v);
         predictions[i] = {
           probability: probs[i], baseProbability: baseProbs[i], pedigreeIncluded: useStack, rank: rank + 1,
-          winProbability: winProbs[i], top2Probability: top2Probs[i],
+          winProbability: winProbs[i], top2Probability: top2Probs[i], baseWinProbability: baseWinProbs[i],
           heavyNote: heavyNotes[i],
           modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior, overseasRuns: rows[i].overseasRuns,
           training: (() => { const n = entryByHorseId.get(horses[i].horseId)?.horseNumber; return n != null ? training.get(n) ?? null : null; })(),
@@ -992,7 +998,7 @@ export async function GET(
       });
       const f0 = rows[activeIdx[0]]?.features;
       mlSummary = {
-        status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource, valueModel: ml.valueModel,
+        status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource, valueModel: ml.valueModel, marksEvidence: ml.marksEvidence,
         bodyWeightAssumed: activeIdx.some((i) => rows[i].bodyWeightAssumed),
         // このレースの結果がすでに学習データに入っている（答えを見て学習した状態）
         raceInTraining: raceConditions.date <= ml.store.lastDate,

@@ -612,3 +612,24 @@ footer span { letter-spacing:0; }
 .ticket-tags .ai-value { min-width: 0; padding: 1px 6px; font-size: 10px; }
 .tag-ana { padding: 1px 6px; border-radius: 999px; background: #4a2a10; border: 1px solid #c77a2a; color: #ffb36b; font-size: 10px; font-weight: 700; }
 .bet-type-card .ticket-name small { white-space: normal; }
+
+/* ===== AI印タブ（2026-11-21） ===== */
+.ai-mark-list { list-style: none; margin: 10px 0 0; padding: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); overflow: hidden; }
+.ai-mark-list li { display: grid; grid-template-columns: 34px 30px 1fr 52px 48px; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid var(--line); }
+.ai-mark-list li:last-child { border-bottom: 0; }
+.ai-mark { font-size: 24px; font-weight: 900; text-align: center; color: var(--accent); }
+.mark-本命 .ai-mark, .mark-対抗 .ai-mark { color: #ff6b5e; }
+.mark-穴 .ai-mark { color: #8be3a1; }
+.mark-消し .ai-mark { color: var(--muted); }
+.mark-消し { opacity: .75; }
+.ai-mark-name { min-width: 0; }
+.ai-mark-name b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-mark-name small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+.ai-mark-score { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.ai-mark-score b { font-size: 16px; }
+.ai-mark-score small { color: var(--muted); font-size: 9px; }
+.mark-table-wrap { overflow-x: auto; }
+.mark-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mark-table th, .mark-table td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.mark-table th:first-child, .mark-table td:first-child { text-align: left; }
+.mark-table small { color: var(--muted); font-size: 10px; margin-left: 2px; }

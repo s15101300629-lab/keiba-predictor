@@ -280,7 +280,10 @@ def main() -> None:
     last = year == TEST_YEARS[-1]
     lr = LogisticRegression(C=1e6, max_iter=1000).fit(np.column_stack([logit(ai_top3[last]), logit(mkt_top3[last])]), is_top3[last])
     lr_m = LogisticRegression(C=1e6, max_iter=1000).fit(logit(mkt_top3[last])[:, None], is_top3[last])
+    gl = [g for g in gs if year[g[0]] == TEST_YEARS[-1]]
+    wa, wb = fit_benter(gl, la, lm, is_win)
     combine = {"fitted_year": TEST_YEARS[-1], "n_features": len(FEATURES),
+               "win": {"ai": float(wa), "market": float(wb), "fitted_year": TEST_YEARS[-1]},
                "combined": {"ai": float(lr.coef_[0][0]), "market": float(lr.coef_[0][1]), "intercept": float(lr.intercept_[0])},
                "market_only": {"market": float(lr_m.coef_[0][0]), "intercept": float(lr_m.intercept_[0])},
                "bands": {k: list(v) for k, v in LABEL_BANDS.items()},

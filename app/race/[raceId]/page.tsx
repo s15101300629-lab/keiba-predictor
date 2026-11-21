@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { rankByType, type BetHorse, type BetType } from "@/app/lib/bets";
+import { type BetType } from "@/app/lib/bets";
+import { AI_MARK_ORDER, assignAiMarks, type AiMark } from "@/app/lib/marks";
 import { useParams } from "next/navigation";
 import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
 
@@ -68,7 +69,7 @@ type Prediction = {
   trainerName?: string | null;
   trainer?: { n: number; top3: number; venueN: number; venueTop3: number };
   probability: number; baseProbability: number; pedigreeIncluded: boolean;
-  winProbability?: number | null; top2Probability?: number | null;
+  winProbability?: number | null; top2Probability?: number | null; baseWinProbability?: number | null;
   rank: number; modelFormDeviation: number | null; priorRuns: number; overseasRuns?: number; training?: { rank: string | null; critic: string | null } | null;
   heavyNote: {
     applied: boolean; show: boolean; label: string | null; ratio: number;
@@ -84,7 +85,9 @@ type MlSummary = {
   goingSource?: "announced" | "user" | "default";
   metrics?: { auc: number; raceTop3Hit: number; testYear: string };
   valueModel?: ValueModel | null;
+  marksEvidence?: Record<string, { marks: Record<string, MarkStats>; popLe3: MarkStats }> | null;
 };
+type MarkStats = { n: number; win_rate?: number; top3_rate?: number; win_roi?: number; place_roi?: number; place_roi_market_matched?: number };
 type Horse = {
   horseId: string; name: string; status: string; raceEntry: Entry | null;
   pedigree?: Pedigree | null;
@@ -638,65 +641,66 @@ function OddsBar({ odds, state, error, onLoad, compact = false }: { odds: OddsDa
   </div>;
 }
 
-const VALUE_EV = 1.0; // 期待値（回収見込み 100%）がこれ以上なら「妙味あり」
-const LONGSHOT_POP = 6; // この人気以下の馬を含む買い目に「穴」
+const MARK_MEANING: Record<AiMark, string> = {
+  "◎": "本命", "○": "対抗", "▲": "単穴", "☆": "穴", "△": "連下", "消": "消し",
+};
 
-function BetsPanel({ horses, inTraining, odds, oddsBar, values }: {
+function MarksPanel({ horses, inTraining, odds, oddsBar, values, horseOdds, winCoef, evidence }: {
   horses: Horse[]; inTraining: boolean; odds: OddsData | null; oddsBar: ReactNode; values: Map<number, ValueResult> | null;
+  horseOdds: Map<string, HorseOdds>; winCoef: { ai: number; market: number } | null;
+  evidence: Record<string, { marks: Record<string, MarkStats>; popLe3: MarkStats }> | null;
 }) {
-  // 的中確率は AI と市場を合わせたもの（AI予想の目安と同じ valueLabels）。着順の試行の勝率は「市場の勝率 × 目安の倍率」、複勝は合わせた3着以内確率。
-  // AI 単独の確率は使わない（検証で、AI 単独の期待値で買うと回収率が約69%に下がったため）
-  const result = useMemo(() => {
-    if (!odds || !values) return null;
-    const rows = horses.filter((h) => h.raceEntry?.horseNumber != null && values.has(h.raceEntry.horseNumber) && odds.win[String(h.raceEntry.horseNumber)]?.min);
-    const inv = rows.map((h) => 1 / odds.win[String(h.raceEntry!.horseNumber!)].min);
-    const invSum = inv.reduce((x, y) => x + y, 0);
-    const hs: BetHorse[] = rows.map((h, i) => {
-      const v = values.get(h.raceEntry!.horseNumber!)!;
-      return { id: h.horseId, num: h.raceEntry!.horseNumber!, name: h.name, win: (inv[i] / invSum) * v.ratio, place: v.combined };
-    });
-    const pop = new Map([...rows].sort((x, y) => odds.win[String(x.raceEntry!.horseNumber!)].min - odds.win[String(y.raceEntry!.horseNumber!)].min)
-      .map((h, i) => [h.horseId, i + 1]));
-    const ranked = rankByType(hs, new Map(hs.map((h, i) => [h.id, inv[i] / invSum])), (type) => (odds[ODDS_FIELD[type]] as OddsMap) ?? null,
-      new Map(hs.map((h) => [h.id, h.place])));
-    return { ranked, pop };
-  }, [horses, odds, values]);
+  const marks = useMemo(() => {
+    const rows = horses.filter((h) => h.prediction && h.prediction.baseWinProbability != null && h.raceEntry?.horseNumber != null);
+    return assignAiMarks(rows.map((h) => {
+      const v = values?.get(h.raceEntry!.horseNumber!) ?? null;
+      const o = horseOdds.get(h.horseId);
+      return { id: h.horseId, win: h.prediction!.baseWinProbability!, top3: h.prediction!.probability, ratio: v?.ratio ?? null,
+        odds: o?.win ?? null, popularity: o?.popularity ?? null };
+    }), odds && values ? winCoef : null);
+  }, [horses, values, horseOdds, odds, winCoef]);
+  const years = evidence ? Object.keys(evidence).sort() : [];
+  const avg = (m: string, key: keyof MarkStats) => {
+    const xs = years.map((y) => evidence![y].marks[m]?.[key]).filter((x): x is number => typeof x === "number");
+    return xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null;
+  };
+  const pct = (x: number | null) => (x == null ? "-" : Math.round(x * 100) + "%");
+  const marked = AI_MARK_ORDER.flatMap((m) => horses.filter((h) => marks.get(h.horseId)?.mark === m));
 
   return <section className="bets-panel">
-    {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。買い目は参考として見ること。</p>}
+    {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。印は参考として見ること。</p>}
     {oddsBar}
-    {!odds ? <p className="state-panel">買い目はオッズを使って出す。上の「オッズを取得」を押す。</p>
-      : !result ? <p className="state-panel">買い目を出せなかった（オッズかAIの確率が足りない）。</p>
-        : <>
-          {BET_TYPES.map((type) => {
-            const list = result.ranked[type];
-            return <article className="bet-type-card" key={type}>
-              <h3>{type}<small>回収見込みの高い順</small></h3>
-              {!list.length ? <p className="bet-note">この券種のオッズがまだ出ていない</p> : <ul className="simple-tickets">
-                {list.map((t) => {
-                  const entries = t.horses.map((bh) => horses.find((h) => h.horseId === bh.id)?.raceEntry ?? null);
-                  const longshot = t.horses.some((h) => (result.pop.get(h.id) ?? 0) >= LONGSHOT_POP);
-                  return <li key={t.key} className={t.ev >= VALUE_EV ? "value" : ""}>
-                    <span className="ticket-nums">{entries.map((e, i) => <span key={i}>{i > 0 && <i>-</i>}<HorseNumberBadge entry={e} /></span>)}</span>
-                    <span className="ticket-name">{t.horses.map((h) => h.name).join("・")}
-                      <small>{t.odds.toFixed(1)}倍・的中 {(t.prob * 100).toFixed(t.prob < 0.1 ? 1 : 0)}%・AI上乗せ ×{t.uplift.toFixed(2)}</small></span>
-                    <span className="ticket-ev">
-                      <span className="ticket-tags">{t.ev >= VALUE_EV && <em className="ai-value good">妙味あり</em>}{longshot && <em className="tag-ana">穴</em>}</span>
-                      <b>{Math.round(t.ev * 100)}%</b><small>回収見込み</small>
-                    </span>
-                  </li>;
-                })}
-              </ul>}
-            </article>;
-          })}
-          <details className="model-note" open>
-            <summary>見方と注意</summary>
-            <p>回収見込み＝的中確率 × オッズ。100円買ったら平均いくら戻るかの見込み（115% なら平均115円）。100%以上で「妙味あり」。「穴」は{LONGSHOT_POP}番人気以下の馬を含む買い目。複勝・ワイドのオッズは幅の下限で計算。</p>
-            <p>的中確率＝その券種のオッズから見た確率 × AIによる上乗せ（AIの評価を合わせたときの的中率 ÷ 合わせないときの的中率）。券種ごとの売れ方の癖は除き、AIが足した分だけが回収見込みに出る。的中率が約0.1%未満の組は、推定がぶれるので出さない。</p>
-            <p>AIだけの確率で出すと人気薄が大量に「妙味あり」になるが、過去の検証ではその多くがAIの見込み違いだった（AIだけの確率で回収見込みが高い単勝を買うと、実際の回収率は 約69%）。</p>
-            <p><b className="bet-warn">過去の検証があるのは単勝・複勝だけ（AIの目安で「妙味あり」の馬の複勝回収率は約8割で、100%に届いていない）。馬連・ワイド・3連複は、過去の全組み合わせのオッズがないため検証できていない。</b>組み合わせの確率はハービルの式（勝率から2着・3着を順に決める）による近似。</p>
-          </details>
-        </>}
+    {!marks.size ? <p className="state-panel">AIの勝率が出ていないため、印を付けられない。</p> : <>
+      {!odds && <p className="bet-note">オッズを取得すると、☆（穴）・消と、▲の妙味の判定が加わる。</p>}
+      <ul className="ai-mark-list">
+        {marked.map((h) => {
+          const r = marks.get(h.horseId)!;
+          const o = horseOdds.get(h.horseId);
+          return <li key={h.horseId} className={"mark-" + MARK_MEANING[r.mark]}>
+            <span className="ai-mark">{r.mark}</span>
+            <HorseNumberBadge entry={h.raceEntry} />
+            <span className="ai-mark-name"><b>{h.name}</b><small>{r.reason}</small></span>
+            <span className="ai-odds">{o?.win != null ? <><b>{o.win.toFixed(1)}</b><small>{o.popularity}番人気</small></> : <small>-</small>}</span>
+            <span className="ai-mark-score"><b>{Math.round(h.prediction!.probability * 100)}</b><small>AIスコア</small></span>
+          </li>;
+        })}
+      </ul>
+      {evidence && <details className="model-note" open>
+        <summary>印の意味と過去の成績</summary>
+        <div className="mark-table-wrap">
+          <table className="mark-table">
+            <thead><tr><th>印</th><th>勝率</th><th>3着内率</th><th>複勝回収率</th></tr></thead>
+            <tbody>{AI_MARK_ORDER.map((m) => <tr key={m}>
+              <td><b>{m}</b> {MARK_MEANING[m]}</td><td>{pct(avg(m, "win_rate"))}</td><td>{pct(avg(m, "top3_rate"))}</td>
+              <td>{pct(avg(m, "place_roi"))}<small>（基準 {pct(avg(m, "place_roi_market_matched"))}）</small></td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+        <p>{years.join("・")}年の全レース（前年までで学習したAIで印を付け、確定オッズで計算）の平均。基準は、同じくらいの人気の馬を全部買ったときの複勝回収率。</p>
+        <p>◎ 勝率1位（割高なら次点）／○ 残りでAIスコア1位／▲ 勝率上位4頭のうち単勝の妙味が一番／☆ AIと市場を合わせた3着以内確率がオッズの1.1倍以上（人気は問わない）／△ 残りでAIスコア6位以内／消 3番人気以内で割高。▲☆△消は複数頭に付くことがある。</p>
+        <p className="bet-warn">☆は人気の割に来やすく、基準より複勝回収率が高かったが、100%には届いていない。消は3番人気以内の馬全体（3着内率 約53%）よりはっきり走っていない。</p>
+      </details>}
+    </>}
   </section>;
 }
 
@@ -710,7 +714,7 @@ export default function RaceDetailPage() {
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [marks, setMarks] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "bets">("detail");
+  const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "marks">("detail");
   const [predSort, setPredSort] = useState<"number" | "prob">("number");
   const [assumedGoing, setAssumedGoing] = useState(""); // 馬場未発表時に想定する馬場（空 = 想定なし）
   const [odds, setOdds] = useState<OddsData | null>(null);
@@ -858,8 +862,8 @@ export default function RaceDetailPage() {
           onClick={() => setActiveTab("detail")}>出馬表</button>
         <button type="button" role="tab" aria-selected={activeTab === "prediction"} className={"race-tab" + (activeTab === "prediction" ? " active" : "")}
           onClick={() => setActiveTab("prediction")}>AI予想</button>
-        <button type="button" role="tab" aria-selected={activeTab === "bets"} className={"race-tab" + (activeTab === "bets" ? " active" : "")}
-          onClick={() => setActiveTab("bets")}>買い目</button>
+        <button type="button" role="tab" aria-selected={activeTab === "marks"} className={"race-tab" + (activeTab === "marks" ? " active" : "")}
+          onClick={() => setActiveTab("marks")}>AI印</button>
       </div>
       {activeTab === "detail" && <div role="tabpanel">
         {oddsBar}
@@ -868,7 +872,8 @@ export default function RaceDetailPage() {
             mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />)}
         </section>
       </div>}
-      {activeTab === "bets" && <div role="tabpanel"><BetsPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar} values={values} /></div>}
+      {activeTab === "marks" && <div role="tabpanel"><MarksPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar}
+        values={values} horseOdds={horseOdds} winCoef={data.ml?.valueModel?.win ?? null} evidence={data.ml?.marksEvidence ?? null} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         {data.ml?.status === "available" ? <>
           <div className="ai-conditions">

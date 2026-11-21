@@ -85,5 +85,11 @@
     "roi_market_matched": 0.6014032125925821
    }
   }
+ },
+ "win": {
+  "ai": 0.003745044154311808,
+  "market": 1.0178968414737009,
+  "fitted_year": "2025",
+  "note": "条件付きロジット p ∝ exp(ai·log AI勝率 + market·log 市場勝率)。value_backtest.json の 2026年の値（2025年で当てはめ）"
  }
 }
