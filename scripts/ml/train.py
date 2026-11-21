@@ -80,7 +80,7 @@ def export_model(booster: lgb.Booster) -> dict:
             idx = len(nodes)
             nodes.append(None)
             if "leaf_value" in node:
-                nodes[idx] = {"v": node["leaf_value"]}
+                nodes[idx] = {"v": node["leaf_value"], "c": node.get("leaf_count", 0)}  # c：学習データの頭数（SHAP 用）
                 return idx
             if node["decision_type"] != "<=":
                 raise ValueError("categorical splits are not supported")
@@ -90,7 +90,7 @@ def export_model(booster: lgb.Booster) -> dict:
                 "f": node["split_feature"], "t": node["threshold"],
                 "d": 1 if node["default_left"] else 0,
                 "m": {"None": 0, "Zero": 1, "NaN": 2}[node["missing_type"]],
-                "l": left, "r": right,
+                "l": left, "r": right, "c": node.get("internal_count", 0),
             }
             return idx
 
@@ -246,9 +246,10 @@ def main() -> None:
     last_races += [recent[i] for i in np.random.default_rng(0).choice(len(recent), size=min(30, len(recent)), replace=False)]
     sample = [r for r in rows if r["race_id"] in set(last_races)]
     sample_pred = final.predict(matrix(sample))
+    sample_contrib = final.predict(matrix(sample), pred_contrib=True)  # SHAP（LightGBM の TreeSHAP。最後の列は全体の平均）
     parity = [{"race_id": r["race_id"], "date": r["date"], "horse": r["horse"], "turn": r["turn"], "sband": r["sband"], "jockey": r["jockey"], "trainer": r["trainer"],
                "features": {f: (None if isinstance(r[f], float) and math.isnan(r[f]) else r[f]) for f in FEATURES},
-               "pred": float(p)} for r, p in zip(sample, sample_pred)]
+               "pred": float(p), "shap": [round(float(x), 10) for x in c]} for r, p, c in zip(sample, sample_pred, sample_contrib)]
     (OUT / "parity.json").write_text(json.dumps(parity, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"wrote {OUT}", file=sys.stderr)
 

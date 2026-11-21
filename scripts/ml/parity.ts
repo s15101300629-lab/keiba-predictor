@@ -3,8 +3,9 @@
 import { readFileSync } from "node:fs";
 import { addFieldFeatures, addFormDeviation, addOpponentFeatures, normJockey, runnerFeatures, type Store } from "../../app/lib/ml/features.ts";
 import { predictProbability, type Model } from "../../app/lib/ml/model.ts";
+import { treeShap } from "../../app/lib/ml/shap.ts";
 
-type Row = { race_id: string; date: string; horse: string; turn?: number | null; sband?: number | null; jockey: string | null; trainer: string | null; features: Record<string, number | null>; pred: number };
+type Row = { race_id: string; date: string; horse: string; shap?: number[]; turn?: number | null; sband?: number | null; jockey: string | null; trainer: string | null; features: Record<string, number | null>; pred: number };
 const root = new URL("../../data/ml/", import.meta.url);
 const store = JSON.parse(readFileSync(new URL("store.json", root), "utf8")) as Store;
 const model = JSON.parse(readFileSync(new URL("model.json", root), "utf8")) as Model;
@@ -13,6 +14,7 @@ const rows = JSON.parse(readFileSync(new URL("parity.json", root), "utf8")) as R
 const num = (v: number | null) => (v === null ? null : v);
 let worstFeature = 0;
 let worstPred = 0;
+let worstShap = 0;
 let failures = 0;
 const byRace = new Map<string, Row[]>();
 for (const row of rows) byRace.set(row.race_id, [...(byRace.get(row.race_id) ?? []), row]);
@@ -54,7 +56,11 @@ for (const raceRows of byRace.values()) {
       }
     }
     worstPred = Math.max(worstPred, dp);
+    if (row.shap) { // SHAP（TreeSHAP）も Python（LightGBM の pred_contrib）と比べる
+      const phi = treeShap(model, computed[i]);
+      phi.forEach((v, j) => { worstShap = Math.max(worstShap, Math.abs(v - row.shap![j])); });
+    }
   });
 }
-console.log(`rows ${rows.length}, feature mismatches ${failures}, max feature diff ${worstFeature}, max prediction diff ${worstPred}`);
-if (failures || worstPred > 1e-9) process.exit(1);
+console.log(`rows ${rows.length}, feature mismatches ${failures}, max feature diff ${worstFeature}, max prediction diff ${worstPred}, max shap diff ${worstShap}`);
+if (failures || worstPred > 1e-9 || worstShap > 1e-6) process.exit(1);
