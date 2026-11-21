@@ -75,3 +75,43 @@ export function normalizeTo(values: Map<number, number>, total: number): Map<num
   if (!sum) return values;
   return new Map([...values].map(([n, x]) => [n, Math.min((x / sum) * total, 1)]));
 }
+
+// ===== AI予想タブの目安（妙味あり・妥当・割高） =====
+// AI の3着以内確率と、単勝オッズから出した市場の3着以内確率（ハービルの式）を、過去のレースで当てはめたロジスティック回帰で合わせ、
+// 「合わせた確率 ÷ 市場だけを同じ形で補正した確率」で判定する（scripts/ml/backtest_value.py → data/ml/value_combine.json）。
+// 検証では「妙味あり」の馬を買っても複勝回収率は約8割で、100% には届いていない。目安として出す。
+export type ValueModel = {
+  fitted_year: string;
+  combined: { ai: number; market: number; intercept: number };
+  market_only: { market: number; intercept: number };
+  bands: Record<string, [number, number]>;
+  evidence?: Record<string, Record<string, { bets: number; hits: number; roi: number; roi_market_matched: number }>>;
+};
+export type ValueLabel = "妙味あり" | "妥当" | "割高";
+export type ValueResult = { label: ValueLabel; ratio: number; combined: number; market: number };
+
+const clip = (p: number) => Math.min(Math.max(p, 1e-4), 1 - 1e-4);
+const logit = (p: number) => Math.log(p / (1 - p));
+const sigmoid = (z: number) => 1 / (1 + Math.exp(-z));
+
+/** baseProbs：馬番 → AI の3着以内確率（モデルの出力。合計はそろえる前）. 単勝オッズがある馬だけで計算する. */
+export function valueLabels(baseProbs: Map<number, number>, win: OddsTable, model: ValueModel): Map<number, ValueResult> | null {
+  const nums = [...baseProbs.keys()].filter((n) => win[String(n)]?.min);
+  if (nums.length < 3) return null;
+  const inv = new Map(nums.map((n) => [n, 1 / win[String(n)].min]));
+  const invSum = [...inv.values()].reduce((s, x) => s + x, 0);
+  const mktTop3 = harville(new Map([...inv].map(([n, x]) => [n, x / invSum]))).top3;
+  const aiSum = nums.reduce((s, n) => s + baseProbs.get(n)!, 0);
+  const target = Math.min(3, nums.length);
+  const out = new Map<number, ValueResult>();
+  for (const n of nums) {
+    const ai = clip((baseProbs.get(n)! * target) / aiSum);
+    const m = clip(mktTop3.get(n)!);
+    const combined = sigmoid(model.combined.ai * logit(ai) + model.combined.market * logit(m) + model.combined.intercept);
+    const market = sigmoid(model.market_only.market * logit(m) + model.market_only.intercept);
+    const ratio = combined / market;
+    const label = (Object.entries(model.bands).find(([, [lo, hi]]) => ratio >= lo && ratio < hi)?.[0] ?? "妥当") as ValueLabel;
+    out.set(n, { label, ratio, combined, market });
+  }
+  return out;
+}

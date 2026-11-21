@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { BET_BUDGET, buildCandidates, hitFocusedPlan, returnFocusedPlan, type BetHorse, type BetType, type Candidate, type Plan } from "@/app/lib/bets";
 import { useParams } from "next/navigation";
-import { marketProbs, normalizeTo, type MarketProbs } from "@/app/lib/market";
+import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
 
 type Conditions = {
   raceName: string | null; date: string | null; venue: string | null;
@@ -82,6 +82,7 @@ type MlSummary = {
   raceInTraining?: boolean;
   goingSource?: "announced" | "user" | "default";
   metrics?: { auc: number; raceTop3Hit: number; testYear: string };
+  valueModel?: ValueModel | null;
 };
 type Horse = {
   horseId: string; name: string; status: string; raceEntry: Entry | null;
@@ -565,8 +566,11 @@ function probabilityTier(rank: number | undefined) {
   return rank <= 3 ? " tier-top" : rank <= 6 ? " tier-mid" : "";
 }
 
-function OverallHorseCard({ horse, total, categories, factors, mark }: {
+const VALUE_CLASS: Record<string, string> = { 妙味あり: "good", 妥当: "even", 割高: "bad" };
+
+function OverallHorseCard({ horse, total, categories, factors, mark, odds, value, average }: {
   horse: Horse; total: number; categories: CategoryRank[]; factors: FactorScore[]; mark: string;
+  odds: HorseOdds | null; value: ValueResult | null; average: number;
 }) {
   const prediction = horse.prediction;
   const probability = prediction ? prediction.probability * 100 : null;
@@ -581,20 +585,23 @@ function OverallHorseCard({ horse, total, categories, factors, mark }: {
   const heavy = prediction?.heavyNote && (prediction.heavyNote.applied || prediction.heavyNote.show) ? prediction.heavyNote : null;
 
   return <details className={"prediction-horse-details" + probabilityTier(prediction?.rank)}>
-    <summary className="prediction-horse-summary">
+    <summary className="prediction-horse-summary ai-row">
       <HorseNumberBadge entry={entry} />
       <span className="horse-main">
-        <b>{mark && <span className="horse-mark">{mark}</span>}{horse.name}{heavy?.applied && <span className="heavy-flag" title="道悪補正あり">道悪補正</span>}</b>
-        <small>{[entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) + "kg" : null].filter(Boolean).join(" ・ ")}</small>
+        <b>{mark && <span className="horse-mark">{mark}</span>}{horse.name}</b>
+        <small>{entry?.jockey ?? ""}</small>
       </span>
-      <span className="horse-inline-score">
-        <strong>{probabilityText}</strong>
-        <span className="horse-inline-score-track" role="img" aria-label={horse.name + " 3着以内確率 " + probabilityText}>
-          <span className="horse-inline-score-fill" style={{ width: (probability === null ? 0 : Math.max(0, Math.min(100, probability))) + "%" }} />
+      <span className="ai-odds">
+        {odds?.win != null ? <><b className={odds.popularity != null && odds.popularity <= 3 ? "fav" : ""}>{odds.win.toFixed(1)}</b><small>{odds.popularity}番人気</small></> : <small>-</small>}
+      </span>
+      <span className="ai-score" role="img" aria-label={horse.name + " AIスコア（3着以内確率） " + probabilityText}>
+        <strong>{probability === null ? "-" : Math.round(probability)}</strong>
+        <span className="ai-score-track">
+          <span className="ai-score-fill" style={{ width: (probability === null ? 0 : Math.max(0, Math.min(100, probability))) + "%" }} />
+          <span className="ai-score-avg" style={{ left: Math.min(100, average) + "%" }} />
         </span>
-        {prediction && <small className="horse-inline-rank">{prediction.rank}位</small>}
       </span>
-      <span className="horse-expand prediction-expand" aria-hidden="true" />
+      <span className={"ai-value " + (value ? VALUE_CLASS[value.label] : "none")}>{value?.label ?? "-"}</span>
     </summary>
 
     <div className="horse-result-content">
@@ -660,24 +667,11 @@ function OverallHorseCard({ horse, total, categories, factors, mark }: {
   </details>;
 }
 
-function TopPicks({ horses }: { horses: Horse[] }) {
-  const picks = horses.filter((h) => h.prediction).sort((a, b) => a.prediction!.rank - b.prediction!.rank).slice(0, 3);
-  if (!picks.length) return null;
-  return <section className="top-picks" aria-label="AI上位3頭">
-    {picks.map((horse, index) => <div className={"top-pick rank-" + (index + 1)} key={horse.horseId}>
-      <span className="top-pick-rank">{index + 1}</span>
-      <HorseNumberBadge entry={horse.raceEntry} />
-      <b>{horse.name}</b>
-      <strong>{(horse.prediction!.probability * 100).toFixed(1)}%</strong>
-    </div>)}
-  </section>;
-}
-
 // ===== 買い目（AIの確率から自動で組む。予算 1000円。計算は app/lib/bets.ts） =====
 const ODDS_FIELD: Record<BetType, keyof OddsData> = { 単勝: "win", 複勝: "place", ワイド: "wide", 馬連: "umaren", "3連複": "trio" };
 const BET_TYPES: BetType[] = ["単勝", "複勝", "ワイド", "馬連", "3連複"];
 
-function OddsBar({ odds, state, error, onLoad }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; onLoad: () => void }) {
+function OddsBar({ odds, state, error, onLoad, compact = false }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; onLoad: () => void; compact?: boolean }) {
   const missing = odds ? BET_TYPES.filter((t) => !Object.keys((odds[ODDS_FIELD[t]] as OddsMap) ?? {}).length) : [];
   return <div className="odds-bar">
     <div className="bet-controls">
@@ -689,82 +683,11 @@ function OddsBar({ odds, state, error, onLoad }: { odds: OddsData | null; state:
     <p className="bet-note">
       {odds ? <>netkeiba {odds.officialTime ? odds.officialTime.replace(/^\d{4}-/, "").replace("-", "/") + " 時点" : ""}（取得 {new Date(odds.fetchedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}）
         {odds.status === "yoso" && <><br /><b className="bet-warn">発売前。netkeiba の予想で、実際のオッズではない</b></>}</>
-        : "押すと netkeiba から今のオッズを取る（押すたびに取り直す。取ったオッズはこの端末に保存する）"}
-      {missing.length > 0 && <><br />まだ出ていない券種：{missing.join("・")}</>}
+        : compact ? "取得すると、市場と比べた目安を出す" : "押すと netkeiba から今のオッズを取る（押すたびに取り直す。取ったオッズはこの端末に保存する）"}
+      {!compact && missing.length > 0 && <><br />まだ出ていない券種：{missing.join("・")}</>}
       {state === "error" && <><br /><b className="bet-warn">オッズを取得できなかった：{error}</b></>}
     </p>
   </div>;
-}
-
-// ===== 市場比較（オッズから見た確率と AI の確率のズレ。計算は app/lib/market.ts） =====
-type GapTarget = "win" | "top2" | "top3";
-const GAP_LABEL: Record<GapTarget, string> = { win: "勝率", top2: "連対率", top3: "3着以内" };
-
-function MarketPanel({ horses, odds, oddsBar, inTraining }: { horses: Horse[]; odds: OddsData | null; oddsBar: ReactNode; inTraining: boolean }) {
-  const [target, setTarget] = useState<GapTarget>("win");
-  const [sort, setSort] = useState<"gap" | "number">("gap");
-  const predicted = horses.filter((h) => h.prediction && h.raceEntry?.horseNumber != null);
-  const market: MarketProbs | null = useMemo(() => odds ? marketProbs(odds, predicted.map((h) => h.raceEntry!.horseNumber!)) : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [odds, horses]);
-  const ai = useMemo(() => {
-    const pick = (f: (h: Horse) => number | null | undefined) => new Map(predicted.filter((h) => f(h) != null && market?.win.has(h.raceEntry!.horseNumber!))
-      .map((h) => [h.raceEntry!.horseNumber!, f(h)!]));
-    return {
-      win: normalizeTo(pick((h) => h.prediction!.winProbability), 1),
-      top2: normalizeTo(pick((h) => h.prediction!.top2Probability), 2),
-      top3: normalizeTo(pick((h) => h.prediction!.probability), 3),
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [horses, market]);
-  const rows = predicted.filter((h) => market?.win.has(h.raceEntry!.horseNumber!) && ai[target].has(h.raceEntry!.horseNumber!)).map((h) => {
-    const n = h.raceEntry!.horseNumber!;
-    const a = ai[target].get(n)!;
-    const m = market![target].get(n)!;
-    const win = odds!.win[String(n)]?.min ?? null;
-    const place = odds!.place[String(n)]?.min ?? null;
-    return { h, n, a, m, ratio: m > 0 ? a / m : null, win, place, pop: market!.popularity.get(n) ?? null,
-      ev: target === "win" && win ? ai.win.get(n)! * win : target === "top3" && place ? ai.top3.get(n)! * place : null };
-  }).sort((x, y) => sort === "number" ? x.n - y.n : (y.ratio ?? 0) - (x.ratio ?? 0));
-  const source = target === "top2" ? market?.top2Source : target === "top3" ? market?.top3Source : "単勝";
-  return <section className="bets-panel">
-    {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。ズレは参考として見ること。</p>}
-    {oddsBar}
-    {!odds ? <p className="state-panel">オッズを取得すると、市場（オッズ）の見方とAIの見方のズレを出す。</p>
-      : !market ? <p className="state-panel">オッズが足りないので、市場の確率を出せない。</p> : <>
-        <div className="results-toolbar">
-          <div className="sort-toggle" role="group" aria-label="比べる確率">
-            {(["win", "top2", "top3"] as GapTarget[]).map((t) => <button type="button" key={t} className={target === t ? "active" : ""} onClick={() => setTarget(t)}>{GAP_LABEL[t]}</button>)}
-          </div>
-          <div className="sort-toggle" role="group" aria-label="並び順">
-            <button type="button" className={sort === "gap" ? "active" : ""} onClick={() => setSort("gap")}>ズレ順</button>
-            <button type="button" className={sort === "number" ? "active" : ""} onClick={() => setSort("number")}>馬番順</button>
-          </div>
-        </div>
-        <p className="bet-note">ズレ＝AIの{GAP_LABEL[target]} ÷ 市場の{GAP_LABEL[target]}（{source === "単勝から推定" ? "単勝オッズからハービルの式で推定" : source + "オッズから"}）。1.0より大きいほど、AIが市場より高く見ている。
-          {target !== "top2" && "期待値は AI の確率 × " + (target === "win" ? "単勝" : "複勝（下限）") + "オッズ。"}</p>
-        <ul className="gap-list">
-          {rows.map((r) => <li key={r.h.horseId} className={r.ratio != null && r.ratio >= 1.2 ? "gap-high" : r.ratio != null && r.ratio <= 0.8 ? "gap-low" : ""}>
-            <HorseNumberBadge entry={r.h.raceEntry} />
-            <span className="gap-name"><b>{r.h.name}</b>
-              <small>単勝 {r.win?.toFixed(1) ?? "-"}倍（{r.pop ?? "-"}人気）{r.place ? `・複勝 ${r.place.toFixed(1)}倍` : ""}</small>
-              <span className="gap-bars">
-                <span className="gap-bar"><i>AI</i><span><span className="ai" style={{ width: Math.min(r.a, 1) * 100 + "%" }} /></span><em>{(r.a * 100).toFixed(1)}%</em></span>
-                <span className="gap-bar"><i>市場</i><span><span className="mk" style={{ width: Math.min(r.m, 1) * 100 + "%" }} /></span><em>{(r.m * 100).toFixed(1)}%</em></span>
-              </span>
-            </span>
-            <span className="gap-ratio"><strong>{r.ratio != null ? "×" + r.ratio.toFixed(2) : "-"}</strong>
-              {r.ev != null && <small>期待値 {r.ev.toFixed(2)}</small>}</span>
-          </li>)}
-        </ul>
-        <details className="model-note" open>
-          <summary>ズレの見方と注意</summary>
-          <p>AIの確率は、出走馬の合計を 勝率1・連対率2・3着以内3 にそろえてから比べている（オッズから出す市場の確率と同じ合計）。3着以内は「AI予測結果」でも合計3にそろえているので同じ数字。勝率・連対率は「AI予測結果」ではそろえていないので、少し違う。</p>
-          <p>市場の確率は、オッズの逆数を合計1にそろえたもの（控除の約20〜30%を除く）。発売直後や前日はまだ票が少なく、オッズが大きく動く。ズレは締切に近いオッズで見ること。</p>
-          <p><b className="bet-warn">過去の検証（2024〜2026年、9,668レース。前年までで学習して予測）では、ズレが大きい馬ほど実際の勝率は市場の確率とほぼ同じで、回収率は上がっていない。</b>勝率のズレ 2倍以上の馬：AI 4.6%・市場 1.5%・実際 1.4%、単勝回収率 約64%。各レースでズレが一番大きい馬を買うと単勝 77%・複勝 63%（人気1位は 81%・86%）。ズレが大きい＝狙い目、とは言えない（data/ml/gap_backtest.json）。</p>
-        </details>
-      </>}
-  </section>;
 }
 
 function PlanCard({ title, lead, plan, horses, empty }: { title: string; lead: string; plan: Plan | null; horses: Horse[]; empty: string }) {
@@ -867,7 +790,7 @@ export default function RaceDetailPage() {
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [marks, setMarks] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "market" | "bets">("detail");
+  const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "bets">("detail");
   const [predSort, setPredSort] = useState<"number" | "prob">("number");
   const [assumedGoing, setAssumedGoing] = useState(""); // 馬場未発表時に想定する馬場（空 = 想定なし）
   const [odds, setOdds] = useState<OddsData | null>(null);
@@ -944,6 +867,18 @@ export default function RaceDetailPage() {
     return out;
   }, [odds, horses]);
   const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} />;
+  // AI予想タブの目安（妙味あり・妥当・割高）。AI の確率（合計をそろえる前）と単勝オッズから（app/lib/market.ts の valueLabels）
+  const values = useMemo(() => {
+    const model = data?.ml?.valueModel;
+    if (!odds || !model) return null;
+    const base = new Map(horses.filter((h) => h.prediction && h.raceEntry?.horseNumber != null)
+      .map((h) => [h.raceEntry!.horseNumber!, h.prediction!.baseProbability]));
+    return valueLabels(base, odds.win, model);
+  }, [odds, horses, data?.ml?.valueModel]);
+  const predictedCount = horses.filter((h) => h.prediction).length;
+  const averageScore = predictedCount ? Math.min(3, predictedCount) / predictedCount * 100 : 0;
+  const evidence = data?.ml?.valueModel?.evidence;
+  const evidenceYear = evidence ? Object.keys(evidence).sort().at(-1) : undefined;
   const handleMarkChange = (horseId: string, mark: string) => {
     setMarks((current) => {
       const next = { ...current };
@@ -980,11 +915,9 @@ export default function RaceDetailPage() {
       </header>
       <div className="race-tabs" role="tablist" aria-label="レース情報">
         <button type="button" role="tab" aria-selected={activeTab === "detail"} className={"race-tab" + (activeTab === "detail" ? " active" : "")}
-          onClick={() => setActiveTab("detail")}>レース詳細</button>
+          onClick={() => setActiveTab("detail")}>出馬表</button>
         <button type="button" role="tab" aria-selected={activeTab === "prediction"} className={"race-tab" + (activeTab === "prediction" ? " active" : "")}
-          onClick={() => setActiveTab("prediction")}>AI予測</button>
-        <button type="button" role="tab" aria-selected={activeTab === "market"} className={"race-tab" + (activeTab === "market" ? " active" : "")}
-          onClick={() => setActiveTab("market")}>市場比較</button>
+          onClick={() => setActiveTab("prediction")}>AI予想</button>
         <button type="button" role="tab" aria-selected={activeTab === "bets"} className={"race-tab" + (activeTab === "bets" ? " active" : "")}
           onClick={() => setActiveTab("bets")}>買い目</button>
       </div>
@@ -996,12 +929,10 @@ export default function RaceDetailPage() {
         </section>
       </div>}
       {activeTab === "bets" && <div role="tabpanel"><BetsPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar} /></div>}
-      {activeTab === "market" && <div role="tabpanel"><MarketPanel horses={horses} odds={odds} oddsBar={oddsBar} inTraining={!!data.ml?.raceInTraining} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         {data.ml?.status === "available" ? <>
-          <div className="prediction-summary">
-            <div className="summary-item">
-              <small>馬場{data.ml.goingSource === "announced" ? "（発表）" : "（想定）"}</small>
+          <div className="ai-conditions">
+            <span>馬場{data.ml.goingSource === "announced" ? " " : "（想定）"}
               {data.ml.goingSource !== "announced"
                 ? <select aria-label="想定する馬場" value={assumedGoing} disabled={refreshing || loading} onChange={(event) => {
                   setAssumedGoing(event.target.value); void load(false, true, event.target.value);
@@ -1010,44 +941,49 @@ export default function RaceDetailPage() {
                   {["良", "稍重", "重", "不良"].map((going) => <option key={going} value={going}>{going}</option>)}
                 </select>
                 : <b>{conditions.going ?? "-"}</b>}
-            </div>
-            {data.ml.pace && <div className="summary-item">
-              <small>想定ペース</small><b>{data.ml.pace.expected}</b>
-              <span>逃げ候補{data.ml.pace.nigeCandidates}・先行{data.ml.pace.frontRunners}</span>
-            </div>}
-            <div className="summary-item">
-              <small>上位3頭の的中率</small><b>{data.ml.metrics ? (Math.round(data.ml.metrics.raceTop3Hit * 1000) / 10) + "%" : "-"}</b>
-              <span>{data.ml.metrics?.testYear}年の検証</span>
-            </div>
+            </span>
+            {data.ml.pace && <span>想定ペース <b>{data.ml.pace.expected}</b></span>}
           </div>
           {data.ml.raceInTraining && <p className="heavy-note" role="note">
-            ⚠ このレースの結果は、すでにAIの学習データに入っている（学習データ：〜{data.ml.dataUntil}）。答えを見て学習した状態なので、予測の確かめには使えない。参考として見ること。
+            ⚠ このレースの結果は、すでにAIの学習データに入っている（〜{data.ml.dataUntil}）。答えを見て学習した状態なので、参考として見ること。
           </p>}
-          <h2 className="prediction-heading">AI上位3頭</h2>
-          <TopPicks horses={horses} />
-        </> : <p className="state-panel">AI予測は利用できない（モデル未学習、または対象外のレース）。</p>}
-        <section className="horse-results-section">
-          <div className="results-toolbar">
-            <h2 className="prediction-heading">全頭の3着以内確率</h2>
-            <div className="sort-toggle" role="group" aria-label="並び順">
-              <button type="button" className={predSort === "number" ? "active" : ""} onClick={() => setPredSort("number")}>馬番順</button>
-              <button type="button" className={predSort === "prob" ? "active" : ""} onClick={() => setPredSort("prob")}>確率順</button>
+          <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} compact />
+          <section className="horse-results-section">
+            <div className="results-toolbar">
+              <div className="sort-toggle" role="group" aria-label="並び順">
+                <button type="button" className={predSort === "number" ? "active" : ""} onClick={() => setPredSort("number")}>馬番順</button>
+                <button type="button" className={predSort === "prob" ? "active" : ""} onClick={() => setPredSort("prob")}>スコア順</button>
+              </div>
             </div>
-          </div>
-          {sortedHorses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
-            total={horses.filter((item) => item.prediction).length}
-            mark={marks[horse.horseId] ?? ""}
-            categories={categoryRanks.get(horse.horseId) ?? []}
-            factors={factorScores.get(horse.horseId) ?? []} />)}
-          <details className="model-note">
-            <summary>このAI予測について</summary>
-            <p>機械学習（LightGBM）で、3着以内に入る確率を出している。人気・オッズは使っていない。
-              学習データ：JRA成績表 〜{data.ml?.dataUntil ?? "-"}。
-              {data.ml?.goingSource === "user" ? `想定馬場「${conditions.going}」で計算。` : data.ml?.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
-              {data.ml?.bodyWeightAssumed ? "馬体重が未発表の馬は、前走の馬体重・増減0として計算。" : ""}
-              父・母父・母母父の産駒成績（道悪・芝ダ・距離）も入力に入れている。</p>
-          </details>
-        </section>
+            <div className="ai-row-head" aria-hidden="true">
+              <span>馬</span><span>オッズ</span><span>AIスコア<i />平均</span><span>目安</span>
+            </div>
+            {sortedHorses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
+              total={predictedCount}
+              mark={marks[horse.horseId] ?? ""}
+              odds={horseOdds.get(horse.horseId) ?? null}
+              value={horse.raceEntry?.horseNumber != null ? values?.get(horse.raceEntry.horseNumber) ?? null : null}
+              average={averageScore}
+              categories={categoryRanks.get(horse.horseId) ?? []}
+              factors={factorScores.get(horse.horseId) ?? []} />)}
+            <div className="ai-legend">
+              <p><b>AIスコア</b>＝AIが出した3着以内に入る確率（%）。線は出走馬の平均。行を押すと理由が出る。</p>
+              <p><b>目安</b>＝AIと市場（単勝オッズ）を合わせた3着以内の確率が、オッズから見た確率より高いか。
+                <span className="ai-value good">妙味あり</span>1.1倍以上・<span className="ai-value even">妥当</span>・<span className="ai-value bad">割高</span>0.9倍以下。
+                {!odds && " オッズを取得すると出る。"}</p>
+              {evidence && evidenceYear && <p className="bet-warn">過去の検証（{evidenceYear}年、確定オッズ）：「妙味あり」の馬の複勝回収率は {Math.round((evidence[evidenceYear]["妙味あり"]?.roi ?? 0) * 100)}%（{evidence[evidenceYear]["妙味あり"]?.bets ?? 0}点）、
+                「割高」は {Math.round((evidence[evidenceYear]["割高"]?.roi ?? 0) * 100)}%。妙味ありでも長く買い続けて勝てるとは言えない。</p>}
+            </div>
+            <details className="model-note">
+              <summary>このAI予想について</summary>
+              <p>機械学習（LightGBM）で、3着以内に入る確率を出している。人気・オッズはAIスコアには使っていない（目安だけがオッズを使う）。
+                学習データ：JRA成績表 〜{data.ml?.dataUntil ?? "-"}。
+                {data.ml?.goingSource === "user" ? `想定馬場「${conditions.going}」で計算。` : data.ml?.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
+                {data.ml?.bodyWeightAssumed ? "馬体重が未発表の馬は、前走の馬体重・増減0として計算。" : ""}
+                {data.ml?.metrics ? `${data.ml.metrics.testYear}年の検証：AIスコア上位3頭の3着内率 ${(Math.round(data.ml.metrics.raceTop3Hit * 1000) / 10)}%。` : ""}</p>
+            </details>
+          </section>
+        </> : <p className="state-panel">AI予想は利用できない（モデル未学習、または対象外のレース）。</p>}
       </section>}
     </>}
   </main>;

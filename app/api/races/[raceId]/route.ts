@@ -562,7 +562,7 @@ type HeavyAdjustment = {
 };
 let mlAssets: Promise<{
   model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
-  winModel: Model | null; top2Model: Model | null;
+  winModel: Model | null; top2Model: Model | null; valueModel: unknown;
 } | null> | null = null;
 function loadMlAssets() {
   mlAssets ??= (async () => {
@@ -576,9 +576,11 @@ function loadMlAssets() {
       // 道悪未経験 × 血統の道悪倍率 の補正（scripts/ml/train_stack.py が検証して書き出す）
       const heavy = await readFile(path.join(dir, "heavy_adjustment.json"), "utf8").then((text) => JSON.parse(text) as HeavyAdjustment).catch(() => null);
       // 勝率（1着）・連対率（2着以内）のモデル（scripts/ml/train.py が書き出す）。なければ出さない
+      // 画面の目安（妙味あり・妥当・割高）の係数（scripts/ml/backtest_value.py が書き出す）。なければ目安は出さない
+      const valueModel = await readFile(path.join(dir, "value_combine.json"), "utf8").then((text) => JSON.parse(text) as unknown).catch(() => null);
       const [winModel, top2Model] = await Promise.all(["model_win.json", "model_top2.json"].map((name) =>
         readFile(path.join(dir, name), "utf8").then((text) => JSON.parse(text) as Model).catch(() => null)));
-      return { model, store, metrics, stack, heavy, winModel, top2Model };
+      return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel };
     } catch {
       mlAssets = null; // 次のリクエストで再試行
       return null;
@@ -988,7 +990,7 @@ export async function GET(
       });
       const f0 = rows[activeIdx[0]]?.features;
       mlSummary = {
-        status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource,
+        status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource, valueModel: ml.valueModel,
         bodyWeightAssumed: activeIdx.some((i) => rows[i].bodyWeightAssumed),
         // このレースの結果がすでに学習データに入っている（答えを見て学習した状態）
         raceInTraining: raceConditions.date <= ml.store.lastDate,

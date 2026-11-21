@@ -472,7 +472,7 @@ footer span { letter-spacing:0; }
 .month-caption { margin: 16px 0 0; color: var(--accent); font-size: 11px; letter-spacing: .12em; font-weight: 700; }
 
 /* ===== オッズ・市場比較（2026-11-20） ===== */
-.race-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.race-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .race-tab { padding-left: 4px; padding-right: 4px; font-size: 12px; white-space: nowrap; }
 .odds-bar { margin-top: 8px; padding: 8px 10px 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
 .odds-bar .bet-controls { margin-top: 0; }
@@ -501,3 +501,33 @@ footer span { letter-spacing:0; }
 .gap-high .gap-ratio strong { color: var(--accent-strong); }
 .gap-ratio small { color: var(--muted); font-size: 10px; white-space: nowrap; }
 .type-best { margin-bottom: 8px; }
+
+/* ===== AI予想タブ（2026-11-21：1頭1行。オッズ・AIスコア・目安） ===== */
+.ai-conditions { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 4px; color: var(--muted); font-size: 12px; }
+.ai-conditions b { color: var(--text); margin-left: 4px; }
+.ai-conditions select { margin-left: 4px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; }
+.ai-row-head { display: grid; grid-template-columns: 1fr 52px 92px 56px; gap: 6px; padding: 6px 10px 4px 44px; color: var(--muted); font-size: 10px; }
+.ai-row-head span:nth-child(n+2) { text-align: center; }
+.ai-row-head i { display: inline-block; width: 10px; height: 2px; margin: 0 3px 2px 6px; background: #3fae5a; vertical-align: middle; }
+.prediction-horse-summary.ai-row { display: grid; grid-template-columns: 26px 1fr 52px 92px 56px; align-items: center; gap: 6px; min-height: 52px; padding: 8px 10px; }
+.ai-row .horse-main b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.ai-row .horse-main small { margin-top: 2px; }
+.ai-odds { display: flex; flex-direction: column; align-items: center; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.ai-odds b { font-size: 14px; }
+.ai-odds b.fav { color: #ff6b5e; }
+.ai-odds small { color: var(--muted); font-size: 9px; white-space: nowrap; }
+.ai-score { display: flex; align-items: center; gap: 5px; }
+.ai-score strong { flex: 0 0 22px; text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ai-score-track { position: relative; flex: 1; height: 12px; border-radius: 999px; background: #e9e4d6; overflow: visible; }
+.ai-score-fill { display: block; height: 100%; border-radius: 999px; background: #8c8676; }
+.tier-top .ai-score-fill { background: #e0473c; }
+.tier-top .ai-score strong { color: #ff6b5e; }
+.ai-score-avg { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: #3fae5a; }
+.ai-value { display: inline-flex; justify-content: center; align-items: center; min-width: 52px; padding: 4px 4px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.ai-value.good { background: #1f4d2c; color: #8be3a1; border: 1px solid #3fae5a; }
+.ai-value.even { background: #2a2720; color: var(--muted); border: 1px solid var(--line); }
+.ai-value.bad { background: #3b1d1b; color: #f19a92; border: 1px solid #8c3a33; }
+.ai-value.none { color: var(--muted); }
+.ai-legend { margin: 12px 2px 4px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.ai-legend p { margin: 4px 0; }
+.ai-legend .ai-value { min-width: 0; padding: 1px 6px; margin: 0 2px; font-size: 10px; }
