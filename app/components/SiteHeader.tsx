@@ -10,7 +10,7 @@ export default function SiteHeader() {
     <div className="site-header-inner">
       <Link href="/" className="brand" aria-label="トップへ戻る">
         <img src="/logo-mark.png" alt="" className="brand-logo" width={40} height={40} />
-        <span><strong>RACEHORSE INSIGHT</strong><small>ANALYTICS ・ JRA の AI 予想</small></span>
+        <span><strong>RACEHORSE INSIGHT</strong><small>ANALYTICS</small></span>
       </Link>
       {onRace && <Link href="/" className="header-back">← レース一覧</Link>}
     </div>

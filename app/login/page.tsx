@@ -42,20 +42,20 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-8 shadow">
-        <h1 className="mb-4">
-          <img src="/logo.png" alt="Racehorse Insight Analytics" className="mx-auto w-56 rounded-lg" />
+    <main className="login-page">
+      <div className="login-card">
+        <h1 className="login-logo">
+          <img src="/logo.png" alt="Racehorse Insight Analytics" width={224} height={224} />
         </h1>
 
-        <p className="mb-6 text-sm text-gray-600">
+        <p className="login-lead">
           利用するにはパスワードを入力してください。
         </p>
 
         <form onSubmit={handleSubmit}>
           <label
             htmlFor="password"
-            className="mb-2 block text-sm font-medium text-gray-700"
+            className="login-label"
           >
             パスワード
           </label>
@@ -67,11 +67,11 @@ export default function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             required
-            className="mb-4 w-full rounded-lg border border-gray-300 px-3 py-3 text-gray-900"
+            className="login-input"
           />
 
           {error && (
-            <p className="mb-4 text-sm text-red-600">
+            <p className="login-error">
               {error}
             </p>
           )}
@@ -79,7 +79,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-blue-600 px-4 py-3 font-medium text-white disabled:opacity-50"
+            className="login-button"
           >
             {loading ? "確認中..." : "ログイン"}
           </button>
