@@ -9,7 +9,7 @@ type Conditions = {
   raceName: string | null; date: string | null; venue: string | null;
   raceNumber: number | null; startTime: string | null; surface: string | null;
   distanceMeters: number | null; direction: string | null; courseLayout: string | null;
-  courseLetter: string | null; weather: string | null; weatherForecast?: boolean; going: string | null;
+  courseLetter: string | null; weather: string | null; weatherForecast?: boolean; conditionSource?: string; going: string | null;
 };
 type Entry = {
   frameNumber: number | null; horseNumber: number | null; sexAge: string | null;
@@ -849,6 +849,7 @@ export default function RaceDetailPage() {
             "馬場 " + (data.ml?.goingSource === "user" ? "未発表" : conditions.going ?? "未発表"),
           ].filter((value) => value !== "").map((value) => <span className="condition-chip" key={value}>{value}</span>)}
         </div>
+        {conditions.conditionSource && <p className="detail-meta">天候・馬場：{conditions.conditionSource}</p>}
         <div className="refresh-row">
           <span>{formatSavedAt(cachedAt)}{refreshing && " ・ 更新を確認中"}</span>
           <button type="button" className="refresh-button" onClick={() => void load(true, false, assumedGoing)} disabled={refreshing || loading}>

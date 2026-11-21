@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
+import { JRA_BABA_PAGES, parseJraBaba } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
 import { addFieldFeatures, addFormDeviation, addOpponentFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
@@ -168,6 +169,7 @@ type RaceConditions = {
   courseLetter: string | null;
   weather: string | null;
   weatherForecast: boolean; // netkeiba の天候が「予報」（まだ発表前）
+  conditionSource?: string; // 天候・馬場を JRA の馬場情報から取ったとき「JRA（11月21日（土曜）10時現在）」など
   going: string | null;
   fieldStatus: Record<string, string>;
 };
@@ -778,6 +780,19 @@ export async function GET(
     }
 
     const raceConditions = extractRaceConditions(race.html, raceId);
+    // 天候・馬場は JRA の馬場情報ページ（同じ競馬場・同じ開催日のもの）を優先する。当日は9時ごろ、前日は正午ごろに更新される（10分ためる）。
+    // JRA に同じ日のページがなく、netkeiba の天候が「予報」のときは、netkeiba の馬場も発表前とみなして使わない
+    const jraPages = await Promise.all(JRA_BABA_PAGES.map((url) => fetchHtml(url, 600, forceRefresh)
+      .then((page) => (page.ok ? parseJraBaba(page.html) : null)).catch(() => null)));
+    const jra = jraPages.find((b) => b && raceConditions.venue && b.venue === raceConditions.venue && b.date === raceConditions.date) ?? null;
+    const jraGoing = jra ? (raceConditions.surface === "ダート" ? jra.dirt : jra.turf) : null;
+    if (jra && (jraGoing || jra.weather)) {
+      if (jra.weather) { raceConditions.weather = jra.weather; raceConditions.weatherForecast = false; }
+      if (jraGoing) raceConditions.going = jraGoing;
+      raceConditions.conditionSource = "JRA" + (jra.asOf ? "（" + jra.asOf + "）" : "");
+    } else if (raceConditions.weatherForecast) {
+      raceConditions.going = null;
+    }
     // 馬場状態が未発表のときだけ、画面で選んだ想定の馬場（?going=重 など）を使う
     const goingParam = searchParams.get("going");
     let goingSource: "announced" | "user" | "default" = raceConditions.going ? "announced" : "default";
