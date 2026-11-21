@@ -286,6 +286,10 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
   - オッズがないとき：◎は勝率1位、▲は残りで勝率1位、☆・消なし
   - 勝率の合わせ方の係数は `value_combine.json` の `win`（今は 2025年で当てはめた値。`backtest_value.py` を次に回すと 2026年で当てはめ直す）。API は `marks_backtest.json` を読んで画面に過去の成績を出す
   - 買い目の計算（`app/lib/bets.ts` の `rankByType`）は残してあるが、画面では使っていない
+- 合わせる係数を決める期間と予測の作り方の比較（2026-11-21、`compare_combine_window.py` → `data/ml/combine_window_comparison.json`。試す年 2025・2026）
+  - 期間：直前1年（今）・2年・3年。予測：前向き（その年より前で学習）・交差（試す年より前で、その年以外で学習。答えを見ていない予測を増やす方法）
+  - 3着以内の logloss の差は 0.00002 以内、勝率は 0.00002 以内で、どれも同じ。係数も AI 0.19〜0.24・市場 0.67〜0.70 でほぼ同じ。☆の頭数・回収率も年ごとのぶれの範囲
+  - 1年分（約4.6万頭）で十分安定しているので、今のまま（直前1年・前向き）
 - オッズ：`/api/odds/[raceId]`。発売前は netkeiba の status が "yoso"（予想オッズ）で、単勝しか出ない（2026-11-20 金曜のマイルCS で確認。ほかの券種は "history odds empty"）。画面に「予想オッズ」と出す。複勝は type 1 の odds["2"] から取る作り。G1 は金曜から前売りがあり、金曜夜のマイルCS で全券種の実際のオッズが取れた（status "middle"）。前売り直後は票が少なく、人気薄のオッズが大きく動く
 - 取得したオッズは端末（localStorage `keiba-race-odds-v1:<raceId>`）に保存し、タブやページを移っても消えない。「オッズを取得」は押すたびに取り直す。取得ボタンは3つのタブすべてに出す
 - 画面の確認：dev サーバーを立てて Playwright（iPhone 13 の画面サイズ）でスクショを撮る。ログインの cookie `app_auth` は、`AUTH_SECRET` を鍵にした `APP_PASSWORD` の HMAC-SHA256（base64url）。www.netkeiba.com はこの環境から接続できないため、レース一覧は仮のデータを差し込む。レース詳細は API の結果を保存して差し込むと速い
