@@ -150,7 +150,8 @@ def result(sel, ret, race_idx, rng, pool=None, mkt=None) -> dict:
     return out
 
 
-def main() -> None:
+def prepare() -> dict:
+    """年ごとの予測（AI の勝率・3着以内）とオッズ・払戻を、レースごとにそろえた配列で返す（backtest_marks.py も使う）."""
     rows, _ = build_dataset(DATA)
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
     info = race_info()
@@ -205,6 +206,15 @@ def main() -> None:
     la, lm = np.log(np.clip(ai_win, 1e-6, 1)), np.log(np.clip(mkt_win, 1e-6, 1))
     is_win = finish == 1
     is_top3 = finish <= 3
+    logit = lambda p: np.log(p / (1 - p))  # noqa: E731
+    return dict(race_id=race_id, year=year, finish=finish, odds=odds, win_ret=win_ret, place_ret=place_ret, gs=gs, race_idx=race_idx, n=n,
+                ai_win=ai_win, mkt_win=mkt_win, ai_top3=ai_top3, mkt_top3=mkt_top3, la=la, lm=lm, is_win=is_win, is_top3=is_top3)
+
+
+def main() -> None:
+    d = prepare()
+    race_id, year, finish, odds, win_ret, place_ret, gs, race_idx, n = (d[k] for k in ("race_id", "year", "finish", "odds", "win_ret", "place_ret", "gs", "race_idx", "n"))
+    ai_win, mkt_win, ai_top3, mkt_top3, la, lm, is_win, is_top3 = (d[k] for k in ("ai_win", "mkt_win", "ai_top3", "mkt_top3", "la", "lm", "is_win", "is_top3"))
     logit = lambda p: np.log(p / (1 - p))  # noqa: E731
     rng = np.random.default_rng(0)
 
