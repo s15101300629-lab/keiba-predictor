@@ -5,13 +5,14 @@
 印の決め方（上から順に。1頭に印は1つ。▲☆△消は複数頭に付いてよい）
 1. ◎：AI の勝率1位。「割高」なら次の馬
 2. ○：残りで AIスコア（3着以内確率）1位
-3. ▲：残りで、AI の勝率が上位4頭以内、かつ単勝の回収見込み（AI と市場を合わせた勝率 × 単勝オッズ）が WIN_EV 以上
+3. ▲：3通りを比べる（A：AI の勝率上位4頭以内で目安の倍率1.0以上、複数可／B：勝率上位4頭以内で単勝の回収見込みが一番高い1頭／C：残りで勝率1位）
+   最初の版（勝率上位4頭以内で単勝の回収見込み 0.85〜1.0以上）は、3年で十数頭しか付かなかった
 4. ☆：残りで、目安の倍率（AI と市場を合わせた3着以内 ÷ 市場だけを補正した3着以内）が 1.1 以上
 5. △：残りで、AIスコアが6位以内
 6. 消：残りで、3番人気以内かつ「割高」（倍率 0.9 以下）
 - 合わせ方の係数（単勝：条件付きロジット、3着以内：ロジスティック回帰）は、毎年その前の年で決める（backtest_value.py と同じ）
 - 印ごとに：頭数、勝率、3着内率、単勝・複勝回収率、市場の確率の帯をそろえた全馬の複勝回収率（人気の偏りを除いた基準）
-- WIN_EV は 0.85・0.90・1.00 を比べる。確定オッズなので、レース前のオッズでは少し悪くなる
+- 消と比べるため、3番人気以内の馬全体と、そのうち割高な馬全体の成績も出す。確定オッズなので、レース前のオッズでは少し悪くなる
 """
 
 from __future__ import annotations
@@ -28,11 +29,11 @@ from backtest_value import TEST_YEARS, benter, fit_benter, prepare  # noqa: E402
 from train import OUT  # noqa: E402
 
 MARKS = ["◎", "○", "▲", "☆", "△", "消", "無印"]
-WIN_EVS = [0.85, 0.90, 1.00]
+VARIANTS = ["A", "B", "C"]
 VALUE, EXPENSIVE = 1.1, 0.9
 
 
-def assign(g, ai_win, ai_top3, win_ev, ratio, pop, win_ev_min) -> list[str]:
+def assign(g, ai_win, ai_top3, win_ev, ratio, pop, variant) -> list[str]:
     """1レース分の印（g の並び）."""
     k = len(g)
     mark = ["無印"] * k
@@ -50,9 +51,19 @@ def assign(g, ai_win, ai_top3, win_ev, ratio, pop, win_ev_min) -> list[str]:
     for i in order_top3:  # ○
         if not used[i]:
             mark[i] = "○"; used[i] = True; break
-    for i in range(k):  # ▲
-        if not used[i] and win_rank[i] < 4 and win_ev[g][i] >= win_ev_min:
-            mark[i] = "▲"; used[i] = True
+    # ▲：A＝勝率上位4頭以内で倍率1.0以上（複数可）、B＝勝率上位4頭以内で単勝の回収見込みが一番高い1頭、C＝勝率3位（残りの中で勝率1位）
+    cand = [i for i in range(k) if not used[i] and win_rank[i] < 4]
+    if variant == "A":
+        for i in cand:
+            if r[i] >= 1.0:
+                mark[i] = "▲"; used[i] = True
+    elif variant == "B" and cand:
+        i = max(cand, key=lambda j: win_ev[g][j])
+        mark[i] = "▲"; used[i] = True
+    elif variant == "C":
+        for i in order_win:
+            if not used[i]:
+                mark[i] = "▲"; used[i] = True; break
     for i in range(k):  # ☆
         if not used[i] and r[i] >= VALUE:
             mark[i] = "☆"; used[i] = True
@@ -87,7 +98,7 @@ def main() -> None:
     pop = np.zeros(d["n"], int)
     for g in gs:
         pop[g[np.argsort(odds[g], kind="stable")]] = np.arange(1, len(g) + 1)
-    out = {"rules": {"value": VALUE, "expensive": EXPENSIVE, "win_ev": WIN_EVS}, "years": {}}
+    out = {"rules": {"value": VALUE, "expensive": EXPENSIVE, "triangle_variants": VARIANTS}, "years": {}}
     for y in TEST_YEARS:
         prev = str(int(y) - 1)
         mp, mt = year == prev, year == y
@@ -101,15 +112,16 @@ def main() -> None:
         ratio = lr.predict_proba(X)[:, 1] / lr_m.predict_proba(logit(d["mkt_top3"])[:, None])[:, 1]
         mkt_cal = lr_m.predict_proba(logit(d["mkt_top3"])[:, None])[:, 1]
         win_ev = comb_win * odds
-        yr = {"races": len(gt), "all": stats(mt, d, mkt_cal, mt)}
-        for ev_min in WIN_EVS:
+        yr = {"races": len(gt), "all": stats(mt, d, mkt_cal, mt), "pop_le3": stats(mt & (pop <= 3), d, mkt_cal, mt),
+              "pop_le3_expensive": stats(mt & (pop <= 3) & (ratio <= EXPENSIVE), d, mkt_cal, mt)}
+        for v in VARIANTS:
             marks = np.empty(d["n"], dtype=object)
             for g in gt:
-                marks[g] = assign(g, d["ai_win"], d["ai_top3"], win_ev, ratio, pop, ev_min)
-            yr[f"win_ev_{ev_min}"] = {m: stats(mt & (marks == m), d, mkt_cal, mt) for m in MARKS}
+                marks[g] = assign(g, d["ai_win"], d["ai_top3"], win_ev, ratio, pop, v)
+            yr[f"triangle_{v}"] = {m: stats(mt & (marks == m), d, mkt_cal, mt) for m in MARKS}
         out["years"][y] = yr
         print(y, json.dumps({m: (v["n"], round(v.get("top3_rate", 0), 3), round(v.get("place_roi", 0), 3))
-                             for m, v in yr["win_ev_0.9"].items()}, ensure_ascii=False), file=sys.stderr, flush=True)
+                             for m, v in yr["triangle_A"].items()}, ensure_ascii=False), file=sys.stderr, flush=True)
     (OUT / "marks_backtest.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 
