@@ -1,7 +1,7 @@
 // Python (scripts/ml) と TypeScript (app/lib/ml) の特徴量・予測値が一致するか確認する。
 //   node --experimental-strip-types scripts/ml/parity.ts
 import { readFileSync } from "node:fs";
-import { addFieldFeatures, addFormDeviation, addOpponentFeatures, normJockey, runnerFeatures, type Store } from "../../app/lib/ml/features.ts";
+import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, normJockey, runnerFeatures, type Store } from "../../app/lib/ml/features.ts";
 import { predictProbability, type Model } from "../../app/lib/ml/model.ts";
 import { treeShap } from "../../app/lib/ml/shap.ts";
 
@@ -37,6 +37,7 @@ for (const raceRows of byRace.values()) {
   addFormDeviation(computed);
   addFieldFeatures(computed);
   addOpponentFeatures(store, race, computed, raceRows.map((row) => row.horse));
+  addSimilarCondFeatures(store, race, computed, raceRows.map((row) => row.horse));
   raceRows.forEach((row, i) => {
     for (const name of model.features) {
       const expected = row.features[name];

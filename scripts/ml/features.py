@@ -86,6 +86,12 @@ FEATURES_BEFORE_PEOPLE = list(FEATURES)  # 馬主などを入れる前の160項�
 PEOPLE_FEATURES = ["owner_n_y", "owner_top3_y", "owner_n_py", "owner_top3_py", "breeder_n_y", "breeder_top3_y", "breeder_n_py", "breeder_top3_py",
                    "jockey_n_py", "jockey_top3_py", "trainer_n_py", "trainer_top3_py"]
 FEATURES = FEATURES + PEOPLE_FEATURES
+FEATURES_BEFORE_SIMILAR = list(FEATURES)  # 似た条件を入れる前の172項目
+# 似た条件（同じ芝ダ・距離±200m・馬場の区分が同じ過去走、さらに想定ペースも同じ走）での実績（compare_similar_cond.py。3年とも logloss 改善、2026-11-21）
+SIMILAR_COND_FEATURES = ["sc_n", "sc_top3", "sc_ab_best", "sc_ab_mean", "sc_fin_best", "sc_strong", "sc_strong_ab",
+                         "scp_n", "scp_top3", "scp_ab_best"]
+FEATURES = FEATURES + SIMILAR_COND_FEATURES
+STRONG_AB_SLOPE, STRONG_AB_INTERCEPT = 4.074320892848245, -2.911852114339949  # 能力指数 ~ 相手の調子の平均（全走で1本の直線。ラベルは使わない）
 PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
 
@@ -550,6 +556,12 @@ class History:
                     "distance": race["distance"], "top3": 1 if h["finish"] is not None and h["finish"] <= 3 else 0,
                 })
 
+        # 相手の強さ：同じレースの他の馬の、そのときの調子の平均（似た条件の特徴量で使う）
+        entries = self.by_race[race["race_id"]]
+        for h, run in entries:
+            m = _mean([o["form_at"] for oh, o in entries if oh != h])
+            run["opp_form"] = m if math.isnan(m) else round(m, 6)  # store と同じ桁にそろえる
+
 
 def days_between(a: str, b: str) -> int:
     return (date.fromisoformat(b) - date.fromisoformat(a)).days
@@ -721,6 +733,43 @@ def _mean(xs) -> float:
     """欠損を除いた平均。足す順番で最後の桁が変わらないよう、小さい順に並べてから足す（TS の meanOfNullable と同じ）."""
     xs = sorted(x for x in xs if x is not None and not (isinstance(x, float) and math.isnan(x)))
     return sum(xs) / len(xs) if xs else NAN
+
+
+def expected_pace(nige: float, front_ratio: float) -> int:
+    """出走馬の顔ぶれから見た想定ペース（features.ts の expectedPace と同じ）。0=スロー 1=ミドル 2=ハイ."""
+    if nige >= 2 or front_ratio >= 0.4:
+        return 2
+    if nige == 0 and front_ratio < 0.25:
+        return 0
+    return 1
+
+
+def similar_cond_features(rows: list[dict], names: list[str], race: dict, horses: dict) -> None:
+    """似た条件（同じ芝ダ・距離±200m・馬場の区分（良／稍重以上）が同じ）の過去走での実績と、さらに想定ペースも同じ走での実績.
+    sc_strong：その中で3着以内だった走の相手の強さ（他の馬のそのときの調子の平均）の最高。sc_strong_ab：能力指数 − 相手の強さから見た見込み の平均."""
+    d = race["distance"]
+    wet = race["going"] is not None and race["going"] >= 1
+    for f, h in zip(rows, names):
+        runs = horses.get(h, [])
+        sel = [x for x in runs if x["surface"] == race["surface"] and x["distance"] and d is not None and abs(x["distance"] - d) <= 200
+               and x["going"] is not None and (x["going"] >= 1) == wet]
+        top3 = [x for x in sel if x["finish"] is not None and x["finish"] <= 3]
+        ab = [x["ab"] for x in sel if x["ab"] is not None]
+        f["sc_n"] = len(sel)
+        f["sc_top3"] = len(top3) / len(sel) if sel else NAN
+        f["sc_ab_best"] = max(ab) if ab else NAN
+        f["sc_ab_mean"] = _mean(ab)
+        f["sc_fin_best"] = max(run_components(x["finish"], x["field"], x["time_diff"])[0] for x in sel) if sel else NAN
+        st = [x["opp_form"] for x in top3 if not math.isnan(x.get("opp_form", NAN))]
+        f["sc_strong"] = max(st) if st else NAN
+        f["sc_strong_ab"] = _mean([x["ab"] - (STRONG_AB_SLOPE * x["opp_form"] + STRONG_AB_INTERCEPT) for x in sel
+                                   if x["ab"] is not None and not math.isnan(x.get("opp_form", NAN))])
+        pace = expected_pace(f["field_nige_cands"], f["field_front_ratio"])
+        selp = [x for x in sel if x["pace"] == pace]
+        abp = [x["ab"] for x in selp if x["ab"] is not None]
+        f["scp_n"] = len(selp)
+        f["scp_top3"] = sum(1 for x in selp if x["finish"] is not None and x["finish"] <= 3) / len(selp) if selp else NAN
+        f["scp_ab_best"] = max(abp) if abp else NAN
 
 
 def add_opponent_features(rows: list[dict], names: list[str], race: dict, horses: dict, by_race: dict) -> None:
@@ -956,6 +1005,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
             add_form_deviation(race_rows)
             add_field_features(race_rows)
             add_opponent_features(race_rows, [h["horse"] for h in race["runners"]], race, hist.horses, hist.by_race)
+            similar_cond_features(race_rows, [h["horse"] for h in race["runners"]], race, hist.horses)
             for f, h in zip(race_rows, race["runners"]):  # 後のレースの前走レベル・直接対決で使う「そのときの調子・タイム指数」
                 h["form_at"] = None if math.isnan(f["form_raw"]) else round(f["form_raw"], 6)
                 h["tm5_at"] = None if math.isnan(f["tidx_mean5"]) else round(f["tidx_mean5"], 6)

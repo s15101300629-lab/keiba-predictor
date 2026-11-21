@@ -8,11 +8,11 @@ export type Store = {
   //  prize(1着賞金・万円), weight(斤量), jockey(names の番号), trainer(names の番号), tidx(タイム指数),
   //  victim(成績表の〔制裁〕で被害馬=1), ab(能力指数), agDev, agRank, earlyGap, fade(推定上がりの指標。scripts/ml/features.py の add_ability),
   //  turn(回り 0=右 1=左 2=直線), sband(直線の区分 0=〜300m 1=〜400m 2=400m〜),
-  //  raceId(数値), cStraight(直線 m), cElev(高低差 m), formAt・tm5At(そのレースの前の調子 form_raw・タイム指数の近5走平均)]
+  //  raceId(数値), cStraight(直線 m), cElev(高低差 m), formAt・tm5At(そのレースの前の調子 form_raw・タイム指数の近5走平均), oppForm(そのレースの他の馬の formAt の平均＝相手の強さ)]
   horses: Record<string, [string, number, number, number | null, number, number, number, number, number, number, number,
     number | null, number | null, number, number, number | null, number?,
     (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?,
-    (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?][]>;
+    (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?, (number | null)?][]>;
   names?: string[]; // 騎手・調教師名の一覧
   // [date, venue, surface, distance, top3]
   jockeys: Record<string, [string, number, number, number | null, number][]>;
@@ -499,6 +499,42 @@ export function addOpponentFeatures(store: Store, race: RaceInput, rows: Feature
     f.h2h_ahead = n ? ahead / n : NaN;
     f.h2h_adj = n ? adj / n : NaN;
     f.h2h_margin = n ? margin / n : NaN;
+  });
+}
+
+// 能力指数 ~ 相手の強さ（features.py の STRONG_AB_SLOPE・STRONG_AB_INTERCEPT）
+const STRONG_AB_SLOPE = 4.074320892848245;
+const STRONG_AB_INTERCEPT = -2.911852114339949;
+const PACE_CODE = { "スロー": 0, "ミドル": 1, "ハイ": 2 } as const;
+
+/**
+ * 似た条件（同じ芝ダ・距離±200m・馬場の区分（良／稍重以上）が同じ過去走）での実績と、想定ペースも同じ走での実績.
+ * features.py の similar_cond_features と同じ。store の走だけを使う（海外の走は入れない）. addFieldFeatures の後に呼ぶ.
+ */
+export function addSimilarCondFeatures(store: Store, race: RaceInput, rows: Features[], names: string[]): void {
+  const d = race.distance;
+  const wet = race.going !== null && race.going >= 1;
+  rows.forEach((f, k) => {
+    const sel = (store.horses[names[k]] ?? []).filter((r) => r[0] < race.date && r[2] === race.surface && r[3] && d !== null
+      && Math.abs(r[3] - d) <= 200 && r[4] >= 0 && (r[4] >= 1) === wet);
+    const fin = (r: (typeof sel)[number]) => (r[6] < 0 ? null : r[6]);
+    const top3 = sel.filter((r) => { const x = fin(r); return x !== null && x <= 3; });
+    const ab = sel.map((r) => r[17] ?? null).filter((x): x is number => x !== null);
+    f.sc_n = sel.length;
+    f.sc_top3 = sel.length ? top3.length / sel.length : NaN;
+    f.sc_ab_best = ab.length ? Math.max(...ab) : NaN;
+    f.sc_ab_mean = meanOfNullable(ab);
+    f.sc_fin_best = sel.length ? Math.max(...sel.map((r) => runComponents(fin(r), r[5], r[7] < 0 ? null : r[7])[0])) : NaN;
+    const st = top3.map((r) => r[29] ?? null).filter((x): x is number => x !== null);
+    f.sc_strong = st.length ? Math.max(...st) : NaN;
+    f.sc_strong_ab = meanOfNullable(sel.filter((r) => (r[17] ?? null) !== null && (r[29] ?? null) !== null)
+      .map((r) => r[17]! - (STRONG_AB_SLOPE * r[29]! + STRONG_AB_INTERCEPT)));
+    const pace = PACE_CODE[expectedPace(f.field_nige_cands, f.field_front_ratio)];
+    const selp = sel.filter((r) => r[8] === pace);
+    const abp = selp.map((r) => r[17] ?? null).filter((x): x is number => x !== null);
+    f.scp_n = selp.length;
+    f.scp_top3 = selp.length ? selp.filter((r) => { const x = fin(r); return x !== null && x <= 3; }).length / selp.length : NaN;
+    f.scp_ab_best = abp.length ? Math.max(...abp) : NaN;
   });
 }
 

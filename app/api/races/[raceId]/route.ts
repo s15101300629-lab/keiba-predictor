@@ -4,7 +4,7 @@ import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
 import { JRA_BABA_PAGES, parseJraBaba } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
-import { addFieldFeatures, addFormDeviation, addOpponentFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
+import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionRecord,
@@ -966,6 +966,7 @@ export async function GET(
       addFormDeviation(activeIdx.map((i) => rows[i].features));
       addFieldFeatures(activeIdx.map((i) => rows[i].features));
       addOpponentFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
+      addSimilarCondFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
       const baseProbs = rows.map((row) => predictProbability(ml.model, row.features));
       const useStack = !!ml.stack?.adopted;
       const isHeavy = raceConditions.going === "重" || raceConditions.going === "不良";

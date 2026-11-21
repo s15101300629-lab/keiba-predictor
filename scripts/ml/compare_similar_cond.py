@@ -23,7 +23,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from compare_owner import GROUPS as OWNER_GROUPS  # noqa: E402
 from compare_owner import owner_features  # noqa: E402
-from features import FEATURES, build_dataset, run_components  # noqa: E402
+from features import FEATURES_BEFORE_SIMILAR as FEATURES, build_dataset, run_components  # noqa: E402  # 基準は172項目（馬主など入り）
 from train import DATA, OUT, PARAMS, TRAIN_FROM  # noqa: E402
 from tune_params import evaluate  # noqa: E402
 
@@ -92,14 +92,13 @@ def main() -> None:
     owner = owner_features()
     rows = [r for r in rows if r["date"] >= TRAIN_FROM]
     oext = [f for g in OWNER_GROUPS.values() for f in g]
-    cols = FEATURES + oext + SC + SCP
-    X = np.array([[r[f] for f in FEATURES] + [owner[(r["race_id"], r["horse"])][f] for f in oext] + [r[f] for f in SC + SCP]
-                  for r in rows], dtype=np.float64)
+    cols = FEATURES + SC + SCP
+    X = np.array([[r[f] for f in FEATURES + SC + SCP] for r in rows], dtype=np.float64)  # 馬主など・似た条件は features.py に入った
     y = np.array([r["label"] for r in rows], dtype=float)
     year = np.array([r["date"][:4] for r in rows])
     race_id = np.array([r["race_id"] for r in rows])
     finish = np.array([r["finish"] if r["finish"] is not None else 99 for r in rows])
-    base = FEATURES + oext
+    base = FEATURES
     sets = {"基準(160＋馬主など)": base, "+似た条件": base + SC, "+似た条件＋ペース": base + SC + SCP}
     out = {"coverage": {f: round(float(np.mean(~np.isnan(X[:, cols.index(f)]))), 3) for f in ("sc_top3", "sc_strong", "scp_top3")}, "sets": {}}
     first = None
