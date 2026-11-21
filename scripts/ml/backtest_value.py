@@ -39,6 +39,8 @@ PRED_YEARS = ["2023", "2024", "2025", "2026"]  # 2023 は 2024年の閾値・合
 TEST_YEARS = ["2024", "2025", "2026"]
 WIN_THRESHOLDS = [1.0, 1.05, 1.1, 1.15, 1.2, 1.3, 1.4, 1.5, 1.75, 2.0]
 PLACE_THRESHOLDS = [1.0, 1.05, 1.1, 1.15, 1.2, 1.3, 1.4, 1.5]
+# 画面の目安（AI予想タブ）：合わせた3着以内 ÷ 補正した市場 が 1.1 以上＝妙味あり、0.9 以下＝割高、その間＝妥当
+LABEL_BANDS = {"妙味あり": (1.1, 1e9), "妥当": (0.9, 1.1), "割高": (0.0, 0.9)}
 MIN_BETS = 300
 BOOT = 2000
 
@@ -249,6 +251,8 @@ def main() -> None:
             yr[name] = {"threshold_from_prev_year": t,
                         "result": result(mt & (score >= t), ret, race_idx, rng, mt, mkt) if t is not None else {"bets": 0},
                         "fixed": {str(th): result(mt & (score >= th), ret, race_idx, rng, mt, mkt) for th in ths}}
+        yr["目安ごと(複勝)"] = {k: result(mt & (ratio_place >= lo) & (ratio_place < hi), place_ret, race_idx, rng, mt, mkt_top3_cal)
+                                for k, (lo, hi) in LABEL_BANDS.items()}
         yr["全馬を買う"] = {"単勝": result(mt, win_ret, race_idx, rng, mt), "複勝": result(mt, place_ret, race_idx, rng, mt)}
         out["years"][y] = yr
         print(y, json.dumps({k: v for k, v in yr.items() if k.startswith("logloss") or k.startswith("benter")}, ensure_ascii=False),
@@ -261,6 +265,18 @@ def main() -> None:
         hits = sum(out["years"][y][name]["result"].get("hits", 0) for y in TEST_YEARS)
         tot[name] = {"bets": bets, "hits": hits, "roi": pay / (100 * bets) if bets else None}
     out["total"] = tot
+    # アプリ用の係数（直近の年 TEST_YEARS[-1] で当てはめ）。入力は AI の3着以内確率（モデルの出力を出走馬の合計 min(3, 頭数) に比例でそろえたもの）と、
+    # 単勝オッズの逆数を合計1にした勝率からハービルの式で出した市場の3着以内確率
+    last = year == TEST_YEARS[-1]
+    lr = LogisticRegression(C=1e6, max_iter=1000).fit(np.column_stack([logit(ai_top3[last]), logit(mkt_top3[last])]), is_top3[last])
+    lr_m = LogisticRegression(C=1e6, max_iter=1000).fit(logit(mkt_top3[last])[:, None], is_top3[last])
+    combine = {"fitted_year": TEST_YEARS[-1], "n_features": len(FEATURES),
+               "combined": {"ai": float(lr.coef_[0][0]), "market": float(lr.coef_[0][1]), "intercept": float(lr.intercept_[0])},
+               "market_only": {"market": float(lr_m.coef_[0][0]), "intercept": float(lr_m.intercept_[0])},
+               "bands": {k: list(v) for k, v in LABEL_BANDS.items()},
+               "evidence": {y: {k: {kk: out["years"][y]["目安ごと(複勝)"][k].get(kk) for kk in ("bets", "hits", "roi", "roi_market_matched")}
+                                for k in LABEL_BANDS} for y in TEST_YEARS}}
+    (OUT / "value_combine.json").write_text(json.dumps(combine, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     (OUT / "value_backtest.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(json.dumps(tot, ensure_ascii=False), file=sys.stderr)
 
