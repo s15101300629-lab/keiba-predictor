@@ -986,6 +986,8 @@ export async function GET(
             weightChange: num(f.weight_change), jockeyChange: num(f.jockey_change),
             tidxMean5: num(f.tidx_mean5), tidxBest5: num(f.tidx_best5), wakuCourseN: f.waku_course_n, wakuCourseDiff: num(f.waku_course_diff),
           },
+          // 各観点の順位（画面）に使う、モデルで効いている項目。能力指数の直近加重平均・推定上がり偏差の直近加重平均・今回の条件での能力
+          ability: { ab: num(f.ab_wmean), agari: num(f.ag_dev_wmean), cond: num(f.cond_ab) },
         };
       });
       const f0 = rows[activeIdx[0]]?.features;

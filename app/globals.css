@@ -531,3 +531,29 @@ footer span { letter-spacing:0; }
 .ai-legend { margin: 12px 2px 4px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .ai-legend p { margin: 4px 0; }
 .ai-legend .ai-value { min-width: 0; padding: 1px 6px; margin: 0 2px; font-size: 10px; }
+
+/* ===== AI予想：馬ごとの詳細（プラス評価ポイント・各観点の順位） ===== */
+.ai-detail { padding: 4px 10px 12px; }
+.ai-detail-head { display: flex; align-items: stretch; gap: 10px; margin-bottom: 10px; padding: 10px 0 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2, #100e09); overflow: hidden; }
+.ai-detail-head > div { flex: 1; min-width: 0; }
+.ai-detail-head b { display: block; font-size: 17px; }
+.ai-detail-head small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+.ai-detail-score { flex: 0 0 76px; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: -10px 0; background: #3a3426; }
+.ai-detail-score small { color: var(--text-sub); font-size: 10px; }
+.ai-detail-score strong { font-size: 30px; line-height: 1.1; }
+.ai-points { margin: 8px 0; padding: 10px 12px; border-radius: 12px; }
+.ai-points.plus { background: #3a1e1c; }
+.ai-points.minus { background: #1d2430; }
+.ai-points h4 { margin: 0; font-size: 14px; }
+.ai-points p { margin: 2px 0 8px; color: var(--muted); font-size: 10px; }
+.ai-points div { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-points span { padding: 5px 12px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 12px; font-weight: 700; }
+.ai-ranks h4 { margin: 14px 0 4px; font-size: 14px; color: var(--text-sub); }
+.ai-ranks details { border-bottom: 1px dashed var(--line); }
+.ai-ranks summary { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 4px; list-style: none; cursor: pointer; font-size: 14px; font-weight: 700; }
+.ai-ranks summary::-webkit-details-marker { display: none; }
+.ai-ranks summary b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.ai-ranks summary small { color: var(--muted); font-size: 11px; margin-left: 2px; }
+.ai-ranks details.top summary { color: #ff6b5e; }
+.ai-ranks details p { margin: 0 4px 10px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.ai-ranks-note { margin: 10px 2px 0; color: var(--muted); font-size: 10px; }

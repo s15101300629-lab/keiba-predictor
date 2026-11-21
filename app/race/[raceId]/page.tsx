@@ -62,6 +62,7 @@ type Extras = {
   tidxMean5: number | null; tidxBest5: number | null; wakuCourseN: number; wakuCourseDiff: number | null;
 };
 type Prediction = {
+  ability?: { ab: number | null; agari: number | null; cond: number | null };
   pace?: PaceInfo;
   extras?: Extras;
   trainerName?: string | null;
@@ -395,40 +396,6 @@ function buildCategoryRanks(
 }
 
 // AI予測の補足情報を「項目名・内容」の行にする
-function predictionFacts(p: Prediction): [string, string][] {
-  const rows: [string, string][] = [];
-  const e = p.extras;
-  if (e) {
-    if (e.prizeRatioLast != null) {
-      const r = e.prizeRatioLast;
-      rows.push(["クラス", `${r > 1.15 ? "昇級・格上挑戦" : r < 0.87 ? "降級・格下" : "前走と同程度"}（1着賞金 前走の${r.toFixed(2)}倍）`]);
-    }
-    const change: string[] = [];
-    if (e.distChange) change.push(`距離${e.distChange > 0 ? "+" : ""}${e.distChange}m`);
-    if (e.surfaceChange === 1) change.push("芝ダ替わり");
-    if (e.weightChange) change.push(`斤量${e.weightChange > 0 ? "+" : ""}${e.weightChange}kg`);
-    if (e.jockeyChange === 1) change.push("乗り替わり");
-    if (e.distChange != null) rows.push(["前走から", change.length ? change.join("・") : "変化なし"]);
-    if (e.tidxMean5 != null) rows.push(["タイム指数", `近5走平均 ${e.tidxMean5.toFixed(2)}・最高 ${e.tidxBest5!.toFixed(2)}（1000mあたり基準より何秒速いか）`]);
-  }
-  if (p.trainer && p.trainer.n) rows.push(["調教師", `${p.trainerName ?? "-"}：今年 ${p.trainer.n}頭・3着内 ${Math.round(p.trainer.top3 / p.trainer.n * 100)}%`]);
-  if (p.pace) {
-    const pc = p.pace;
-    rows.push(["脚質", (pc.style ?? "不明") + (pc.posFirstMean != null
-      ? `（最初のコーナー 平均${Math.round(pc.posFirstMean * 100)}%地点${pc.nigeRate ? `・逃げ${Math.round(pc.nigeRate * 100)}%` : ""}）` : "")]);
-    const paceText = (label: string, v: { n: number; top3: number | null }) =>
-      `${label} ${v.n}走${v.top3 != null ? `・3着内${Math.round(v.top3 * 100)}%` : ""}`;
-    rows.push(["ペース別", paceText("ハイ", pc.highPace) + " ／ " + paceText("スロー", pc.slowPace)]);
-  }
-  rows.push(["調子偏差値", `${p.modelFormDeviation == null ? "-" : p.modelFormDeviation.toFixed(1)}（成績表の近5走：着順＋タイム差）・過去走 ${p.priorRuns}走` +
-    (p.jockeyName ? "" : "・騎手を成績表で特定できず")]);
-  rows.push(["調教評価", p.training?.rank ? `${p.training.rank}${p.training.critic ? "（" + p.training.critic + "）" : ""}` : "未発表（評価なしとして計算）"]);
-  if (p.overseasRuns) rows.push(["海外の走", `海外${p.overseasRuns}走を過去走に含めて計算（着順・頭数・格から。海外のレースは学習データにないので参考）`]);
-  if (e?.wakuCourseN && e.wakuCourseDiff != null) rows.push(["枠（参考）", `同コースでこの枠の3着内率はコース平均より${e.wakuCourseDiff >= 0 ? "+" : ""}${Math.round(e.wakuCourseDiff * 100)}pt（${e.wakuCourseN}頭）`]);
-  return rows;
-}
-
-// JRA の枠の色
 const FRAME_COLORS: Record<number, [string, string]> = {
   1: ["#f4f4f4", "#111"], 2: ["#222", "#fff"], 3: ["#d8323a", "#fff"], 4: ["#2a6ad8", "#fff"],
   5: ["#f2cf2a", "#111"], 6: ["#2e9e4f", "#fff"], 7: ["#f08a24", "#111"], 8: ["#f39ac0", "#111"],
@@ -538,13 +505,6 @@ function HorseDetailCard({ horse, mark, onMarkChange, odds }: {
   </details>;
 }
 
-const CATEGORY_GROUPS = [
-  { title: "成績・距離", labels: ["全体成績", "重賞実績", "距離適性"] },
-  { title: "コース・馬場適性", labels: ["コース適性", "馬場適性", "枠順"] },
-  { title: "調子・騎手・位置取り", labels: ["調子", "騎手", "ポジション"] },
-  { title: "血統・調教", labels: ["血統", "種牡馬", "調教"] },
-];
-
 const FACTOR_BY_CATEGORY: Record<string, string> = {
   "コース適性": "競馬場・馬場適性",
   "騎手": "騎手(今年)",
@@ -568,7 +528,7 @@ function probabilityTier(rank: number | undefined) {
 
 const VALUE_CLASS: Record<string, string> = { 妙味あり: "good", 妥当: "even", 割高: "bad" };
 
-function OverallHorseCard({ horse, total, categories, factors, mark, odds, value, average }: {
+function OverallHorseCard({ horse, categories, factors, mark, odds, value, average }: {
   horse: Horse; total: number; categories: CategoryRank[]; factors: FactorScore[]; mark: string;
   odds: HorseOdds | null; value: ValueResult | null; average: number;
 }) {
@@ -604,64 +564,39 @@ function OverallHorseCard({ horse, total, categories, factors, mark, odds, value
       <span className={"ai-value " + (value ? VALUE_CLASS[value.label] : "none")}>{value?.label ?? "-"}</span>
     </summary>
 
-    <div className="horse-result-content">
-      <section className="horse-result-overall">
-        <div className="horse-result-score-line">
-          <div><small>3着以内に入る確率</small><strong>{probabilityText}</strong></div>
-          <span>{prediction ? prediction.rank + "位 / " + total + "頭" : "順位対象外"}</span>
+    <div className="horse-result-content ai-detail">
+      <div className="ai-detail-head">
+        <div>
+          <b>{horse.name}</b>
+          <small>{[odds?.win != null ? odds.win.toFixed(1) + "倍 " + (odds.popularity ?? "-") + "番人気" : null, entry?.sexAge, entry?.jockey,
+            entry?.carriedWeight != null ? entry.carriedWeight.toFixed(1) + "kg" : null].filter(Boolean).join(" / ")}</small>
+          {prediction && prediction.winProbability != null && prediction.top2Probability != null &&
+            <small>勝率 {(prediction.winProbability * 100).toFixed(1)}% ・ 連対率 {(prediction.top2Probability * 100).toFixed(1)}% ・ 3着以内 {probabilityText}</small>}
         </div>
-        {prediction && prediction.winProbability != null && prediction.top2Probability != null && <div className="sub-probs">
-          <span>勝率 <b>{(prediction.winProbability * 100).toFixed(1)}%</b></span>
-          <span>連対率 <b>{(prediction.top2Probability * 100).toFixed(1)}%</b></span>
-        </div>}
-        {(strong.length > 0 || weak.length > 0) && <div className="point-chips">
-          {strong.map((label) => <span className="point-chip strong" key={label}>◎ {label}</span>)}
-          {weak.map((label) => <span className="point-chip weak" key={label}>△ {label}</span>)}
-        </div>}
-        {heavy && <p className="heavy-note" role="note">
-          ⚠ 道悪（重・不良）未経験・血統は道悪{heavy.label}（血統の道悪倍率 {heavy.ratio.toFixed(2)}倍）。
-          {" 血統の道悪適性は、AIの確率にすでに含めて計算している。"}
-        </p>}
-        {prediction && <dl className="fact-list">
-          {predictionFacts(prediction).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-        </dl>}
-      </section>
-
-      <section className="horse-result-section">
-        <div className="result-section-heading">
-          <h4>項目別の評価</h4>
-          <p>スコアは出走馬の中での偏差値（50が平均）。順位は出走馬の中での順位。</p>
-        </div>
-        {CATEGORY_GROUPS.map((group) => {
-          const items = group.labels.map((label) => ({
-            item: categories.find((category) => category.label === label),
-            factor: factorFor(label),
-          })).filter((value): value is { item: CategoryRank; factor: FactorScore | undefined } =>
-            value.item !== undefined && !missing.includes(value.item.label));
-          if (!items.length) return null;
-          return <section className="result-category-group" key={group.title}>
-            <h5>{group.title}</h5>
-            <div className="result-category-grid">
-              {items.map(({ item, factor }) => <details className="result-category-card" key={item.label}>
-                <summary className="result-category-summary">
-                  <span className="result-category-heading">
-                    <b>{item.label}</b>
-                    <span className="result-category-value">
-                      {item.rank !== null && <em className={item.rank <= 3 && item.total >= 4 ? "good" : ""}>{item.rank}位/{item.total}</em>}
-                      {factor && <strong>{factor.score.toFixed(1)}</strong>}
-                    </span>
-                  </span>
-                  {factor && <span className="category-score-track" role="img" aria-label={item.label + "スコア " + factor.score.toFixed(1)}>
-                    <span className="category-score-fill" style={{ width: Math.max(0, Math.min(100, (factor.score - 20) / 60 * 100)) + "%" }} />
-                    <span className="category-score-mid" />
-                  </span>}
-                </summary>
-                {item.detail && <p>{item.detail}</p>}
-              </details>)}
-            </div>
-          </section>;
+        <span className="ai-detail-score"><small>AIスコア</small><strong>{probability === null ? "-" : Math.round(probability)}</strong></span>
+      </div>
+      {strong.length > 0 && <section className="ai-points plus">
+        <h4>プラス評価ポイント</h4><p>出走馬の中で上位3頭に入る観点</p>
+        <div>{strong.map((label) => <span key={label}>{label}</span>)}</div>
+      </section>}
+      {weak.length > 0 && <section className="ai-points minus">
+        <h4>マイナス評価ポイント</h4><p>出走馬の中で下位3頭に入る観点</p>
+        <div>{weak.map((label) => <span key={label}>{label}</span>)}</div>
+      </section>}
+      {heavy && <p className="heavy-note" role="note">
+        ⚠ 道悪（重・不良）未経験・血統は道悪{heavy.label}（血統の道悪倍率 {heavy.ratio.toFixed(2)}倍）。血統の道悪適性は、AIスコアにすでに含めて計算している。
+      </p>}
+      <section className="ai-ranks">
+        <h4>各観点の順位</h4>
+        {categories.filter((c) => !missing.includes(c.label)).map((c) => {
+          const top = c.rank !== null && c.rank <= 3 && c.total >= 4;
+          return <details key={c.label} className={top ? "top" : ""}>
+            <summary><span>{c.label}</span><span>{c.rank !== null ? <><b>{c.rank}</b>位<small>/{c.total}頭</small></> : <small>-</small>}</span></summary>
+            {c.detail && <p>{c.detail}</p>}
+          </details>;
         })}
         {missing.length > 0 && <p className="missing-note">データなし：{missing.join("・")}</p>}
+        <p className="ai-ranks-note">AIスコアは、これらを含む160項目から機械学習でまとめて出した確率。順位は理由の目安（行を押すと中身）。</p>
       </section>
     </div>
   </details>;
@@ -850,7 +785,27 @@ export default function RaceDetailPage() {
   const conditions = data?.raceConditions;
   const horses = data?.results ?? [];
   const factorScores = useMemo(() => buildFactorScores(horses), [horses]);
-  const categoryRanks = useMemo(() => buildCategoryRanks(horses, factorScores, conditions?.distanceMeters ?? null, conditions?.venue ?? null), [horses, factorScores, conditions?.distanceMeters, conditions?.venue]);
+  const categoryRanks = useMemo(() => {
+    const base = buildCategoryRanks(horses, factorScores, conditions?.distanceMeters ?? null, conditions?.venue ?? null);
+    // モデルで効いている3項目（能力指数・推定上がり・今回の条件での能力）の、出走馬の中での順位を先頭に足す
+    const extra: [string, (p: Prediction) => number | null | undefined, (v: number) => string][] = [
+      ["能力指数", (p) => p.ability?.ab, (v) => "近走（同じ芝ダ）の能力指数の直近加重平均 " + (v >= 0 ? "+" : "") + v.toFixed(2) + "（その日の馬場差・斤量を補正したタイム指数。1000mあたりの秒）"],
+      ["上がり", (p) => p.ability?.agari, (v) => "近走の推定上がり3F が、そのレースの平均より " + Math.abs(v).toFixed(2) + "秒" + (v >= 0 ? "速い" : "遅い") + "（直近加重平均。成績表の隊列から推定）"],
+      ["今回の条件", (p) => p.ability?.cond, (v) => "能力指数に、今回の距離・競馬場・馬場での得意不得意を足した値 " + (v >= 0 ? "+" : "") + v.toFixed(2)],
+    ];
+    const out = new Map<string, CategoryRank[]>();
+    for (const h of horses) out.set(h.horseId, [...(base.get(h.horseId) ?? [])]);
+    for (const [label, get, text] of [...extra].reverse()) {
+      const vals = horses.map((h) => (h.prediction ? get(h.prediction) : null)).filter((v): v is number => v != null);
+      for (const h of horses) {
+        const v = h.prediction ? get(h.prediction) : null;
+        out.get(h.horseId)!.unshift(v == null
+          ? { label, rank: null, total: vals.length, detail: NO_DATA }
+          : { label, rank: 1 + vals.filter((x) => x > v).length, total: vals.length, detail: text(v) });
+      }
+    }
+    return out;
+  }, [horses, factorScores, conditions?.distanceMeters, conditions?.venue]);
   const sortedHorses = useMemo(() => [...horses].sort((a, b) => predSort === "prob"
     ? (a.prediction?.rank ?? 999) - (b.prediction?.rank ?? 999)
     : (a.raceEntry?.horseNumber ?? 999) - (b.raceEntry?.horseNumber ?? 999)), [horses, predSort]);
