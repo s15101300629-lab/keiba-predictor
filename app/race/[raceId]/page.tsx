@@ -638,7 +638,7 @@ function OddsBar({ odds, state, error, onLoad, compact = false }: { odds: OddsDa
   </div>;
 }
 
-const VALUE_EV = 1.0; // 期待値がこれ以上なら「妙味あり」
+const VALUE_EV = 1.0; // 期待値（回収見込み 100%）がこれ以上なら「妙味あり」
 const LONGSHOT_POP = 6; // この人気以下の馬を含む買い目に「穴」
 
 function BetsPanel({ horses, inTraining, odds, oddsBar, values }: {
@@ -671,7 +671,7 @@ function BetsPanel({ horses, inTraining, odds, oddsBar, values }: {
           {BET_TYPES.map((type) => {
             const list = result.ranked[type];
             return <article className="bet-type-card" key={type}>
-              <h3>{type}<small>期待値の高い順</small></h3>
+              <h3>{type}<small>回収見込みの高い順</small></h3>
               {!list.length ? <p className="bet-note">この券種のオッズがまだ出ていない</p> : <ul className="simple-tickets">
                 {list.map((t) => {
                   const entries = t.horses.map((bh) => horses.find((h) => h.horseId === bh.id)?.raceEntry ?? null);
@@ -682,7 +682,7 @@ function BetsPanel({ horses, inTraining, odds, oddsBar, values }: {
                       <small>{t.odds.toFixed(1)}倍・的中 {(t.prob * 100).toFixed(t.prob < 0.1 ? 1 : 0)}%・AI上乗せ ×{t.uplift.toFixed(2)}</small></span>
                     <span className="ticket-ev">
                       <span className="ticket-tags">{t.ev >= VALUE_EV && <em className="ai-value good">妙味あり</em>}{longshot && <em className="tag-ana">穴</em>}</span>
-                      <b>{t.ev.toFixed(2)}</b><small>期待値</small>
+                      <b>{Math.round(t.ev * 100)}%</b><small>回収見込み</small>
                     </span>
                   </li>;
                 })}
@@ -691,7 +691,7 @@ function BetsPanel({ horses, inTraining, odds, oddsBar, values }: {
           })}
           <details className="model-note" open>
             <summary>見方と注意</summary>
-            <p>期待値＝的中確率 × オッズ（100円がいくらになって返ってくるかの見込み。1.0以上で「妙味あり」）。「穴」は{LONGSHOT_POP}番人気以下の馬を含む買い目。複勝・ワイドのオッズは幅の下限で計算。</p>
+            <p>回収見込み＝的中確率 × オッズ。100円買ったら平均いくら戻るかの見込み（115% なら平均115円）。100%以上で「妙味あり」。「穴」は{LONGSHOT_POP}番人気以下の馬を含む買い目。複勝・ワイドのオッズは幅の下限で計算。</p>
             <p>的中確率＝その券種のオッズから見た確率 × AIによる上乗せ（AIの評価を合わせたときの的中率 ÷ 合わせないときの的中率）。券種ごとの売れ方の癖は除き、AIが足した分だけが期待値に出る。的中率が約0.1%未満の組は、推定がぶれるので出さない。</p>
             <p>AIだけの確率で出すと人気薄が大量に「妙味あり」になるが、過去の検証ではその多くがAIの見込み違いだった（AIだけの期待値で単勝を買うと回収率 約69%）。</p>
             <p><b className="bet-warn">過去の検証があるのは単勝・複勝だけ（AIの目安で「妙味あり」の馬の複勝回収率は約8割で、100%に届いていない）。馬連・ワイド・3連複は、過去の全組み合わせのオッズがないため検証できていない。</b>組み合わせの確率はハービルの式（勝率から2着・3着を順に決める）による近似。</p>
