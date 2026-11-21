@@ -113,7 +113,8 @@ type FactorScore = { label: string; score: number; starts: number; rate: number;
 type CategoryRank = { label: string; rank: number | null; total: number; detail: string };
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
-const cacheKey = (id: string) => "keiba-race-detail-v7:" + id;
+// モデルが変わったら（再学習）保存済みの AI 予想を使わない。キーにモデルの版を入れる（next.config.ts）
+const cacheKey = (id: string) => "keiba-race-detail-v7:" + (process.env.NEXT_PUBLIC_MODEL_VERSION ?? "") + ":" + id;
 const marksCacheKey = (id: string) => "keiba-race-marks-v1:" + id;
 const oddsCacheKey = (id: string) => "keiba-race-odds-v1:" + id;
 const MARK_OPTIONS = ["", "◎", "○", "▲", "△", "☆", "注", "消"];
