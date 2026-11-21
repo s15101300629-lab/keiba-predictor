@@ -1,0 +1,1183 @@
+{
+ "date": "2026-11-21",
+ "races": 22,
+ "runners": 343,
+ "training": false,
+ "train_rank_coverage": 0.0,
+ "ped_coverage": 0.843,
+ "logloss": 0.396,
+ "auc": 0.8262,
+ "ai_top3_hit": 0.5,
+ "pop_top3_hit": 0.5,
+ "ai_top1_win": 0.3636,
+ "ai_top1_top3": 0.5909,
+ "detail": [
+  {
+   "race_id": "202603030501",
+   "venue": "福島",
+   "race_no": 1,
+   "race_name": "2歳未勝利",
+   "course": "ダート1700",
+   "going": "不良",
+   "ai_top3": [
+    {
+     "umaban": 15,
+     "horse": "ネージュドレーヴ",
+     "p": 0.718,
+     "finish": 1,
+     "pop": 1
+    },
+    {
+     "umaban": 3,
+     "horse": "セイウンラミエル",
+     "p": 0.514,
+     "finish": 2,
+     "pop": 4
+    },
+    {
+     "umaban": 9,
+     "horse": "フィールザウィル",
+     "p": 0.328,
+     "finish": 11,
+     "pop": 2
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 15,
+     "horse": "ネージュドレーヴ",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 3,
+     "horse": "セイウンラミエル",
+     "pop": 4,
+     "ai_rank": 2
+    },
+    {
+     "umaban": 11,
+     "horse": "アルフェラッツ",
+     "pop": 3,
+     "ai_rank": 4
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 2
+  },
+  {
+   "race_id": "202603030502",
+   "venue": "福島",
+   "race_no": 2,
+   "race_name": "3歳以上1勝クラス",
+   "course": "ダート1150",
+   "going": "不良",
+   "ai_top3": [
+    {
+     "umaban": 11,
+     "horse": "コウソクルリアン",
+     "p": 0.55,
+     "finish": 1,
+     "pop": 1
+    },
+    {
+     "umaban": 16,
+     "horse": "スイーヴル",
+     "p": 0.343,
+     "finish": 4,
+     "pop": 3
+    },
+    {
+     "umaban": 8,
+     "horse": "ステラノヴァ",
+     "p": 0.336,
+     "finish": 3,
+     "pop": 2
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 11,
+     "horse": "コウソクルリアン",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 5,
+     "horse": "ワイドデコラシオン",
+     "pop": 4,
+     "ai_rank": 4
+    },
+    {
+     "umaban": 8,
+     "horse": "ステラノヴァ",
+     "pop": 2,
+     "ai_rank": 3
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 2
+  },
+  {
+   "race_id": "202603030503",
+   "venue": "福島",
+   "race_no": 3,
+   "race_name": "2歳未勝利",
+   "course": "ダート1700",
+   "going": "不良",
+   "ai_top3": [
+    {
+     "umaban": 14,
+     "horse": "ランフェザー",
+     "p": 0.725,
+     "finish": 1,
+     "pop": 1
+    },
+    {
+     "umaban": 11,
+     "horse": "テンソンコウリン",
+     "p": 0.44,
+     "finish": 2,
+     "pop": 2
+    },
+    {
+     "umaban": 12,
+     "horse": "スクリプトール",
+     "p": 0.372,
+     "finish": 7,
+     "pop": 4
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 14,
+     "horse": "ランフェザー",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 11,
+     "horse": "テンソンコウリン",
+     "pop": 2,
+     "ai_rank": 2
+    },
+    {
+     "umaban": 13,
+     "horse": "エコロガルディア",
+     "pop": 3,
+     "ai_rank": 5
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 3
+  },
+  {
+   "race_id": "202603030506",
+   "venue": "福島",
+   "race_no": 6,
+   "race_name": "3歳以上1勝クラス",
+   "course": "ダート1700",
+   "going": "不良",
+   "ai_top3": [
+    {
+     "umaban": 3,
+     "horse": "ポンピエ",
+     "p": 0.523,
+     "finish": 4,
+     "pop": 3
+    },
+    {
+     "umaban": 7,
+     "horse": "リュウカルネ",
+     "p": 0.353,
+     "finish": 1,
+     "pop": 1
+    },
+    {
+     "umaban": 6,
+     "horse": "レッドフロイデ",
+     "p": 0.325,
+     "finish": 10,
+     "pop": 4
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 7,
+     "horse": "リュウカルネ",
+     "pop": 1,
+     "ai_rank": 2
+    },
+    {
+     "umaban": 11,
+     "horse": "メイショウアボット",
+     "pop": 6,
+     "ai_rank": 13
+    },
+    {
+     "umaban": 9,
+     "horse": "クルビデンス",
+     "pop": 9,
+     "ai_rank": 9
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202603030507",
+   "venue": "福島",
+   "race_no": 7,
+   "race_name": "2歳未勝利",
+   "course": "芝1800",
+   "going": "稍重",
+   "ai_top3": [
+    {
+     "umaban": 14,
+     "horse": "コスモバルムンク",
+     "p": 0.431,
+     "finish": 5,
+     "pop": 1
+    },
+    {
+     "umaban": 9,
+     "horse": "アントレピード",
+     "p": 0.36,
+     "finish": 4,
+     "pop": 2
+    },
+    {
+     "umaban": 1,
+     "horse": "スターマイン",
+     "p": 0.338,
+     "finish": 3,
+     "pop": 3
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 7,
+     "horse": "イドム",
+     "pop": 4,
+     "ai_rank": 5
+    },
+    {
+     "umaban": 3,
+     "horse": "プリズンブレイク",
+     "pop": 7,
+     "ai_rank": 7
+    },
+    {
+     "umaban": 1,
+     "horse": "スターマイン",
+     "pop": 3,
+     "ai_rank": 3
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202603030508",
+   "venue": "福島",
+   "race_no": 8,
+   "race_name": "3歳以上1勝クラス",
+   "course": "芝2000",
+   "going": "稍重",
+   "ai_top3": [
+    {
+     "umaban": 3,
+     "horse": "ピカキウイ",
+     "p": 0.561,
+     "finish": 3,
+     "pop": 1
+    },
+    {
+     "umaban": 10,
+     "horse": "カリーン",
+     "p": 0.287,
+     "finish": 7,
+     "pop": 12
+    },
+    {
+     "umaban": 1,
+     "horse": "サッポロイクコ",
+     "p": 0.274,
+     "finish": 2,
+     "pop": 9
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 11,
+     "horse": "フレキシブル",
+     "pop": 4,
+     "ai_rank": 5
+    },
+    {
+     "umaban": 1,
+     "horse": "サッポロイクコ",
+     "pop": 9,
+     "ai_rank": 3
+    },
+    {
+     "umaban": 3,
+     "horse": "ピカキウイ",
+     "pop": 1,
+     "ai_rank": 1
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202603030509",
+   "venue": "福島",
+   "race_no": 9,
+   "race_name": "高湯温泉特別",
+   "course": "芝1800",
+   "going": "稍重",
+   "ai_top3": [
+    {
+     "umaban": 2,
+     "horse": "ディバインウインド",
+     "p": 0.641,
+     "finish": 7,
+     "pop": 2
+    },
+    {
+     "umaban": 12,
+     "horse": "ホールドザデイ",
+     "p": 0.481,
+     "finish": 6,
+     "pop": 1
+    },
+    {
+     "umaban": 15,
+     "horse": "バンオンタイム",
+     "p": 0.387,
+     "finish": 1,
+     "pop": 3
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 15,
+     "horse": "バンオンタイム",
+     "pop": 3,
+     "ai_rank": 3
+    },
+    {
+     "umaban": 16,
+     "horse": "メリザンド",
+     "pop": 7,
+     "ai_rank": 4
+    },
+    {
+     "umaban": 13,
+     "horse": "ベネディクション",
+     "pop": 11,
+     "ai_rank": 11
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202603030510",
+   "venue": "福島",
+   "race_no": 10,
+   "race_name": "福島放送賞",
+   "course": "ダート1150",
+   "going": "不良",
+   "ai_top3": [
+    {
+     "umaban": 1,
+     "horse": "ソニックブレイカー",
+     "p": 0.443,
+     "finish": 2,
+     "pop": 1
+    },
+    {
+     "umaban": 7,
+     "horse": "モズオウンゴール",
+     "p": 0.418,
+     "finish": 4,
+     "pop": 3
+    },
+    {
+     "umaban": 3,
+     "horse": "ビーマックス",
+     "p": 0.326,
+     "finish": 1,
+     "pop": 7
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 3,
+     "horse": "ビーマックス",
+     "pop": 7,
+     "ai_rank": 3
+    },
+    {
+     "umaban": 1,
+     "horse": "ソニックブレイカー",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 14,
+     "horse": "ゼファーテソーロ",
+     "pop": 6,
+     "ai_rank": 6
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202603030511",
+   "venue": "福島",
+   "race_no": 11,
+   "race_name": "福島記念",
+   "course": "芝2000",
+   "going": "稍重",
+   "ai_top3": [
+    {
+     "umaban": 13,
+     "horse": "マリアイリダータ",
+     "p": 0.566,
+     "finish": 1,
+     "pop": 1
+    },
+    {
+     "umaban": 1,
+     "horse": "カラマティアノス",
+     "p": 0.491,
+     "finish": 3,
+     "pop": 4
+    },
+    {
+     "umaban": 11,
+     "horse": "フォルテアンジェロ",
+     "p": 0.385,
+     "finish": 7,
+     "pop": 2
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 13,
+     "horse": "マリアイリダータ",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 3,
+     "horse": "ゼンダンハヤブサ",
+     "pop": 11,
+     "ai_rank": 10
+    },
+    {
+     "umaban": 1,
+     "horse": "カラマティアノス",
+     "pop": 4,
+     "ai_rank": 2
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202603030512",
+   "venue": "福島",
+   "race_no": 12,
+   "race_name": "3歳以上1勝クラス",
+   "course": "芝1200",
+   "going": "稍重",
+   "ai_top3": [
+    {
+     "umaban": 13,
+     "horse": "グロリアスマーチ",
+     "p": 0.46,
+     "finish": 10,
+     "pop": 1
+    },
+    {
+     "umaban": 4,
+     "horse": "ヤマニンフェイエル",
+     "p": 0.356,
+     "finish": 3,
+     "pop": 4
+    },
+    {
+     "umaban": 2,
+     "horse": "ニルマーネル",
+     "p": 0.344,
+     "finish": 13,
+     "pop": 6
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 1,
+     "horse": "ステキサプライズ",
+     "pop": 5,
+     "ai_rank": 4
+    },
+    {
+     "umaban": 14,
+     "horse": "マテンロウカナロア",
+     "pop": 3,
+     "ai_rank": 9
+    },
+    {
+     "umaban": 4,
+     "horse": "ヤマニンフェイエル",
+     "pop": 4,
+     "ai_rank": 2
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202608050501",
+   "venue": "京都",
+   "race_no": 1,
+   "race_name": "2歳未勝利",
+   "course": "ダート1400",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 4,
+     "horse": "ドミナント",
+     "p": 0.635,
+     "finish": 6,
+     "pop": 1
+    },
+    {
+     "umaban": 8,
+     "horse": "クリコリンダ",
+     "p": 0.553,
+     "finish": 5,
+     "pop": 5
+    },
+    {
+     "umaban": 13,
+     "horse": "ラッキーハナコ",
+     "p": 0.369,
+     "finish": 2,
+     "pop": 3
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 14,
+     "horse": "スターリーデー",
+     "pop": 2,
+     "ai_rank": 4
+    },
+    {
+     "umaban": 13,
+     "horse": "ラッキーハナコ",
+     "pop": 3,
+     "ai_rank": 3
+    },
+    {
+     "umaban": 11,
+     "horse": "オンアロール",
+     "pop": 11,
+     "ai_rank": 9
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 2
+  },
+  {
+   "race_id": "202608050502",
+   "venue": "京都",
+   "race_no": 2,
+   "race_name": "2歳未勝利",
+   "course": "ダート1800",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 9,
+     "horse": "スタニスラス",
+     "p": 0.56,
+     "finish": 2,
+     "pop": 1
+    },
+    {
+     "umaban": 12,
+     "horse": "エボニーウイング",
+     "p": 0.377,
+     "finish": 5,
+     "pop": 3
+    },
+    {
+     "umaban": 5,
+     "horse": "アメリカンノヴァ",
+     "p": 0.368,
+     "finish": 6,
+     "pop": 2
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 8,
+     "horse": "レイテスツドリーム",
+     "pop": 5,
+     "ai_rank": 6
+    },
+    {
+     "umaban": 9,
+     "horse": "スタニスラス",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 2,
+     "horse": "スエヒロビリーブ",
+     "pop": 6,
+     "ai_rank": 5
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202608050503",
+   "venue": "京都",
+   "race_no": 3,
+   "race_name": "2歳未勝利",
+   "course": "芝1200",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 17,
+     "horse": "カツダルマ",
+     "p": 0.56,
+     "finish": 4,
+     "pop": 1
+    },
+    {
+     "umaban": 8,
+     "horse": "アルテクィーン",
+     "p": 0.496,
+     "finish": 5,
+     "pop": 2
+    },
+    {
+     "umaban": 12,
+     "horse": "ジョリープリュム",
+     "p": 0.305,
+     "finish": 7,
+     "pop": 4
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 13,
+     "horse": "ジャヤ",
+     "pop": 13,
+     "ai_rank": 8
+    },
+    {
+     "umaban": 15,
+     "horse": "ティンタアマレラ",
+     "pop": 3,
+     "ai_rank": 5
+    },
+    {
+     "umaban": 4,
+     "horse": "スマートエール",
+     "pop": 6,
+     "ai_rank": 4
+    }
+   ],
+   "ai_hits": 0,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202608050504",
+   "venue": "京都",
+   "race_no": 4,
+   "race_name": "2歳未勝利",
+   "course": "芝1800",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 9,
+     "horse": "シホノノービレ",
+     "p": 0.683,
+     "finish": 2,
+     "pop": 1
+    },
+    {
+     "umaban": 2,
+     "horse": "ジャンゴッド",
+     "p": 0.577,
+     "finish": 3,
+     "pop": 3
+    },
+    {
+     "umaban": 6,
+     "horse": "ゾンネシュトラール",
+     "p": 0.484,
+     "finish": 1,
+     "pop": 2
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 6,
+     "horse": "ゾンネシュトラール",
+     "pop": 2,
+     "ai_rank": 3
+    },
+    {
+     "umaban": 9,
+     "horse": "シホノノービレ",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 2,
+     "horse": "ジャンゴッド",
+     "pop": 3,
+     "ai_rank": 2
+    }
+   ],
+   "ai_hits": 3,
+   "pop_hits": 3
+  },
+  {
+   "race_id": "202608050505",
+   "venue": "京都",
+   "race_no": 5,
+   "race_name": "メイクデビュー京都",
+   "course": "芝1600",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 10,
+     "horse": "アウダチェ",
+     "p": 0.446,
+     "finish": 1,
+     "pop": 1
+    },
+    {
+     "umaban": 15,
+     "horse": "ベネヴェローチェ",
+     "p": 0.335,
+     "finish": 4,
+     "pop": 2
+    },
+    {
+     "umaban": 8,
+     "horse": "ペプチドヘドウィグ",
+     "p": 0.296,
+     "finish": 2,
+     "pop": 5
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 10,
+     "horse": "アウダチェ",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 8,
+     "horse": "ペプチドヘドウィグ",
+     "pop": 5,
+     "ai_rank": 3
+    },
+    {
+     "umaban": 16,
+     "horse": "ルージュアルミーラ",
+     "pop": 4,
+     "ai_rank": 7
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202608050506",
+   "venue": "京都",
+   "race_no": 6,
+   "race_name": "メイクデビュー京都",
+   "course": "ダート1200",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 7,
+     "horse": "ロゼフレイバー",
+     "p": 0.631,
+     "finish": 5,
+     "pop": 2
+    },
+    {
+     "umaban": 6,
+     "horse": "ファルディルーチェ",
+     "p": 0.564,
+     "finish": 3,
+     "pop": 4
+    },
+    {
+     "umaban": 2,
+     "horse": "ジェルモーリオ",
+     "p": 0.421,
+     "finish": 4,
+     "pop": 5
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 5,
+     "horse": "セレクトルビー",
+     "pop": 1,
+     "ai_rank": 4
+    },
+    {
+     "umaban": 1,
+     "horse": "サンダージョー",
+     "pop": 3,
+     "ai_rank": 5
+    },
+    {
+     "umaban": 6,
+     "horse": "ファルディルーチェ",
+     "pop": 4,
+     "ai_rank": 2
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 2
+  },
+  {
+   "race_id": "202608050507",
+   "venue": "京都",
+   "race_no": 7,
+   "race_name": "3歳以上1勝クラス",
+   "course": "ダート1800",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 15,
+     "horse": "ヤエギリ",
+     "p": 0.564,
+     "finish": 1,
+     "pop": 1
+    },
+    {
+     "umaban": 2,
+     "horse": "タマモランプ",
+     "p": 0.497,
+     "finish": 9,
+     "pop": 2
+    },
+    {
+     "umaban": 12,
+     "horse": "アメリカンスタイル",
+     "p": 0.313,
+     "finish": 5,
+     "pop": 3
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 15,
+     "horse": "ヤエギリ",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 1,
+     "horse": "アメリカンバー",
+     "pop": 7,
+     "ai_rank": 7
+    },
+    {
+     "umaban": 4,
+     "horse": "ワザオギ",
+     "pop": 8,
+     "ai_rank": 13
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202608050508",
+   "venue": "京都",
+   "race_no": 8,
+   "race_name": "3歳以上2勝クラス",
+   "course": "ダート1400",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 13,
+     "horse": "ポートデラメール",
+     "p": 0.569,
+     "finish": 1,
+     "pop": 1
+    },
+    {
+     "umaban": 14,
+     "horse": "ホットシート",
+     "p": 0.542,
+     "finish": 8,
+     "pop": 4
+    },
+    {
+     "umaban": 7,
+     "horse": "ジューンアゲイン",
+     "p": 0.381,
+     "finish": 12,
+     "pop": 2
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 13,
+     "horse": "ポートデラメール",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 5,
+     "horse": "ブロンテス",
+     "pop": 5,
+     "ai_rank": 4
+    },
+    {
+     "umaban": 10,
+     "horse": "レーティッシュ",
+     "pop": 8,
+     "ai_rank": 5
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 1
+  },
+  {
+   "race_id": "202608050509",
+   "venue": "京都",
+   "race_no": 9,
+   "race_name": "秋明菊賞",
+   "course": "芝1400",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 3,
+     "horse": "アンムート",
+     "p": 0.899,
+     "finish": 2,
+     "pop": 1
+    },
+    {
+     "umaban": 7,
+     "horse": "カレンハウ",
+     "p": 0.842,
+     "finish": 1,
+     "pop": 2
+    },
+    {
+     "umaban": 6,
+     "horse": "ジャスパーレーブ",
+     "p": 0.652,
+     "finish": 5,
+     "pop": 3
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 7,
+     "horse": "カレンハウ",
+     "pop": 2,
+     "ai_rank": 2
+    },
+    {
+     "umaban": 3,
+     "horse": "アンムート",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 1,
+     "horse": "ミハテヌユメ",
+     "pop": 4,
+     "ai_rank": 4
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 2
+  },
+  {
+   "race_id": "202608050510",
+   "venue": "京都",
+   "race_no": 10,
+   "race_name": "比叡ステークス",
+   "course": "芝2400",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 7,
+     "horse": "ロードフィレール",
+     "p": 0.654,
+     "finish": 1,
+     "pop": 1
+    },
+    {
+     "umaban": 5,
+     "horse": "ベトルス",
+     "p": 0.557,
+     "finish": 2,
+     "pop": 2
+    },
+    {
+     "umaban": 2,
+     "horse": "サトノパトリオット",
+     "p": 0.361,
+     "finish": 6,
+     "pop": 4
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 7,
+     "horse": "ロードフィレール",
+     "pop": 1,
+     "ai_rank": 1
+    },
+    {
+     "umaban": 5,
+     "horse": "ベトルス",
+     "pop": 2,
+     "ai_rank": 2
+    },
+    {
+     "umaban": 9,
+     "horse": "オメガナビゲーター",
+     "pop": 8,
+     "ai_rank": 8
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 2
+  },
+  {
+   "race_id": "202608050511",
+   "venue": "京都",
+   "race_no": 11,
+   "race_name": "シトリンステークス",
+   "course": "ダート1900",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 14,
+     "horse": "チェリヴェント",
+     "p": 0.418,
+     "finish": 5,
+     "pop": 2
+    },
+    {
+     "umaban": 10,
+     "horse": "テーオーマルコーニ",
+     "p": 0.384,
+     "finish": 2,
+     "pop": 1
+    },
+    {
+     "umaban": 12,
+     "horse": "メルカントゥール",
+     "p": 0.379,
+     "finish": 1,
+     "pop": 3
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 12,
+     "horse": "メルカントゥール",
+     "pop": 3,
+     "ai_rank": 3
+    },
+    {
+     "umaban": 10,
+     "horse": "テーオーマルコーニ",
+     "pop": 1,
+     "ai_rank": 2
+    },
+    {
+     "umaban": 9,
+     "horse": "レッドプロフェシー",
+     "pop": 8,
+     "ai_rank": 7
+    }
+   ],
+   "ai_hits": 2,
+   "pop_hits": 2
+  },
+  {
+   "race_id": "202608050512",
+   "venue": "京都",
+   "race_no": 12,
+   "race_name": "3歳以上2勝クラス",
+   "course": "芝2000",
+   "going": "良",
+   "ai_top3": [
+    {
+     "umaban": 10,
+     "horse": "ロールザダイス",
+     "p": 0.445,
+     "finish": 5,
+     "pop": 1
+    },
+    {
+     "umaban": 7,
+     "horse": "ホウオウタイタン",
+     "p": 0.355,
+     "finish": 2,
+     "pop": 5
+    },
+    {
+     "umaban": 11,
+     "horse": "オメガインペリアル",
+     "p": 0.329,
+     "finish": 4,
+     "pop": 7
+    }
+   ],
+   "result_top3": [
+    {
+     "umaban": 6,
+     "horse": "バルティカ",
+     "pop": 2,
+     "ai_rank": 4
+    },
+    {
+     "umaban": 7,
+     "horse": "ホウオウタイタン",
+     "pop": 5,
+     "ai_rank": 2
+    },
+    {
+     "umaban": 8,
+     "horse": "メイショウアイル",
+     "pop": 8,
+     "ai_rank": 7
+    }
+   ],
+   "ai_hits": 1,
+   "pop_hits": 1
+  }
+ ],
+ "note": "最初の版は障害2レースを含めて計算した。上位3頭・1位の数字は障害を除いて計算し直した（logloss・AUC は障害2レース込みの値）"
+}

@@ -74,7 +74,7 @@ def parse_race(block: str, date: str, venue_code: str) -> dict | None:
     ct = text(cm[1]) if cm else ""
     dist = num(re.search(r"([\d,]+)\s*メートル", ct)[1])
     course = re.sub(r"([右左])外", r"\1・外", re.search(r"（(.*?)）", ct)[1].replace(" ", ""))
-    surface = "障害" if "障害" in course else "ダート" if course.startswith("ダート") else "芝" if course.startswith("芝") else course
+    surface = "障害" if "障害" in course or "障害" in name else "ダート" if course.startswith("ダート") else "芝" if course.startswith("芝") else course
     baba = dict(re.findall(r'<span class="cap">(.*?)</span><span class="txt">(.*?)</span>', block))
     going = baba.get("ダート") if surface == "ダート" else baba.get("芝")
     prize1 = re.search(r'<span class="cap">1着</span><span class="num">([\d,]+)</span>', block)
