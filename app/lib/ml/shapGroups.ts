@@ -12,7 +12,8 @@ const EXACT: Record<string, ShapGroup> = {
   surface: "レース条件", distance: "レース条件", going: "レース条件", field_size: "レース条件", venue: "レース条件",
   c_straight: "レース条件", c_elev: "レース条件", c_lap: "レース条件",
   waku: "枠順", umaban: "枠順", umaban_ratio: "枠順",
-  prize_1st: "出走レースレベル", field_form_mean: "出走レースレベル",
+  // 出走馬の全員で同じ値（レース全体の条件）。馬ごとの観点としては順位を付けない（HIDDEN_GROUPS）
+  prize_1st: "レース条件", field_form_mean: "レース条件", field_nige_cands: "レース条件", field_front: "レース条件", field_front_ratio: "レース条件",
   weight: "馬体・斤量・年齢", age: "馬体・斤量・年齢", sex: "馬体・斤量・年齢", body_weight: "馬体・斤量・年齢", body_weight_diff: "馬体・斤量・年齢",
   n_prior: "調子", days_since_last: "レース間隔", g_layoff: "レース間隔",
   dist_change: "前走距離", fit_change: "前走距離", fit_change_n: "前走距離",
@@ -31,6 +32,9 @@ const PREFIX: [string, ShapGroup][] = [
   ["prize_ratio", "出走レースレベル"], ["rel_prize", "出走レースレベル"], ["rank_prize", "出走レースレベル"], ["lv_", "出走レースレベル"], ["h2h_", "出走レースレベル"],
   ["jockey_", "騎手"], ["trainer_", "調教師"], ["owner_", "馬主・生産者"], ["breeder_", "馬主・生産者"], ["ped_", "血統"], ["train_rank", "調教"],
 ];
+
+/** 馬ごとの観点として出さない（出走馬の全員で同じ値の項目。寄与の差は他の項目との組み合わせから出るだけで、馬の良し悪しを表さない） */
+export const HIDDEN_GROUPS: readonly string[] = ["レース条件"];
 
 export function shapGroupOf(feature: string): ShapGroup | null {
   if (EXACT[feature]) return EXACT[feature];

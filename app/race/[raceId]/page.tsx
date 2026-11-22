@@ -4,7 +4,7 @@ import { type BetType } from "@/app/lib/bets";
 import { AI_MARK_ORDER, assignAiMarks, type AiMark } from "@/app/lib/marks";
 import { useParams } from "next/navigation";
 import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
-import { featureLabel, SHAP_GROUPS } from "@/app/lib/ml/shapGroups";
+import { featureLabel, HIDDEN_GROUPS, SHAP_GROUPS } from "@/app/lib/ml/shapGroups";
 
 type Conditions = {
   raceName: string | null; date: string | null; venue: string | null;
@@ -877,7 +877,7 @@ export default function RaceDetailPage() {
     const signed = (x: number) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(1) + "pt";
     const rows = horses.filter((h) => h.prediction?.shapGroups);
     const out = new Map<string, CategoryRank[]>();
-    for (const g of SHAP_GROUPS) {
+    for (const g of SHAP_GROUPS.filter((x) => !HIDDEN_GROUPS.includes(x))) {
       const vals = rows.map((h) => ({ h, c: h.prediction!.shapGroups!.find((x) => x.group === g) })).filter((x) => x.c);
       for (const { h, c } of vals) {
         const p = h.prediction!.probability;
