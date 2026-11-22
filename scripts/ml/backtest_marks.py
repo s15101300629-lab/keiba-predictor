@@ -7,7 +7,8 @@
 2. ○：残りで AIスコア（3着以内確率）1位
 3. ▲：3通りを比べる（A：AI の勝率上位4頭以内で目安の倍率1.0以上、複数可／B：勝率上位4頭以内で単勝の回収見込みが一番高い1頭／C：残りで勝率1位）
    最初の版（勝率上位4頭以内で単勝の回収見込み 0.85〜1.0以上）は、3年で十数頭しか付かなかった
-4. ☆：残りで、目安の倍率（AI と市場を合わせた3着以内 ÷ 市場だけを補正した3着以内）が 1.1 以上
+4. ☆：残りで、6番人気以下かつ「人気薄専用の2段目の3着以内確率 ÷ 市場だけを補正した3着以内」が 1.2 以上（2026-11-22 から。train_longshot.py と同じ形を、
+   その年より前の年だけで学習）。それまでは「目安の倍率 1.1 以上」
 5. △：残りで、AIスコアが6位以内
 6. 消：残りで、3番人気以内かつ「割高」（倍率 0.9 以下）
 - 合わせ方の係数（単勝：条件付きロジット、3着以内：ロジスティック回帰）は、毎年その前の年で決める（backtest_value.py と同じ）
@@ -26,6 +27,8 @@ from sklearn.linear_model import LogisticRegression
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from backtest_value import TEST_YEARS, benter, fit_benter, prepare  # noqa: E402
+from train_longshot import MIN_POP, THRESHOLD, fit_market_cal, fit_stage2, popularity, stage2_matrix  # noqa: E402  （PRED_YEARS を 2022年からにする）
+import backtest_value as bv  # noqa: E402
 from train import OUT  # noqa: E402
 
 MARKS = ["◎", "○", "▲", "☆", "△", "消", "無印"]
@@ -33,7 +36,7 @@ VARIANTS = ["A", "B", "C"]
 VALUE, EXPENSIVE = 1.1, 0.9
 
 
-def assign(g, ai_win, ai_top3, win_ev, ratio, pop, variant) -> list[str]:
+def assign(g, ai_win, ai_top3, win_ev, ratio, pop, variant, star) -> list[str]:
     """1レース分の印（g の並び）."""
     k = len(g)
     mark = ["無印"] * k
@@ -64,8 +67,8 @@ def assign(g, ai_win, ai_top3, win_ev, ratio, pop, variant) -> list[str]:
         for i in order_win:
             if not used[i]:
                 mark[i] = "▲"; used[i] = True; break
-    for i in range(k):  # ☆
-        if not used[i] and r[i] >= VALUE:
+    for i in range(k):  # ☆（人気薄専用の2段目）
+        if not used[i] and pop[g][i] >= MIN_POP and star[g][i] >= THRESHOLD:
             mark[i] = "☆"; used[i] = True
     for i in range(k):  # △
         if not used[i] and top3_rank[i] < 6:
@@ -95,10 +98,11 @@ def main() -> None:
     d = prepare()
     year, gs, odds = d["year"], d["gs"], d["odds"]
     logit = lambda p: np.log(p / (1 - p))  # noqa: E731
-    pop = np.zeros(d["n"], int)
-    for g in gs:
-        pop[g[np.argsort(odds[g], kind="stable")]] = np.arange(1, len(g) + 1)
-    out = {"rules": {"value": VALUE, "expensive": EXPENSIVE, "triangle_variants": VARIANTS}, "years": {}}
+    pop = popularity(d)
+    X2 = stage2_matrix(d, pop)
+    y3 = d["is_top3"].astype(float)
+    out = {"rules": {"value": VALUE, "expensive": EXPENSIVE, "triangle_variants": VARIANTS,
+                     "star": {"min_pop": MIN_POP, "threshold": THRESHOLD, "model": "人気薄専用の2段目（train_longshot.py の形）"}}, "years": {}}
     for y in TEST_YEARS:
         prev = str(int(y) - 1)
         mp, mt = year == prev, year == y
@@ -112,12 +116,17 @@ def main() -> None:
         ratio = lr.predict_proba(X)[:, 1] / lr_m.predict_proba(logit(d["mkt_top3"])[:, None])[:, 1]
         mkt_cal = lr_m.predict_proba(logit(d["mkt_top3"])[:, None])[:, 1]
         win_ev = comb_win * odds
+        # ☆：人気薄専用の2段目（その年より前の年だけで学習）÷ 補正した市場（その年より前の年で当てはめ）
+        before = np.isin(year, [x for x in bv.PRED_YEARS if x < y])
+        m2, _ = fit_stage2(X2, y3, year, before & (pop >= MIN_POP), max(x for x in bv.PRED_YEARS if x < y))
+        star = np.zeros(d["n"])
+        star[mt] = m2.predict(X2[mt]) / fit_market_cal(d["mkt_top3"], y3, before).predict_proba(np.log(np.clip(d["mkt_top3"][mt], 1e-6, 1 - 1e-6) / (1 - np.clip(d["mkt_top3"][mt], 1e-6, 1 - 1e-6)))[:, None])[:, 1]
         yr = {"races": len(gt), "all": stats(mt, d, mkt_cal, mt), "pop_le3": stats(mt & (pop <= 3), d, mkt_cal, mt),
               "pop_le3_expensive": stats(mt & (pop <= 3) & (ratio <= EXPENSIVE), d, mkt_cal, mt)}
         for v in VARIANTS:
             marks = np.empty(d["n"], dtype=object)
             for g in gt:
-                marks[g] = assign(g, d["ai_win"], d["ai_top3"], win_ev, ratio, pop, v)
+                marks[g] = assign(g, d["ai_win"], d["ai_top3"], win_ev, ratio, pop, v, star)
             yr[f"triangle_{v}"] = {m: stats(mt & (marks == m), d, mkt_cal, mt) for m in MARKS}
         out["years"][y] = yr
         print(y, json.dumps({m: (v["n"], round(v.get("top3_rate", 0), 3), round(v.get("place_roi", 0), 3))

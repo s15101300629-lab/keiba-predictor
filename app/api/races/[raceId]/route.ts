@@ -573,7 +573,7 @@ type HeavyAdjustment = {
 };
 let mlAssets: Promise<{
   model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
-  winModel: Model | null; top2Model: Model | null; valueModel: unknown; marksEvidence: unknown;
+  winModel: Model | null; top2Model: Model | null; valueModel: unknown; marksEvidence: unknown; longshotFeatures: string[] | null;
 } | null> | null = null;
 function loadMlAssets() {
   mlAssets ??= (async () => {
@@ -596,7 +596,10 @@ function loadMlAssets() {
       }).catch(() => null);
       const [winModel, top2Model] = await Promise.all(["model_win.json", "model_top2.json"].map((name) =>
         readFile(path.join(dir, name), "utf8").then((text) => JSON.parse(text) as Model).catch(() => null)));
-      return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence };
+      // 人気薄専用の2段目（AI印の☆。scripts/ml/train_longshot.py）。入力の並びだけ見る（推論は /api/longshot）
+      const longshotFeatures = await readFile(path.join(dir, "model_longshot.json"), "utf8")
+        .then((text) => (JSON.parse(text) as { features: string[] }).features).catch(() => null);
+      return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence, longshotFeatures };
     } catch {
       mlAssets = null; // 次のリクエストで再試行
       return null;
@@ -996,6 +999,7 @@ export async function GET(
       const baseWinProbs = rows.map((row) => ml.winModel ? predictProbability(ml.winModel, row.features) : null); // AI印の◎・▲（そろえる前の勝率）
       const winProbs = rows.map((_, i) => baseWinProbs[i] != null ? Math.min(baseWinProbs[i]!, top2Probs[i] ?? probs[i]) : null);
       const order = activeIdx.map((i) => ({ p: probs[i], i })).sort((a, b) => b.p - a.p);
+      const longshotReady = !!ml.longshotFeatures && ml.model.features.every((name, k) => ml.longshotFeatures![k] === name);
       order.forEach(({ i }, rank) => {
         const f = rows[i].features;
         const num = (v: number) => (Number.isNaN(v) ? null : v);
@@ -1021,6 +1025,8 @@ export async function GET(
           },
           // 各観点の順位（画面）に使う、モデルで効いている項目。能力指数の直近加重平均・推定上がり偏差の直近加重平均・今回の条件での能力
           ability: { ab: num(f.ab_wmean), agari: num(f.ag_dev_wmean), cond: num(f.cond_ab) },
+          // 人気薄専用の2段目の入力（本体モデルの入力の並び。2段目の先頭が本体と同じ並びのときだけ）
+          inputRow: longshotReady ? ml.model.features.map((name) => { const v = f[name]; return v == null || Number.isNaN(v) ? null : v; }) : undefined,
         };
       });
       const f0 = rows[activeIdx[0]]?.features;

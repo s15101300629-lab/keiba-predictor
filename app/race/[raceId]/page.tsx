@@ -70,6 +70,7 @@ type Prediction = {
   trainer?: { n: number; top3: number; venueN: number; venueTop3: number };
   probability: number; baseProbability: number; pedigreeIncluded: boolean;
   winProbability?: number | null; top2Probability?: number | null; baseWinProbability?: number | null;
+  inputRow?: (number | null)[]; // 人気薄専用の2段目（☆）の入力
   rank: number; modelFormDeviation: number | null; priorRuns: number; overseasRuns?: number; training?: { rank: string | null; critic: string | null } | null;
   heavyNote: {
     applied: boolean; show: boolean; label: string | null; ratio: number;
@@ -659,8 +660,9 @@ const MARK_MEANING: Record<AiMark, string> = {
   "◎": "本命", "○": "対抗", "▲": "単穴", "☆": "穴", "△": "連下", "消": "消し",
 };
 
-function MarksPanel({ horses, inTraining, odds, oddsBar, values, horseOdds, winCoef, evidence }: {
+function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horseOdds, winCoef, evidence }: {
   horses: Horse[]; inTraining: boolean; odds: OddsData | null; oddsBar: ReactNode; values: Map<number, ValueResult> | null;
+  longshot: Map<number, number> | null;
   horseOdds: Map<string, HorseOdds>; winCoef: { ai: number; market: number } | null;
   evidence: Record<string, { marks: Record<string, MarkStats>; popLe3: MarkStats }> | null;
 }) {
@@ -670,9 +672,9 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, horseOdds, winC
       const v = values?.get(h.raceEntry!.horseNumber!) ?? null;
       const o = horseOdds.get(h.horseId);
       return { id: h.horseId, win: h.prediction!.baseWinProbability!, top3: h.prediction!.probability, ratio: v?.ratio ?? null,
-        odds: o?.win ?? null, popularity: o?.popularity ?? null };
+        odds: o?.win ?? null, popularity: o?.popularity ?? null, longshot: longshot?.get(h.raceEntry!.horseNumber!) ?? null };
     }), odds && values ? winCoef : null);
-  }, [horses, values, horseOdds, odds, winCoef]);
+  }, [horses, values, longshot, horseOdds, odds, winCoef]);
   const years = evidence ? Object.keys(evidence).sort() : [];
   const avg = (m: string, key: keyof MarkStats) => {
     const xs = years.map((y) => evidence![y].marks[m]?.[key]).filter((x): x is number => typeof x === "number");
@@ -712,8 +714,8 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, horseOdds, winC
           </table>
         </div>
         <p>{years.join("・")}年の全レース（前年までで学習したAIで印を付け、確定オッズで計算）の平均。基準は、同じくらいの人気の馬を全部買ったときの複勝回収率。</p>
-        <p>◎ 勝率1位（割高なら次点）／○ 残りでAIスコア1位／▲ 勝率上位4頭のうち単勝の妙味が一番／☆ AIと市場を合わせた3着以内確率がオッズの1.1倍以上（人気は問わない）／△ 残りでAIスコア6位以内／消 3番人気以内で割高。▲☆△消は複数頭に付くことがある。</p>
-        <p className="bet-warn">☆は人気の割に来やすく、基準より複勝回収率が高かったが、100%には届いていない。消は3番人気以内の馬全体（3着内率 約53%）よりはっきり走っていない。</p>
+        <p>◎ 勝率1位（割高なら次点）／○ 残りでAIスコア1位／▲ 勝率上位4頭のうち単勝の妙味が一番／☆ 6番人気以下で、人気薄専用のAI（182項目＋オッズ）の3着以内確率がオッズから見た確率の1.2倍以上／△ 残りでAIスコア6位以内／消 3番人気以内で割高。▲☆△消は複数頭に付くことがある。</p>
+        <p className="bet-warn">☆は人気の割に来やすく、基準より複勝回収率が高かった（2024〜2026年、確定オッズ）が、100%を安定して超えてはいない。消は3番人気以内の馬全体（3着内率 約53%）よりはっきり走っていない。</p>
       </details>}
     </>}
   </section>;
@@ -850,6 +852,23 @@ export default function RaceDetailPage() {
       .map((h) => [h.raceEntry!.horseNumber!, h.prediction!.baseProbability]));
     return valueLabels(base, odds.win, model);
   }, [odds, horses, data?.ml?.valueModel]);
+  // AI印の☆：人気薄専用の2段目（/api/longshot）。オッズを取ったら、各馬の入力と確率を送って倍率をもらう
+  const [longshot, setLongshot] = useState<Map<number, number> | null>(null);
+  useEffect(() => {
+    setLongshot(null);
+    const rows = horses.filter((h) => h.prediction?.inputRow && h.prediction.baseWinProbability != null && h.raceEntry?.horseNumber != null)
+      .map((h) => ({ n: h.raceEntry!.horseNumber!, x: h.prediction!.inputRow!, top3: h.prediction!.baseProbability, win: h.prediction!.baseWinProbability! }));
+    if (!odds || rows.length < 3) return;
+    const winOdds = Object.fromEntries(rows.filter((r) => odds.win[String(r.n)]?.min).map((r) => [r.n, odds.win[String(r.n)].min]));
+    let cancelled = false;
+    fetch("/api/longshot", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rows, odds: winOdds }) })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: { ok: boolean; horses: Record<string, { ratio: number }> } | null) => {
+        if (!cancelled && json?.ok) setLongshot(new Map(Object.entries(json.horses).map(([n, v]) => [Number(n), v.ratio])));
+      })
+      .catch(() => { /* ☆なしで続ける */ });
+    return () => { cancelled = true; };
+  }, [odds, horses]);
   const predictedCount = horses.filter((h) => h.prediction).length;
   const scores = useMemo(() => scoreDeviations(horses), [horses]);
   const evidence = data?.ml?.valueModel?.evidence;
@@ -905,7 +924,7 @@ export default function RaceDetailPage() {
         </section>
       </div>}
       {activeTab === "marks" && <div role="tabpanel"><MarksPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar}
-        values={values} horseOdds={horseOdds} winCoef={data.ml?.valueModel?.win ?? null} evidence={data.ml?.marksEvidence ?? null} /></div>}
+        values={values} longshot={longshot} horseOdds={horseOdds} winCoef={data.ml?.valueModel?.win ?? null} evidence={data.ml?.marksEvidence ?? null} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         {data.ml?.status === "available" ? <>
           <div className="ai-conditions">

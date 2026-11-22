@@ -209,7 +209,8 @@ def prepare() -> dict:
     is_top3 = finish <= 3
     logit = lambda p: np.log(p / (1 - p))  # noqa: E731
     return dict(X=X[keep_idx[sel_rows]], race_id=race_id, year=year, finish=finish, odds=odds, win_ret=win_ret, place_ret=place_ret, gs=gs, race_idx=race_idx, n=n,
-                ai_win=ai_win, mkt_win=mkt_win, ai_top3=ai_top3, mkt_top3=mkt_top3, la=la, lm=lm, is_win=is_win, is_top3=is_top3)
+                ai_win=ai_win, mkt_win=mkt_win, ai_top3=ai_top3, mkt_top3=mkt_top3, la=la, lm=lm, is_win=is_win, is_top3=is_top3,
+                pwin_raw=pwin, ptop3_raw=ptop3, horse=np.array([rows[i]['horse'] for i in sel_rows]), umaban=np.array([rows[i].get('umaban') or 0 for i in sel_rows]))
 
 
 def main() -> None:
