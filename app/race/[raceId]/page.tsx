@@ -64,7 +64,7 @@ type Extras = {
   tidxMean5: number | null; tidxBest5: number | null; wakuCourseN: number; wakuCourseDiff: number | null;
 };
 type Prediction = {
-  ability?: { ab: number | null; agari: number | null; cond: number | null };
+  ability?: { ab: number | null; agari: number | null; cond: number | null; early?: number | null };
   pace?: PaceInfo;
   extras?: Extras;
   trainerName?: string | null;
@@ -114,7 +114,21 @@ type OddsData = { ok: boolean; fetchedAt: string; officialTime: string | null; e
   win: OddsMap; place: OddsMap; umaren: OddsMap; wide: OddsMap; trio: OddsMap; trifecta: OddsMap };
 type HorseOdds = { win: number | null; place: { min: number; max: number | null } | null; popularity: number | null };
 type FactorScore = { label: string; score: number; starts: number; rate: number; rank: number; rankedCount: number };
-type CategoryRank = { label: string; rank: number | null; total: number; detail: string; score?: number };
+type CategoryRank = { label: string; rank: number | null; total: number; detail: string; score?: number; type?: string | null };
+
+/**
+ * ラップタイプ（近走の推定上がりの速さと、ゴール前600m 地点での先頭との差。どちらも直近加重平均）。
+ * 区切りは store の全馬の3等分（2026-11-22）：600m 地点の差 0.65秒以下＝前、1.09秒以上＝後ろ。上がり +0.16以上＝速い、−0.54以下＝遅い
+ */
+function lapType(p: Prediction): string | null {
+  const ag = p.ability?.agari, eg = p.ability?.early;
+  if (ag == null || eg == null) return null;
+  if (eg <= 0.65) return ag <= -0.54 ? "先行失速型" : "持続型";
+  if (eg >= 1.09 && ag >= 0.16) return "終い伸び型";
+  return "平均型";
+}
+const typeOf = (group: string, p: Prediction) =>
+  group === "脚質" ? p.pace?.style ?? null : group === "上がり・ラップタイプ" ? lapType(p) : null;
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
 // モデルが変わったら（再学習）保存済みの AI 予想を使わない。キーにモデルの版を入れる（next.config.ts）
@@ -624,7 +638,7 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
         {categories.filter((c) => !missing.includes(c.label)).map((c) => {
           const top = c.rank !== null && c.rank <= 3 && c.total >= 4;
           return <details key={c.label} className={top ? "top" : ""}>
-            <summary><span className="rank-label">{c.label}<small>{c.rank !== null ? `${c.rank}位/${c.total}頭` : ""}</small></span>
+            <summary><span className="rank-label">{c.label}<small>{[c.type, c.rank !== null ? `${c.rank}位/${c.total}頭` : ""].filter(Boolean).join("・")}</small></span>
               {c.score != null ? <span className="rank-bar" role="img" aria-label={`${c.label} 偏差値 ${Math.round(c.score)}`}>
                 <b>{Math.round(c.score)}</b>
                 <span className="rank-track">
@@ -641,6 +655,42 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
       </section>
     </div>
   </details>;
+}
+
+/** 観点別：観点を選ぶと、全馬をその観点の偏差値のバーで並べる（偏差値の高い順）。脚質・ラップタイプは型の名前も出す. */
+function FactorView({ horses, categoryRanks, factor, onFactor }: {
+  horses: Horse[]; categoryRanks: Map<string, CategoryRank[]>; factor: string; onFactor: (f: string) => void;
+}) {
+  const groups = SHAP_GROUPS.filter((g) => horses.some((h) => categoryRanks.get(h.horseId)?.some((c) => c.label === g)));
+  const rows = horses.map((h) => ({ h, c: categoryRanks.get(h.horseId)?.find((c) => c.label === factor) }))
+    .filter((x): x is { h: Horse; c: CategoryRank } => !!x.c && x.c.score != null)
+    .sort((a, b) => b.c.score! - a.c.score!);
+  return <section className="factor-view">
+    <div className="factor-chips" role="group" aria-label="観点">
+      {groups.map((g) => <button key={g} type="button" className={g === factor ? "active" : ""} onClick={() => onFactor(g)}>{g}</button>)}
+    </div>
+    <ul className="factor-list ai-ranks">
+      {rows.map(({ h, c }) => <li key={h.horseId}>
+        <details className={c.rank !== null && c.rank <= 3 && c.total >= 4 ? "top" : ""}>
+          <summary>
+            <span className="factor-horse"><HorseNumberBadge entry={h.raceEntry} /><span className="rank-label">{h.name}
+              <small>{[c.type, `${c.rank}位/${c.total}頭`].filter(Boolean).join("・")}</small></span></span>
+            <span className="rank-bar" role="img" aria-label={`${h.name} ${factor} 偏差値 ${Math.round(c.score!)}`}>
+              <b>{Math.round(c.score!)}</b>
+              <span className="rank-track">
+                <span className="rank-fill" style={{ width: scoreBar(c.score!) + "%" }} />
+                {[30, 40, 60, 70].map((v) => <span key={v} className="rank-grid" style={{ left: scoreBar(v) + "%" }} />)}
+                <span className="rank-avg" style={{ left: scoreBar(50) + "%" }} />
+              </span>
+            </span>
+          </summary>
+          {c.detail && <p>{c.detail}</p>}
+        </details>
+      </li>)}
+    </ul>
+    <p className="ai-ranks-note">観点の数字＝その観点がAIスコアをどれだけ押し上げたか（SHAP）の、出走馬の中の偏差値（平均50）。押すと中身が出る。
+      ラップタイプは近走の推定上がりの速さと、ゴール前600m 地点での先頭との差から：持続型（前で粘る）・終い伸び型（後ろから伸びる）・先行失速型・平均型。</p>
+  </section>;
 }
 
 // ===== 買い目（AIの確率から自動で組む。予算 1000円。計算は app/lib/bets.ts） =====
@@ -744,6 +794,8 @@ export default function RaceDetailPage() {
   const [marks, setMarks] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "marks">("detail");
   const [predSort, setPredSort] = useState<"number" | "prob">("number");
+  const [predView, setPredView] = useState<"horse" | "factor">("horse");
+  const [factor, setFactor] = useState<string>("能力指数");
   const [assumedGoing, setAssumedGoing] = useState(""); // 馬場未発表時に想定する馬場（空 = 想定なし）
   const [odds, setOdds] = useState<OddsData | null>(null);
   const [oddsState, setOddsState] = useState<"idle" | "loading" | "error">("idle");
@@ -824,7 +876,7 @@ export default function RaceDetailPage() {
     const oldDetail = (horseId: string, label: string) => base.get(horseId)?.find((c) => c.label === label && c.detail !== NO_DATA)?.detail ?? null;
     const abilityText: Record<string, (p: Prediction) => string | null> = {
       能力指数: (p) => p.ability?.ab != null ? "近走（同じ芝ダ）の能力指数の直近加重平均 " + (p.ability.ab >= 0 ? "+" : "") + p.ability.ab.toFixed(2) + "（その日の馬場差・斤量を補正したタイム指数。1000mあたりの秒）" : null,
-      上がり: (p) => p.ability?.agari != null ? "近走の推定上がり3F が、そのレースの平均より " + Math.abs(p.ability.agari).toFixed(2) + "秒" + (p.ability.agari >= 0 ? "速い" : "遅い") + "（直近加重平均。成績表の隊列から推定）" : null,
+      "上がり・ラップタイプ": (p) => p.ability?.agari != null ? "近走の推定上がり3F が、そのレースの平均より " + Math.abs(p.ability.agari).toFixed(2) + "秒" + (p.ability.agari >= 0 ? "速い" : "遅い") + "（直近加重平均。成績表の隊列から推定）" : null,
       条件適性: (p) => p.ability?.cond != null ? "能力指数に、今回の距離・競馬場・馬場での得意不得意を足した値 " + (p.ability.cond >= 0 ? "+" : "") + p.ability.cond.toFixed(2) : null,
     };
     const OLD: Record<string, string> = { 騎手: "騎手", 調子: "調子", 血統: "血統" };
@@ -845,7 +897,7 @@ export default function RaceDetailPage() {
         const mean = vals.reduce((a, x) => a + x.c!.phi, 0) / vals.length;
         const sd = Math.sqrt(vals.reduce((a, x) => a + (x.c!.phi - mean) * (x.c!.phi - mean), 0) / vals.length);
         const score = sd > 0 ? 50 + 10 * (c!.phi - mean) / sd : 50;
-        list.push({ label: g, rank: 1 + vals.filter((x) => x.c!.phi > c!.phi).length, total: vals.length, detail, score });
+        list.push({ label: g, rank: 1 + vals.filter((x) => x.c!.phi > c!.phi).length, total: vals.length, detail, score, type: typeOf(g, h.prediction!) });
         out.set(h.horseId, list);
       }
     }
@@ -969,12 +1021,17 @@ export default function RaceDetailPage() {
           <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} weightNote={weightNote} compact />
           <section className="horse-results-section">
             <div className="results-toolbar">
-              <div className="sort-toggle" role="group" aria-label="並び順">
+              <div className="sort-toggle" role="group" aria-label="見方">
+                <button type="button" className={predView === "horse" ? "active" : ""} onClick={() => setPredView("horse")}>馬ごと</button>
+                <button type="button" className={predView === "factor" ? "active" : ""} onClick={() => setPredView("factor")}>観点別</button>
+              </div>
+              {predView === "horse" && <div className="sort-toggle" role="group" aria-label="並び順">
                 <button type="button" className={predSort === "number" ? "active" : ""} onClick={() => setPredSort("number")}>馬番順</button>
                 <button type="button" className={predSort === "prob" ? "active" : ""} onClick={() => setPredSort("prob")}>スコア順</button>
-              </div>
+              </div>}
             </div>
-            <div className="ai-row-head" aria-hidden="true">
+            {predView === "factor" && <FactorView horses={horses} categoryRanks={categoryRanks} factor={factor} onFactor={setFactor} />}
+            {predView === "horse" && <><div className="ai-row-head" aria-hidden="true">
               <span>馬</span><span>オッズ</span><span>AIスコア<i />平均</span><span>目安</span>
             </div>
             {sortedHorses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
@@ -984,7 +1041,7 @@ export default function RaceDetailPage() {
               value={horse.raceEntry?.horseNumber != null ? values?.get(horse.raceEntry.horseNumber) ?? null : null}
               score={scores.get(horse.horseId) ?? null}
               categories={categoryRanks.get(horse.horseId) ?? []}
-              factors={factorScores.get(horse.horseId) ?? []} />)}
+              factors={factorScores.get(horse.horseId) ?? []} />)}</>}
             <div className="ai-legend">
               <p><b>AIスコア</b>＝AIが出した3着以内に入る確率を、出走馬の中での偏差値にしたもの（平均50。差が大きいほど抜けている）。線は平均の50。確率（%）は行を押すと出る。</p>
               <p><b>目安</b>＝AIと市場（単勝オッズ）を合わせた3着以内の確率が、オッズから見た確率より高いか。

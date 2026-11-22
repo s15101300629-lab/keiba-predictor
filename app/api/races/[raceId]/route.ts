@@ -1027,7 +1027,7 @@ export async function GET(
             tidxMean5: num(f.tidx_mean5), tidxBest5: num(f.tidx_best5), wakuCourseN: f.waku_course_n, wakuCourseDiff: num(f.waku_course_diff),
           },
           // 各観点の順位（画面）に使う、モデルで効いている項目。能力指数の直近加重平均・推定上がり偏差の直近加重平均・今回の条件での能力
-          ability: { ab: num(f.ab_wmean), agari: num(f.ag_dev_wmean), cond: num(f.cond_ab) },
+          ability: { ab: num(f.ab_wmean), agari: num(f.ag_dev_wmean), cond: num(f.cond_ab), early: num(f.early_gap_wmean) },
           // 本体モデルの入力（model.json の features の並び）。人気薄専用の2段目（☆）に使う
           inputRow: ml.model.features.map((name) => { const v = f[name]; return v == null || Number.isNaN(v) ? null : v; }),
           // 各観点：SHAP の寄与（log-odds）を観点ごとに足したもの。項目の値も付ける

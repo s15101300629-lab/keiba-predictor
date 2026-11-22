@@ -154,7 +154,9 @@ def build_store(hist, last_date: str) -> dict:
         sel = [[d, n, t] for d, (n, t) in sorted(days.items()) if d >= prev_year_start]
         if sel:
             people[kind][name] = sel
-    return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys, "people": people,
+    # コース×4角の位置：「競馬場-芝ダ-距離」→ 年 → 帯ごとの [走の数, 3着以内] を並べたもの（features.py の c4_features）
+    c4 = {f"{v}-{su}-{d}": {y: [x for pair in bins for x in pair] for y, bins in years.items()} for (v, su, d), years in hist.c4.items()}
+    return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys, "people": people, "c4": c4,
             "trainers": trainers, "names": names,
             "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast",
                           "prize", "weight", "jockey", "trainer", "tidx", "victim",

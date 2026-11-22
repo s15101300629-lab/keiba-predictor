@@ -2,29 +2,33 @@
 // 観点の順位＝出走馬の中で、その観点がAIスコアを押し上げた量の順。モデルに入っていない観点は出さない。
 
 export const SHAP_GROUPS = [
-  "能力指数", "上がり", "調子", "条件適性", "展開・脚質", "クラス・相手関係", "騎手", "調教師", "馬主・生産者", "血統", "調教",
-  "前走からの変化", "馬体・斤量・年齢", "枠・レース条件",
+  "能力指数", "タイム指数", "出走レースレベル", "上がり・ラップタイプ", "脚質", "ポジション", "調子", "レース間隔", "前走距離",
+  "条件適性", "枠順", "騎手", "調教師", "馬主・生産者", "血統", "調教", "馬体・斤量・年齢", "前走からの変化", "レース条件",
 ] as const;
 export type ShapGroup = (typeof SHAP_GROUPS)[number];
 
+// 2026-11-22 に依頼者と決めた観点（キャプチャの「勝ち馬サーチ」「走行解析」に合わせて細かくした）
 const EXACT: Record<string, ShapGroup> = {
-  surface: "枠・レース条件", distance: "枠・レース条件", going: "枠・レース条件", field_size: "枠・レース条件", venue: "枠・レース条件",
-  waku: "枠・レース条件", umaban: "枠・レース条件", umaban_ratio: "枠・レース条件", prize_1st: "クラス・相手関係",
+  surface: "レース条件", distance: "レース条件", going: "レース条件", field_size: "レース条件", venue: "レース条件",
+  c_straight: "レース条件", c_elev: "レース条件", c_lap: "レース条件",
+  waku: "枠順", umaban: "枠順", umaban_ratio: "枠順",
+  prize_1st: "出走レースレベル", field_form_mean: "出走レースレベル",
   weight: "馬体・斤量・年齢", age: "馬体・斤量・年齢", sex: "馬体・斤量・年齢", body_weight: "馬体・斤量・年齢", body_weight_diff: "馬体・斤量・年齢",
-  n_prior: "調子", days_since_last: "調子", field_form_mean: "クラス・相手関係",
-  dist_change: "前走からの変化", surface_change: "前走からの変化", weight_change: "前走からの変化", jockey_change: "前走からの変化",
+  n_prior: "調子", days_since_last: "レース間隔", g_layoff: "レース間隔",
+  dist_change: "前走距離", fit_change: "前走距離", fit_change_n: "前走距離",
+  surface_change: "前走からの変化", weight_change: "前走からの変化", jockey_change: "前走からの変化",
   last1_victim: "前走からの変化", victim_n5: "前走からの変化",
-  c_straight: "枠・レース条件", c_elev: "枠・レース条件", c_lap: "枠・レース条件",
+  pos_last_mean: "ポジション", rel_pos_rank: "ポジション", pos_std: "ポジション",
 };
 const PREFIX: [string, ShapGroup][] = [
+  ["c4_", "ポジション"],
   ["cond_ab", "条件適性"], ["fit_", "条件適性"], ["surface_", "条件適性"], ["dist_", "条件適性"], ["venue_", "条件適性"], ["wet_", "条件適性"],
   ["sim_", "条件適性"], ["band_", "条件適性"], ["sc_", "条件適性"], ["scp_", "条件適性"],
-  ["ab_", "能力指数"], ["tidx_", "能力指数"], ["rel_tidx", "能力指数"], ["rank_tidx", "能力指数"],
-  ["ag_", "上がり"], ["early_gap", "上がり"], ["fade_", "上がり"],
+  ["ab_", "能力指数"], ["tidx_", "タイム指数"], ["rel_tidx", "タイム指数"], ["rank_tidx", "タイム指数"],
+  ["ag_", "上がり・ラップタイプ"], ["early_gap", "上がり・ラップタイプ"], ["fade_", "上がり・ラップタイプ"],
   ["form_", "調子"], ["last1_", "調子"], ["g_", "調子"],
-  ["pos_", "展開・脚質"], ["nige_", "展開・脚質"], ["senko_", "展開・脚質"], ["hp_", "展開・脚質"], ["sp_", "展開・脚質"], ["field_", "展開・脚質"],
-  ["rel_pos", "展開・脚質"], ["pace_", "展開・脚質"],
-  ["prize_ratio", "クラス・相手関係"], ["rel_prize", "クラス・相手関係"], ["rank_prize", "クラス・相手関係"], ["lv_", "クラス・相手関係"], ["h2h_", "クラス・相手関係"],
+  ["pos_", "脚質"], ["nige_", "脚質"], ["senko_", "脚質"], ["hp_", "脚質"], ["sp_", "脚質"], ["field_", "脚質"], ["pace_", "脚質"],
+  ["prize_ratio", "出走レースレベル"], ["rel_prize", "出走レースレベル"], ["rank_prize", "出走レースレベル"], ["lv_", "出走レースレベル"], ["h2h_", "出走レースレベル"],
   ["jockey_", "騎手"], ["trainer_", "調教師"], ["owner_", "馬主・生産者"], ["breeder_", "馬主・生産者"], ["ped_", "血統"], ["train_rank", "調教"],
 ];
 
@@ -83,6 +87,7 @@ const LABELS: Record<string, string> = {
   jockey_n: "騎手の今年の騎乗数", trainer_n: "調教師の今年の出走数", owner_n_y: "馬主の今年の出走数", breeder_n_y: "生産者の今年の出走数",
   umaban_ratio: "馬番÷頭数", surface: "芝・ダート", distance: "距離", going: "馬場", venue: "競馬場", c_straight: "直線の長さ", c_elev: "高低差", c_lap: "一周の距離",
   last1_victim: "前走で不利を受けた", victim_n5: "近5走で不利を受けた数",
+  c4_rate: "このコースで、ふだんの4角の位置からの3着内率", c4_adv: "このコースで、ふだんの4角の位置の有利さ", c4_bias: "このコースの前残りの強さ", c4_n: "このコース・その位置の走の数",
 };
 export const featureLabel = (name: string) => LABELS[name] ?? name;
 

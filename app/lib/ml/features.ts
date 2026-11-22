@@ -22,6 +22,8 @@ export type Store = {
   courseWaku?: Record<string, [string, number, number, number][]>;
   // 馬主・生産牧場（normOwner でそろえた名前）→ [[日付, 出走数, 3着以内数], ...]（最終日の前年の1月から）
   people?: Record<"owner" | "breeder", Record<string, [string, number, number][]>>;
+  // コース×4角の位置："競馬場-芝ダ-距離" → 年 → 帯ごとの [走の数, 3着以内] を並べたもの（10個）
+  c4?: Record<string, Record<string, number[]>>;
 };
 
 export type RaceInput = {
@@ -605,6 +607,31 @@ function addRelative(rows: Features[], key: string, withFstd: boolean): void {
   }
 }
 
+const C4_BINS = 5;
+const C4_MIN_RUNS = 200;
+
+/** コース×4角の位置（scripts/ml/features.py の c4_features と同じ）。runs：その馬のレース前の過去走（古い順）. */
+function c4Features(store: Store, race: RaceInput, runs: Store["horses"][string]): Features {
+  const y = race.date.slice(0, 4);
+  const t = Array.from({ length: C4_BINS }, () => [0, 0]);
+  for (const [yr, flat] of Object.entries(store.c4?.[`${race.venue}-${race.surface}-${race.distance}`] ?? {})) {
+    if (yr < y) for (let b = 0; b < C4_BINS; b++) { t[b][0] += flat[2 * b]; t[b][1] += flat[2 * b + 1]; }
+  }
+  const pos = runs.slice(-5).filter((r) => r[10] > 0 && r[5] > 0).map((r) => r[10] / r[5]);
+  let nAll = 0;
+  for (const c of t) nAll += c[0];
+  if (nAll < C4_MIN_RUNS || !pos.length) return { c4_rate: NaN, c4_adv: NaN, c4_bias: NaN, c4_n: 0 };
+  let ps = 0;
+  for (const p of pos) ps += p;
+  const pm = ps / pos.length;
+  const b = Math.min(C4_BINS - 1, Math.trunc(Math.max(pm - 1e-9, 0) * C4_BINS));
+  const rate = t.map((c) => (c[1] + 1) / (c[0] + 5)); // 少ない帯は全体に寄せる
+  let tops = 0;
+  for (const c of t) tops += c[1];
+  const tot = tops / nAll;
+  return { c4_rate: rate[b], c4_adv: rate[b] - tot, c4_bias: rate[0] - rate[C4_BINS - 1], c4_n: t[b][0] };
+}
+
 export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInput): Features {
   const nz = (v: number | null) => (v === null || v === 0 ? NaN : v); // Python の `x or NAN` と同じ
   const f: Features = {
@@ -623,6 +650,7 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
   for (const k of ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"] as const) f[k] = runner.pedigree?.[k] ?? NaN;
   f.umaban_ratio = Number.isNaN(f.umaban) ? NaN : f.umaban / race.fieldSize;
   Object.assign(f, horseFeatures(store, race, runner.horse, runner.extraRuns));
+  Object.assign(f, c4Features(store, race, horseRuns(store, runner.horse, runner.extraRuns).filter((r) => r[0] < race.date)));
   const tr = trainerStats(store, race, runner.trainerKey);
   Object.assign(f, {
     trainer_n: tr.n, trainer_top3: rate(tr.top3, tr.n), trainer_venue_n: tr.venueN, trainer_venue_top3: rate(tr.venueTop3, tr.venueN),

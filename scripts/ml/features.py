@@ -91,6 +91,14 @@ FEATURES_BEFORE_SIMILAR = list(FEATURES)  # 似た条件を入れる前の172項
 SIMILAR_COND_FEATURES = ["sc_n", "sc_top3", "sc_ab_best", "sc_ab_mean", "sc_fin_best", "sc_strong", "sc_strong_ab",
                          "scp_n", "scp_top3", "scp_ab_best"]
 FEATURES = FEATURES + SIMILAR_COND_FEATURES
+FEATURES_BEFORE_C4 = list(FEATURES)  # コース×4角の位置を入れる前の182項目
+# コース×4角の位置（compare_round3.py の B。3年とも logloss 改善、2026-11-22）
+# コース（競馬場・芝ダ・距離）ごとに、最後のコーナーの位置÷頭数を5つの帯に分けた3着内率（その年より前の年の走だけ）。
+# 各馬の近5走の最後のコーナーの位置の平均 → 帯 → このコースのその帯の3着内率、コース全体との差、前の帯と後ろの帯の差、その帯の走の数
+C4_FEATURES = ["c4_rate", "c4_adv", "c4_bias", "c4_n"]
+C4_BINS = 5
+C4_MIN_RUNS = 200
+FEATURES = FEATURES + C4_FEATURES
 STRONG_AB_SLOPE, STRONG_AB_INTERCEPT = 4.074320892848245, -2.911852114339949  # 能力指数 ~ 相手の調子の平均（全走で1本の直線。ラベルは使わない）
 PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
@@ -504,6 +512,8 @@ class History:
 
     def __init__(self):
         self.horses: dict[str, list[dict]] = defaultdict(list)
+        # (競馬場, 芝ダ, 距離) → 年 → 最後のコーナーの位置の帯ごとの [走の数, 3着以内]（c4_features）
+        self.c4: dict[tuple, dict[str, list[list[int]]]] = defaultdict(dict)
         self.jockeys: dict[str, list[dict]] = defaultdict(list)
         self.trainers: dict[str, list[dict]] = defaultdict(list)
         # (競馬場, 芝ダ, 距離) -> 枠番 -> [出走数, 3着以内数]
@@ -540,6 +550,11 @@ class History:
                 self.course_waku_events[key].append((race["date"], h["waku"], top3))
             self.horses[h["horse"]].append(run)
             self.by_race[race["race_id"]].append((h["horse"], run))
+            if run["pos_last"] and run["field"] and run["field"] > 1 and run["finish"] is not None:
+                b = min(C4_BINS - 1, int((run["pos_last"] - 1) / run["field"] * C4_BINS))
+                c4 = self.c4[(race["venue"], race["surface"], race["distance"])].setdefault(race["date"][:4], [[0, 0] for _ in range(C4_BINS)])[b]
+                c4[0] += 1
+                c4[1] += 1 if run["finish"] <= 3 else 0
             for kind in ("owner", "breeder"):
                 name = norm_owner(h.get(kind))
                 if name:
@@ -977,6 +992,27 @@ def add_form_deviation(rows: list[dict]) -> None:
         r["form_dev"] = NAN if math.isnan(v) else (50.0 if sd == 0 else 50 + 10 * (v - mean) / sd)
 
 
+def c4_features(c4: dict, race: dict, runs: list[dict]) -> dict:
+    """コース×4角の位置（C4_FEATURES）。c4：(競馬場, 芝ダ, 距離) → 年 → 帯ごとの [走の数, 3着以内]。runs：その馬のレース前の過去走（古い順）.
+    app/lib/ml/features.ts の c4Features と同じ."""
+    y = race["date"][:4]
+    t = [[0, 0] for _ in range(C4_BINS)]
+    for yr, bins in (c4.get((race["venue"], race["surface"], race["distance"])) or {}).items():
+        if yr < y:
+            for b in range(C4_BINS):
+                t[b][0] += bins[b][0]
+                t[b][1] += bins[b][1]
+    pos = [x["pos_last"] / x["field"] for x in runs[-5:] if x["pos_last"] and x["field"]]
+    n_all = sum(c[0] for c in t)
+    if n_all < C4_MIN_RUNS or not pos:
+        return {"c4_rate": NAN, "c4_adv": NAN, "c4_bias": NAN, "c4_n": 0}
+    pm = sum(pos) / len(pos)
+    b = min(C4_BINS - 1, int(max(pm - 1e-9, 0) * C4_BINS))
+    rate = [(c[1] + 1) / (c[0] + 5) for c in t]  # 少ない帯は全体に寄せる
+    tot = sum(c[1] for c in t) / n_all
+    return {"c4_rate": rate[b], "c4_adv": rate[b] - tot, "c4_bias": rate[0] - rate[-1], "c4_n": t[b][0]}
+
+
 # 成績表にない過去走（海外の走）。馬名 → 過去走（History.add_race と同じ形）。答え合わせ（check_jra_day.py）だけが使う。
 # アプリの extraRuns（app/lib/ml/features.ts）と同じく、本人の過去走（horse_features・斤量の変化・乗り替わり）にだけ足す
 EXTRA_RUNS: dict[str, list[dict]] = {}
@@ -1004,6 +1040,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                 f = runner_features(race, h, runs, hist.jockeys.get(norm_jockey(h.get("jockey")), []),
                                     hist.trainers.get(norm_jockey(h.get("trainer")), []), {k: list(v) for k, v in course.items()} if course else None,
                                     hist.people)
+                f.update(c4_features(hist.c4, race, runs))
                 f.update({
                     "race_id": race["race_id"], "date": race["date"], "horse": h["horse"], "turn": race["turn"], "sband": race["sband"],
                     "finish": h["finish"], "popularity": h.get("popularity"), "jockey": h.get("jockey"), "trainer": h.get("trainer"),

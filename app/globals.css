@@ -698,3 +698,13 @@ footer span { letter-spacing:0; }
 .venue-tab { flex: 0 0 auto; padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; }
 .venue-tab.active { border-color: var(--accent); color: #1a1405; background: var(--accent); }
 .grade-badge.plain { background: #1f1b13; color: var(--muted); font-size: 12px; box-shadow: inset 0 0 0 1px var(--line); }
+
+/* AI予想の観点別 */
+.factor-view { margin-top: 8px; }
+.factor-chips { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 10px; scrollbar-width: none; }
+.factor-chips button { flex: 0 0 auto; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text-sub); font-size: 13px; }
+.factor-chips button.active { border-color: var(--accent); color: var(--accent-strong, #f0d27a); background: #2a2416; }
+.factor-list { list-style: none; margin: 0; padding: 0; }
+.factor-horse { flex: 1 1 0; display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; margin-right: 8px; }
+.factor-horse .rank-label { min-width: 0; overflow: hidden; white-space: nowrap; }
+.factor-list .rank-bar { flex: 0 0 52%; }
