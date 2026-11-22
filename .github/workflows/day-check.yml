@@ -51,7 +51,7 @@ jobs:
 
       - name: Commit
         run: |
-          git add data/ml/day_check
+          git add data/ml/day_check data/jra-results
           if git diff --cached --quiet; then
             echo "no changes"
             exit 0

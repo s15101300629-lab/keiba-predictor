@@ -120,12 +120,14 @@ def parse_race(block: str, date: str, venue_code: str) -> dict | None:
         for h in results:
             if h["finish"] == 1:
                 h["owner"], h["breeder"] = winner[1].strip(), winner[2].strip()
+    ev = re.search(r"競走中の出来事等(.*?)(?:ページトップへ戻る|$)", foot)
+    notes = [x.strip() for x in ev[1].split("・") if x.strip()] if ev else []  # 出遅れ・不利・制裁などの文
     starters = [h for h in results if h["status"] not in ("取消", "除外")]
     oc = re.search(r"'(pw151ou[^']+)'", block)
     return {"odds_cname": oc[1] if oc else None, "race_no": race_no, "race_name": name, "distance": dist, "course": course, "surface": surface, "going": going,
             "weather": baba.get("天候"), "prize": [int(prize1[1].replace(",", "")) * 10000] if prize1 else [],
             "race_id": f"{date[:4]}{venue_code}{kai:02d}{day:02d}{race_no:02d}", "date": date, "kai": kai, "day": day,
-            "starters": len(starters), "results": results, "laps": laps, "corners": corners, "notes": [],
+            "starters": len(starters), "results": results, "laps": laps, "corners": corners, "notes": notes,
             "last_3f": float(l3[1]) if l3 else None}
 
 
@@ -135,7 +137,7 @@ def fetch_day(date: str) -> list[dict]:
     days = []
     for cname in sorted(set(re.findall(r"'(pw01srl\d{2}(\d{2})\d{8}" + ymd + r"/[0-9A-F]{2})'", top))):
         page = post("/JRADB/accessS.html", cname[0])
-        allc = re.search(r"'(pw01ses01" + cname[1] + r"\d{8}" + ymd + r"/[0-9A-F]{2})'", page)
+        allc = re.search(r"'(pw01ses\d{2}" + cname[1] + r"\d{8}" + ymd + r"/[0-9A-F]{2})'", page)
         if not allc:
             continue
         full = post("/JRADB/accessS.html", allc[1])
@@ -202,7 +204,34 @@ def predict(model: dict, X: np.ndarray) -> np.ndarray:
     return 1 / (1 + np.exp(-out))
 
 
+RAW = Path(__file__).resolve().parents[2] / "data" / "jra-results"
+
+
+def save_raw(date: str, days: list[dict]) -> None:
+    """結果ページの中身（全レース。推定でない上がり3F・通過・ラップ・確定オッズ・競走中の出来事）をためる（後で特徴量に使う）."""
+    RAW.mkdir(parents=True, exist_ok=True)
+    keep = [{**d, "races": [{k: v for k, v in r.items() if k != "odds_cname"} for r in d["races"]]} for d in days]
+    (RAW / f"{date}.json").write_text(json.dumps({"date": date, "source": "https://www.jra.go.jp/JRADB/accessS.html", "days": keep},
+                                                 ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def backfill() -> None:
+    """結果ページで見られる過去の開催日（約2か月分）のうち、まだ保存していない日を取る（予測はしない）."""
+    top = post("/JRADB/accessS.html", "pw01sli00/AF")
+    dates = sorted({f"{m[:4]}-{m[4:6]}-{m[6:]}" for m in re.findall(r"'pw01srl\d{12}(\d{8})/", top)})
+    for date in dates:
+        if (RAW / f"{date}.json").exists():
+            continue
+        days = fetch_day(date)
+        if days:
+            save_raw(date, days)
+            print(date, sum(len(d["races"]) for d in days), "races", file=sys.stderr, flush=True)
+
+
 def main() -> None:
+    if "--backfill" in sys.argv:
+        backfill()
+        return
     from datetime import datetime, timedelta, timezone
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     date = args[0] if args else datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
@@ -210,6 +239,7 @@ def main() -> None:
     if not days:
         print(f"{date}: 結果ページなし", file=sys.stderr)
         return
+    save_raw(date, days)
     flat = [r for d in days for r in d["races"] if r["surface"] in ("芝", "ダート")]
     print(f"{date}: {len(flat)} races", file=sys.stderr, flush=True)
     tmp = Path(tempfile.mkdtemp())
