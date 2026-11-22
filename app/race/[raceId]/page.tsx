@@ -117,12 +117,9 @@ type HorseOdds = { win: number | null; place: { min: number; max: number | null 
 type FactorScore = { label: string; score: number; starts: number; rate: number; rank: number; rankedCount: number };
 type CategoryRank = { label: string; rank: number | null; total: number; detail: string; score?: number; type?: string | null };
 
-/** ラップタイプ（API の lapType：netkeiba の本物の上がり3F から、その馬自身の終いの加速の度合い。近5走の平均） */
-function lapType(p: Prediction): string | null {
-  return p.lapType?.type ?? null;
-}
-const typeOf = (group: string, p: Prediction) =>
-  group === "脚質" ? p.pace?.style ?? null : group === "上がり・ラップタイプ" ? lapType(p) : null;
+// 型の名前は脚質だけ出す。ラップタイプは、200m ごとの個別のラップがないと加速型と持続型を分けられないので名前は出さず、
+// 観点の中身に終いの加速の数字だけ出す（依頼者の判断、2026-11-22）
+const typeOf = (group: string, p: Prediction) => (group === "脚質" ? p.pace?.style ?? null : null);
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
 // モデルが変わったら（再学習）保存済みの AI 予想を使わない。キーにモデルの版を入れる（next.config.ts）
@@ -683,7 +680,7 @@ function FactorView({ horses, categoryRanks, factor, onFactor }: {
       </li>)}
     </ul>
     <p className="ai-ranks-note">観点の数字＝その観点がAIスコアをどれだけ押し上げたか（SHAP）の、出走馬の中の偏差値（平均50）。押すと中身が出る。
-      ラップタイプは近5走の本物の上がり3F（netkeiba）から、その馬自身が終いに加速しているか：加速型（前で運んで終いに加速）・終い伸び型（後ろから加速）・持続型（一定のペース）・失速型（終いに落ちる）。</p>
+      上がり・ラップタイプの中身には、近5走の本物の上がり3F（netkeiba）から見た終いの加速の度合いを出す。</p>
   </section>;
 }
 
@@ -871,7 +868,7 @@ export default function RaceDetailPage() {
     const abilityText: Record<string, (p: Prediction) => string | null> = {
       能力指数: (p) => p.ability?.ab != null ? "近走（同じ芝ダ）の能力指数の直近加重平均 " + (p.ability.ab >= 0 ? "+" : "") + p.ability.ab.toFixed(2) + "（その日の馬場差・斤量を補正したタイム指数。1000mあたりの秒）" : null,
       "上がり・ラップタイプ": (p) => [p.ability?.agari != null ? "近走の推定上がり3F が、そのレースの平均より " + Math.abs(p.ability.agari).toFixed(2) + "秒" + (p.ability.agari >= 0 ? "速い" : "遅い") + "（直近加重平均。成績表の隊列から推定）" : null,
-        p.lapType ? `ラップタイプ ${p.lapType.type}：近${p.lapType.runs}走の上がり3F は、それより前より 200m あたり ${Math.abs(p.lapType.accel).toFixed(2)}秒${p.lapType.accel >= 0 ? "速い" : "遅い"}（最後のコーナーは平均で前から${Math.round(p.lapType.last4 * 100)}%の位置。netkeiba の上り）` : null].filter(Boolean).join(" / ") || null,
+        p.lapType ? `終いの加速：近${p.lapType.runs}走の上がり3F は、それより前より 200m あたり ${Math.abs(p.lapType.accel).toFixed(2)}秒${p.lapType.accel >= 0 ? "速い" : "遅い"}（最後のコーナーは平均で前から${Math.round(p.lapType.last4 * 100)}%の位置。netkeiba の上り）` : null].filter(Boolean).join(" / ") || null,
       条件適性: (p) => p.ability?.cond != null ? "能力指数に、今回の距離・競馬場・馬場での得意不得意を足した値 " + (p.ability.cond >= 0 ? "+" : "") + p.ability.cond.toFixed(2) : null,
     };
     const OLD: Record<string, string> = { 騎手: "騎手", 調子: "調子", 血統: "血統" };
