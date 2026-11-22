@@ -1,3 +1,4 @@
 # 1行1コマンド。上から順に実行し、data/ml（と data/jra-results）の変化をコマンドごとに commit する
-# 2026-11-22：前走などの不利・出遅れ・競走中の疾病を考えた特徴量の比較
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python compare_trouble.py
+# 2026-11-22：JRA の結果ページで見られる過去の開催日（9/19〜）の結果を保存 → ☆の決め方の比較（前の実行は requests がなくて止まった）
+cd scripts/ml && python check_jra_day.py --backfill
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python star_eval.py
