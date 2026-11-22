@@ -99,6 +99,15 @@ C4_FEATURES = ["c4_rate", "c4_adv", "c4_bias", "c4_n"]
 C4_BINS = 5
 C4_MIN_RUNS = 200
 FEATURES = FEATURES + C4_FEATURES
+FEATURES_BEFORE_RATING = list(FEATURES)  # レーティングを入れる前の186項目
+# レーティング（compare_rating.py の E2＋E3。3年とも logloss 改善、2026-11-22）。相手の強さこみの強さ：
+# 全レースを日付順に、出走馬どうしの着差で点数を更新する（イロレーティングの多頭版）。強い相手に先着・接戦すると上がる。
+# 勝ちの度合い＝1/(1+exp(−(相手の勝ち馬との差 − 自分の勝ち馬との差)/0.3秒))。着差がなければ着順で 1・0・0.5。K=32 を頭数−1 で割る。初めは 1500。
+# 同じ日のレースは前日までの点数で計算し、日の終わりにまとめて更新。elom：全体、elos：今回の芝ダだけ。_n は更新された日数
+RATING_FEATURES = ["elom", "elom_n", "elom_rank", "elom_z", "elom_dmax", "elos", "elos_n", "elos_rank", "elos_z", "elos_dmax"]
+RATING_K = 32.0
+RATING_MARGIN = 0.3
+FEATURES = FEATURES + RATING_FEATURES
 STRONG_AB_SLOPE, STRONG_AB_INTERCEPT = 4.074320892848245, -2.911852114339949  # 能力指数 ~ 相手の調子の平均（全走で1本の直線。ラベルは使わない）
 PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
@@ -512,6 +521,11 @@ class History:
 
     def __init__(self):
         self.horses: dict[str, list[dict]] = defaultdict(list)
+        # レーティング（RATING_FEATURES）：馬 → 点数・更新日数、(馬, 芝ダ) → 点数・更新日数
+        self.elom: dict[str, float] = {}
+        self.elom_n: dict[str, int] = {}
+        self.elos: dict[tuple, float] = {}
+        self.elos_n: dict[tuple, int] = {}
         # (競馬場, 芝ダ, 距離) → 年 → 最後のコーナーの位置の帯ごとの [走の数, 3着以内]（c4_features）
         self.c4: dict[tuple, dict[str, list[list[int]]]] = defaultdict(dict)
         self.jockeys: dict[str, list[dict]] = defaultdict(list)
@@ -1013,6 +1027,50 @@ def c4_features(c4: dict, race: dict, runs: list[dict]) -> dict:
     return {"c4_rate": rate[b], "c4_adv": rate[b] - tot, "c4_bias": rate[0] - rate[-1], "c4_n": t[b][0]}
 
 
+def update_ratings(hist, races: list[dict]) -> None:
+    """1日分のレースでレーティングを更新する（RATING_FEATURES。compare_rating.py の ratings と同じ計算）."""
+    for table, cnt, by_surf in ((hist.elom, hist.elom_n, False), (hist.elos, hist.elos_n, True)):
+        delta: dict = {}
+        for race in races:
+            hs = race["runners"]
+            n = len(hs)
+            if n < 2:
+                continue
+            key = [(h["horse"], race["surface"]) if by_surf else h["horse"] for h in hs]
+            r = [table.get(k, 1500.0) for k in key]
+            fin = [h["finish"] if h["finish"] is not None else 99 for h in hs]
+            td = [h["time_diff"] if h["time_diff"] is not None else (9.9 if h["finish"] is None else NAN) for h in hs]
+            for a in range(n):
+                s = 0.0
+                for b in range(n):
+                    if a == b:
+                        continue
+                    e = 1.0 / (1.0 + 10 ** ((r[b] - r[a]) / 400.0))
+                    if not math.isnan(td[a]) and not math.isnan(td[b]):
+                        w = 1.0 / (1.0 + math.exp(-(td[b] - td[a]) / RATING_MARGIN))
+                    else:
+                        w = 1.0 if fin[a] < fin[b] else 0.0 if fin[a] > fin[b] else 0.5
+                    s += w - e
+                delta[key[a]] = delta.get(key[a], 0.0) + RATING_K / (n - 1) * s
+        for k, d in delta.items():
+            table[k] = table.get(k, 1500.0) + d
+            cnt[k] = cnt.get(k, 0) + 1
+
+
+def add_rating_field(rows: list[dict]) -> None:
+    """レーティングの、出走馬の中での順位÷頭数・偏差・最高との差（足す前に小さい順に並べる＝TS と同じ順で足す）."""
+    for name in ("elom", "elos"):
+        vals = sorted(r[name] for r in rows)
+        m = sum(vals) / len(vals)
+        sd = math.sqrt(sum(sorted((v - m) * (v - m) for v in vals)) / len(vals))
+        top = vals[-1]
+        for r in rows:
+            v = r[name]
+            r[name + "_rank"] = (1 + sum(1 for o in vals if o > v)) / len(rows)
+            r[name + "_z"] = (v - m) / sd if sd > 0 else 0.0
+            r[name + "_dmax"] = v - top
+
+
 # 成績表にない過去走（海外の走）。馬名 → 過去走（History.add_race と同じ形）。答え合わせ（check_jra_day.py）だけが使う。
 # アプリの extraRuns（app/lib/ml/features.ts）と同じく、本人の過去走（horse_features・斤量の変化・乗り替わり）にだけ足す
 EXTRA_RUNS: dict[str, list[dict]] = {}
@@ -1041,6 +1099,8 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                                     hist.trainers.get(norm_jockey(h.get("trainer")), []), {k: list(v) for k, v in course.items()} if course else None,
                                     hist.people)
                 f.update(c4_features(hist.c4, race, runs))
+                f.update({"elom": hist.elom.get(h["horse"], 1500.0), "elom_n": hist.elom_n.get(h["horse"], 0),
+                          "elos": hist.elos.get((h["horse"], race["surface"]), 1500.0), "elos_n": hist.elos_n.get((h["horse"], race["surface"]), 0)})
                 f.update({
                     "race_id": race["race_id"], "date": race["date"], "horse": h["horse"], "turn": race["turn"], "sband": race["sband"],
                     "finish": h["finish"], "popularity": h.get("popularity"), "jockey": h.get("jockey"), "trainer": h.get("trainer"),
@@ -1049,6 +1109,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                 race_rows.append(f)
             add_form_deviation(race_rows)
             add_field_features(race_rows)
+            add_rating_field(race_rows)
             add_opponent_features(race_rows, [h["horse"] for h in race["runners"]], race, hist.horses, hist.by_race)
             similar_cond_features(race_rows, [h["horse"] for h in race["runners"]], race, hist.horses)
             for f, h in zip(race_rows, race["runners"]):  # 後のレースの前走レベル・直接対決で使う「そのときの調子・タイム指数」
@@ -1057,4 +1118,5 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
             rows.extend(race_rows)
         for race in same_day:  # 当日のレースは翌日以降の履歴としてだけ使う
             hist.add_race(race)
+        update_ratings(hist, same_day)
     return rows, hist

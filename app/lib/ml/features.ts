@@ -24,6 +24,8 @@ export type Store = {
   people?: Record<"owner" | "breeder", Record<string, [string, number, number][]>>;
   // コース×4角の位置："競馬場-芝ダ-距離" → 年 → 帯ごとの [走の数, 3着以内] を並べたもの（10個）
   c4?: Record<string, Record<string, number[]>>;
+  // レーティング：馬名 → [全体, 全体の更新日数, 芝, 芝の日数, ダート, ダートの日数]（scripts/ml/features.py の update_ratings。最終日まで）
+  ratings?: Record<string, [number, number, number, number, number, number]>;
 };
 
 export type RaceInput = {
@@ -651,6 +653,9 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
   f.umaban_ratio = Number.isNaN(f.umaban) ? NaN : f.umaban / race.fieldSize;
   Object.assign(f, horseFeatures(store, race, runner.horse, runner.extraRuns));
   Object.assign(f, c4Features(store, race, horseRuns(store, runner.horse, runner.extraRuns).filter((r) => r[0] < race.date)));
+  const rt = store.ratings?.[runner.horse];
+  f.elom = rt?.[0] ?? 1500; f.elom_n = rt?.[1] ?? 0;
+  f.elos = rt?.[race.surface === 0 ? 2 : 4] ?? 1500; f.elos_n = rt?.[race.surface === 0 ? 3 : 5] ?? 0;
   const tr = trainerStats(store, race, runner.trainerKey);
   Object.assign(f, {
     trainer_n: tr.n, trainer_top3: rate(tr.top3, tr.n), trainer_venue_n: tr.venueN, trainer_venue_top3: rate(tr.venueTop3, tr.venueN),
@@ -688,8 +693,30 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
   return f;
 }
 
+/** レーティングの、出走馬の中での順位÷頭数・偏差・最高との差（scripts/ml/features.py の add_rating_field と同じ。足す前に小さい順に並べる）. */
+function addRatingField(rows: Features[]): void {
+  for (const name of ["elom", "elos"]) {
+    const vals = rows.map((r) => r[name]).sort((a, b) => a - b);
+    let sum = 0;
+    for (const v of vals) sum += v;
+    const m = sum / vals.length;
+    const sq = vals.map((v) => (v - m) * (v - m)).sort((a, b) => a - b);
+    let ss = 0;
+    for (const v of sq) ss += v;
+    const sd = Math.sqrt(ss / vals.length);
+    const top = vals[vals.length - 1];
+    for (const r of rows) {
+      const v = r[name];
+      r[name + "_rank"] = (1 + vals.filter((o) => o > v).length) / rows.length;
+      r[name + "_z"] = sd > 0 ? (v - m) / sd : 0;
+      r[name + "_dmax"] = v - top;
+    }
+  }
+}
+
 /** 出走馬全体の先行力（逃げ候補・先行馬の頭数）と、その中での位置取りの順位. */
 export function addFieldFeatures(rows: Features[]): void {
+  addRatingField(rows);
   const nige = rows.filter((r) => !Number.isNaN(r.nige_rate) && r.nige_rate >= NIGE_CAND_RATE).length;
   const front = rows.filter((r) => !Number.isNaN(r.pos_first_mean) && r.pos_first_mean <= FRONT_RATIO).length;
   const known = rows.map((r) => r.pos_first_mean).filter((v) => !Number.isNaN(v));

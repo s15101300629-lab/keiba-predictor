@@ -156,7 +156,10 @@ def build_store(hist, last_date: str) -> dict:
             people[kind][name] = sel
     # コース×4角の位置：「競馬場-芝ダ-距離」→ 年 → 帯ごとの [走の数, 3着以内] を並べたもの（features.py の c4_features）
     c4 = {f"{v}-{su}-{d}": {y: [x for pair in bins for x in pair] for y, bins in years.items()} for (v, su, d), years in hist.c4.items()}
-    return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys, "people": people, "c4": c4,
+    # レーティング：馬名 → [全体, 全体の更新日数, 芝, 芝の日数, ダート, ダートの日数]（最終日までの点数。features.py の update_ratings）
+    ratings = {name: [hist.elom.get(name, 1500.0), hist.elom_n.get(name, 0), hist.elos.get((name, 0), 1500.0), hist.elos_n.get((name, 0), 0),
+                      hist.elos.get((name, 1), 1500.0), hist.elos_n.get((name, 1), 0)] for name in horses}
+    return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys, "people": people, "c4": c4, "ratings": ratings,
             "trainers": trainers, "names": names,
             "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast",
                           "prize", "weight", "jockey", "trainer", "tidx", "victim",

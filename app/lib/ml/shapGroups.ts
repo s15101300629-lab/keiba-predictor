@@ -2,7 +2,7 @@
 // 観点の順位＝出走馬の中で、その観点がAIスコアを押し上げた量の順。モデルに入っていない観点は出さない。
 
 export const SHAP_GROUPS = [
-  "能力指数", "タイム指数", "出走レースレベル", "上がり・ラップタイプ", "脚質", "ポジション", "調子", "レース間隔", "前走距離",
+  "能力指数", "レーティング", "タイム指数", "出走レースレベル", "上がり・ラップタイプ", "脚質", "ポジション", "調子", "レース間隔", "前走距離",
   "条件適性", "枠順", "騎手", "調教師", "馬主・生産者", "血統", "調教", "馬体・斤量・年齢", "前走からの変化", "レース条件",
 ] as const;
 export type ShapGroup = (typeof SHAP_GROUPS)[number];
@@ -21,7 +21,7 @@ const EXACT: Record<string, ShapGroup> = {
   pos_last_mean: "ポジション", rel_pos_rank: "ポジション", pos_std: "ポジション",
 };
 const PREFIX: [string, ShapGroup][] = [
-  ["c4_", "ポジション"],
+  ["c4_", "ポジション"], ["elom", "レーティング"], ["elos", "レーティング"],
   ["cond_ab", "条件適性"], ["fit_", "条件適性"], ["surface_", "条件適性"], ["dist_", "条件適性"], ["venue_", "条件適性"], ["wet_", "条件適性"],
   ["sim_", "条件適性"], ["band_", "条件適性"], ["sc_", "条件適性"], ["scp_", "条件適性"],
   ["ab_", "能力指数"], ["tidx_", "タイム指数"], ["rel_tidx", "タイム指数"], ["rank_tidx", "タイム指数"],
@@ -87,6 +87,10 @@ const LABELS: Record<string, string> = {
   jockey_n: "騎手の今年の騎乗数", trainer_n: "調教師の今年の出走数", owner_n_y: "馬主の今年の出走数", breeder_n_y: "生産者の今年の出走数",
   umaban_ratio: "馬番÷頭数", surface: "芝・ダート", distance: "距離", going: "馬場", venue: "競馬場", c_straight: "直線の長さ", c_elev: "高低差", c_lap: "一周の距離",
   last1_victim: "前走で不利を受けた", victim_n5: "近5走で不利を受けた数",
+  elom: "レーティング（相手の強さこみ。全体）", elom_n: "レーティングの元のレース数", elom_rank: "レーティングの出走馬の中の順位",
+  elom_z: "レーティングの出走馬の中の偏差", elom_dmax: "レーティングの、出走馬の最高との差",
+  elos: "レーティング（今回の芝ダ）", elos_n: "芝ダ別レーティングの元のレース数", elos_rank: "芝ダ別レーティングの順位",
+  elos_z: "芝ダ別レーティングの偏差", elos_dmax: "芝ダ別レーティングの、最高との差",
   c4_rate: "このコースで、ふだんの4角の位置からの3着内率", c4_adv: "このコースで、ふだんの4角の位置の有利さ", c4_bias: "このコースの前残りの強さ", c4_n: "このコース・その位置の走の数",
 };
 export const featureLabel = (name: string) => LABELS[name] ?? name;
