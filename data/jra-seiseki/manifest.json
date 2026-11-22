@@ -22241,6 +22241,15 @@
   "warnings": [],
   "unknown_glyphs": {}
  },
+ "2026-3fukushima5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2026/2026-3fukushima5.pdf",
+  "date": "2026-11-21",
+  "sha256": "4b608f7992b8823472e9191cff5b5a8390087ac702ebaeeca19553ca3af46857",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
  "2026-3hanshin1": {
   "url": "https://www.jra.go.jp/datafile/seiseki/report/2026/2026-3hanshin1.pdf",
   "date": "2026-06-06",
@@ -22992,6 +23001,15 @@
   "url": "https://www.jra.go.jp/datafile/seiseki/report/2026/2026-5kyoto4.pdf",
   "date": "2026-11-15",
   "sha256": "3264bbed38a74ce56db57183fe2d1cc85dc0cfb2a6dc0f92b9ca9758cc402e36",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2026-5kyoto5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2026/2026-5kyoto5.pdf",
+  "date": "2026-11-21",
+  "sha256": "3f58bf9b7e404133a60d31d7cfcb1f14eb4c1d2b7d682fdde75d95b7a5eaae87",
   "races": 12,
   "parser_version": "3",
   "warnings": [],
