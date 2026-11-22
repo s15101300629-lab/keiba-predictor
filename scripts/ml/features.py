@@ -977,6 +977,11 @@ def add_form_deviation(rows: list[dict]) -> None:
         r["form_dev"] = NAN if math.isnan(v) else (50.0 if sd == 0 else 50 + 10 * (v - mean) / sd)
 
 
+# 成績表にない過去走（海外の走）。馬名 → 過去走（History.add_race と同じ形）。答え合わせ（check_jra_day.py）だけが使う。
+# アプリの extraRuns（app/lib/ml/features.ts）と同じく、本人の過去走（horse_features・斤量の変化・乗り替わり）にだけ足す
+EXTRA_RUNS: dict[str, list[dict]] = {}
+
+
 def build_dataset(data_root: Path) -> tuple[list[dict], History]:
     """全平地レースの出走馬1頭=1行。label=3着以内. 戻り値の History は全期間分."""
     races = load_races(data_root)
@@ -993,7 +998,10 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
             race_rows = []
             for h in race["runners"]:
                 course = hist.course_waku.get((race["venue"], race["surface"], race["distance"]))
-                f = runner_features(race, h, hist.horses.get(h["horse"], []), hist.jockeys.get(norm_jockey(h.get("jockey")), []),
+                runs = hist.horses.get(h["horse"], [])
+                if EXTRA_RUNS.get(h["horse"]):
+                    runs = sorted(runs + [x for x in EXTRA_RUNS[h["horse"]] if x["date"] < race["date"]], key=lambda x: x["date"])
+                f = runner_features(race, h, runs, hist.jockeys.get(norm_jockey(h.get("jockey")), []),
                                     hist.trainers.get(norm_jockey(h.get("trainer")), []), {k: list(v) for k, v in course.items()} if course else None,
                                     hist.people)
                 f.update({

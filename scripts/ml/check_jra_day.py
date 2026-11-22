@@ -30,6 +30,7 @@ import numpy as np
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import features  # noqa: E402
 from features import build_dataset  # noqa: E402
 from train import DATA, OUT  # noqa: E402
 from tune_params import normalize_sum  # noqa: E402
@@ -69,6 +70,25 @@ def time_sec(s: str) -> float | None:
     return None if not m else int(m[1] or 0) * 60 + float(m[2])
 
 
+def sex_age(sa: str) -> tuple[str | None, int | None]:
+    """「牡3」「牝4」「せん5」→ 成績表と同じ「牡・牝・セ」と年齢（2026-11-22 まで、せん馬は性別「せ」・年齢なしになっていた）."""
+    m = re.match(r"(牡|牝|せん|セ)\s*(\d+)", sa or "")
+    if not m:
+        return None, None
+    return ("セ" if m[1] in ("せん", "セ") else m[1]), int(m[2])
+
+
+def repair_results(days: list[dict]) -> None:
+    """保存済みの結果の直し：せん馬の性別「せ」→「セ」、年齢がなければ馬ID の先頭4けた（生まれた年）から（JRA の年齢＝年−生まれた年）."""
+    for day in days:
+        for r in day["races"]:
+            for h in r["results"]:
+                if h.get("sex") == "せ":
+                    h["sex"] = "セ"
+                if h.get("age") is None and re.match(r"\d{4}", h.get("horse_id") or ""):
+                    h["age"] = int(day["date"][:4]) - int(h["horse_id"][:4])
+
+
 def parse_race(block: str, date: str, venue_code: str) -> dict | None:
     m = re.search(r"(\d+)回[^<\d]*(\d+)日", text(re.search(r'<div class="cell date">(.*?)</div>', block, re.S)[1]))
     kai, day = int(m[1]), int(m[2])
@@ -98,7 +118,7 @@ def parse_race(block: str, date: str, venue_code: str) -> dict | None:
         results.append({
             "waku": num(re.search(r"waku/(\d)\.png", cell.get("waku", ""))[1]) if "waku/" in cell.get("waku", "") else None,
             "umaban": num(text(cell.get("num", ""))), "horse": text(cell.get("horse", "")), "horse_id": hid[1] if hid else None,
-            "sex": sa[:1] if sa else None, "age": num(sa[1:]) if sa else None, "weight": num(text(cell.get("weight", ""))),
+            "sex": sex_age(sa)[0], "age": sex_age(sa)[1], "weight": num(text(cell.get("weight", ""))),
             "jockey": jockey, "jockey_mark": jmark[1] if jmark else None, "owner": None, "breeder": None,
             "trainer": text(cell.get("trainer", "")).replace(" ", ""), "status": status,
             "body_weight": int(hw[1]) if hw else None, "body_weight_diff": int(hw[2]) if hw else None,
@@ -208,6 +228,115 @@ def predict(model: dict, X: np.ndarray) -> np.ndarray:
 RAW = Path(__file__).resolve().parents[2] / "data" / "jra-results"
 
 
+# --- 海外の走（成績表にない）を過去走に足す。アプリ（app/api/races/[raceId]/route.ts の overseasRuns）と同じ形 ---
+JRA_VENUES = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"]
+NAR_VENUES = ["門別", "盛岡", "水沢", "浦和", "船橋", "大井", "川崎", "金沢", "笠松", "名古屋", "園田", "姫路", "高知", "佐賀", "帯広", "ばんえい"]
+OVERSEAS_PRIZE = [(r"\((?:GI|G1)\)", 17000), (r"\((?:GII|G2)\)", 5700), (r"\((?:GIII|G3)\)", 4100), (r"\(L\)", 2400), (r"\(OP\)", 2200),
+                  (r"新馬", 750), (r"未勝利", 560)]
+TIME_DIFF_BY_FINISH = [0, 0, 0.2, 0.4, 0.6, 0.7, 0.9, 1.1, 1.2, 1.4, 1.6, 1.7, 1.9, 2.2, 2.4, 2.7, 3.1]
+OVERSEAS_GOING = {"良": 0, "稍": 1, "重": 2, "不": 3}
+GRADED_PRIZE = 38_000_000  # 1着賞金がこれ以上（G3 以上）のレースの出走馬は、日本馬でも海外の走があるか調べる
+
+
+def is_overseas_venue(venue: str) -> bool:
+    return bool(venue) and not any(v in venue for v in JRA_VENUES) and not any(v in venue for v in NAR_VENUES)
+
+
+def netkeiba_performances(horse_id: str) -> list[dict]:
+    """netkeiba の戦績（db.netkeiba.com/horse/result/ID/）。1ページ目と、ページの番号のリンクがあればその先も."""
+    rows: list[dict] = []
+    pages, seen = [1], set()
+    while pages:
+        page = pages.pop(0)
+        url = f"https://db.netkeiba.com/horse/result/{horse_id}/" + (f"?page={page}" if page > 1 else "")
+        res = None
+        for attempt in range(3):
+            try:
+                res = requests.get(url, timeout=30)
+                if res.ok:
+                    break
+            except requests.RequestException:
+                res = None
+            time.sleep(5 * (attempt + 1))
+        time.sleep(1)
+        if res is None or not res.ok:
+            print(f"netkeiba HTTP {res.status_code if res is not None else '-'} {horse_id}", file=sys.stderr, flush=True)
+            break
+        t = res.content.decode("utf-8", "replace")
+        if page == 1:
+            pages += sorted({int(x) for x in re.findall(r"[?&]page=(\d+)", t) if 1 < int(x) <= 50})
+        for tb in re.findall(r"<table[^>]*>(.*?)</table>", t, re.S):
+            trs = re.findall(r"<tr[^>]*>(.*?)</tr>", tb, re.S)
+            cells = [[htmlmod.unescape(re.sub(r"<[^>]+>", "", c)).strip() for c in re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", tr, re.S)] for tr in trs]
+            if not cells or not cells[0] or cells[0][0] != "日付":
+                continue
+            head = [h.split("\n")[0] for h in cells[0]]
+            for c in cells[1:]:
+                v = dict(zip(head, c))
+                key = json.dumps(v, ensure_ascii=False, sort_keys=True)
+                if key not in seen:
+                    seen.add(key)
+                    rows.append(v)
+    return rows
+
+
+def overseas_runs(perf: list[dict]) -> list[dict]:
+    """海外のレースを、features.History.add_race の過去走と同じ形にする（アプリの overseasRuns と同じ値）."""
+    out = []
+    for v in perf:
+        if not is_overseas_venue(v.get("開催", "")):
+            continue
+        date = (v.get("日付") or "").replace("/", "-")
+        course = re.match(r"^(芝|ダ)(\d+)", v.get("距離") or "")
+        try:
+            field = int(v.get("頭数") or "")
+        except ValueError:
+            field = 0
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", date) or not course or field <= 1:
+            continue
+        fin = v.get("着順") or ""
+        finish = int(fin) if fin.isdigit() and int(fin) > 0 else None
+        name = v.get("レース名") or ""
+        prize = next((p for pat, p in OVERSEAS_PRIZE if re.search(pat, name)), 800)
+        try:
+            weight = float(v.get("斤量") or "")
+        except ValueError:
+            weight = None
+        out.append({
+            "date": date, "venue": 0, "surface": 0 if course[1] == "芝" else 1, "distance": int(course[2]),
+            "going": OVERSEAS_GOING.get((v.get("馬場") or "")[:1]), "field": field, "finish": finish,
+            "time_diff": TIME_DIFF_BY_FINISH[min(finish, len(TIME_DIFF_BY_FINISH) - 1)] if finish else None,
+            "pace": None, "pos_first": None, "pos_last": None, "prize": prize, "weight": weight if weight and weight > 0 else None,
+            "jockey": None, "tidx": None, "trainer": None, "victim": 0, "ab": None, **{k: None for k in features.AGARI_KEYS},
+            "turn": None, "sband": None, "race_id": None, "c_straight": None, "c_elev": None, "form_at": None, "tm5_at": None,
+        })
+    return out
+
+
+def overseas_runs_for(days: list[dict], date: str) -> dict[str, list[dict]]:
+    """海外の走がありそうな馬だけ netkeiba の戦績を取る：成績表にその日より前の走がない馬（新馬戦を除く。外国馬など）と、G3 以上のレースの出走馬."""
+    known = set()
+    for fp in (DATA / "json").glob("*/*.json"):
+        for r in json.loads(fp.read_text(encoding="utf-8"))["races"]:
+            if (r.get("date") or "") < date:
+                known.update(h["horse"] for h in r["results"])
+    out: dict[str, list[dict]] = {}
+    for day in days:
+        for r in day["races"]:
+            if r["surface"] not in ("芝", "ダート"):
+                continue
+            graded = ((r.get("prize") or [0])[0] or 0) >= GRADED_PRIZE
+            debut = "新馬" in (r.get("race_name") or "") or "デビュー" in (r.get("race_name") or "")
+            for h in r["results"]:
+                if not h.get("horse_id") or not (graded or (h["horse"] not in known and not debut)):
+                    continue
+                runs = overseas_runs(netkeiba_performances(h["horse_id"]))
+                if runs:
+                    out[h["horse"]] = runs
+    print(f"海外の走を足した馬: {len(out)} 頭（{sum(len(v) for v in out.values())} 走）", file=sys.stderr, flush=True)
+    return out
+
+
 def fill_owner_breeder(days: list[dict], date: str) -> None:
     """結果ページには2着以下の馬主・生産牧場がない。成績表の同じ馬名の、その日より前の一番新しい走から補う
     （空のままだと「初めて見る馬主・生産牧場」として計算され、学習データとずれる）."""
@@ -270,7 +399,9 @@ def main() -> None:
             return
         save_raw(date, days)
     days = copy.deepcopy(days)
+    repair_results(days)
     fill_owner_breeder(days, date)
+    features.EXTRA_RUNS = overseas_runs_for(days, date)
     flat = [r for d in days for r in d["races"] if r["surface"] in ("芝", "ダート")]
     print(f"{date}: {len(flat)} races", file=sys.stderr, flush=True)
     tmp = Path(tempfile.mkdtemp())
