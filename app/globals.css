@@ -554,7 +554,7 @@ footer span { letter-spacing:0; }
 .ai-ranks summary { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 4px; list-style: none; cursor: pointer; font-size: 14px; font-weight: 700; }
 .ai-ranks summary::-webkit-details-marker { display: none; }
 .ai-ranks summary b { font-size: 20px; font-variant-numeric: tabular-nums; }
-.ai-ranks summary small { color: var(--muted); font-size: 11px; margin-left: 2px; }
+.ai-ranks summary small { color: var(--muted); font-size: 11px; margin-left: 4px; }
 .ai-ranks details.top summary { color: #ff6b5e; }
 .ai-ranks details p { margin: 0 4px 10px; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .ai-ranks-note { margin: 10px 2px 0; color: var(--muted); font-size: 10px; }

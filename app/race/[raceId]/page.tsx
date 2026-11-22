@@ -114,7 +114,7 @@ type OddsData = { ok: boolean; fetchedAt: string; officialTime: string | null; e
   win: OddsMap; place: OddsMap; umaren: OddsMap; wide: OddsMap; trio: OddsMap; trifecta: OddsMap };
 type HorseOdds = { win: number | null; place: { min: number; max: number | null } | null; popularity: number | null };
 type FactorScore = { label: string; score: number; starts: number; rate: number; rank: number; rankedCount: number };
-type CategoryRank = { label: string; rank: number | null; total: number; detail: string };
+type CategoryRank = { label: string; rank: number | null; total: number; detail: string; score?: number };
 
 const CLIENT_CACHE_TTL_MS = 5 * 60 * 1000;
 // モデルが変わったら（再学習）保存済みの AI 予想を使わない。キーにモデルの版を入れる（next.config.ts）
@@ -620,16 +620,17 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
         ⚠ 道悪（重・不良）未経験・血統は道悪{heavy.label}（血統の道悪倍率 {heavy.ratio.toFixed(2)}倍）。血統の道悪適性は、AIスコアにすでに含めて計算している。
       </p>}
       <section className="ai-ranks">
-        <h4>各観点の順位</h4>
+        <h4>各観点の偏差値</h4>
         {categories.filter((c) => !missing.includes(c.label)).map((c) => {
           const top = c.rank !== null && c.rank <= 3 && c.total >= 4;
           return <details key={c.label} className={top ? "top" : ""}>
-            <summary><span>{c.label}</span><span>{c.rank !== null ? <><b>{c.rank}</b>位<small>/{c.total}頭</small></> : <small>-</small>}</span></summary>
+            <summary><span>{c.label}</span><span>{c.score != null ? <><b>{Math.round(c.score)}</b><small>{c.rank}位/{c.total}頭</small></>
+              : c.rank !== null ? <><b>{c.rank}</b>位<small>/{c.total}頭</small></> : <small>-</small>}</span></summary>
             {c.detail && <p>{c.detail}</p>}
           </details>;
         })}
         {missing.length > 0 && <p className="missing-note">データなし：{missing.join("・")}</p>}
-        <p className="ai-ranks-note">観点の順位＝AIの182項目を観点ごとにまとめ、その観点がAIスコアをどれだけ押し上げたか（SHAP）の、出走馬の中での順位。押すと、確率への影響（pt）と主な項目が出る。</p>
+        <p className="ai-ranks-note">観点の数字＝AIの182項目を観点ごとにまとめ、その観点がAIスコアをどれだけ押し上げたか（SHAP）を、出走馬の中の偏差値（平均50）にしたもの。順位も同じ順。押すと、確率への影響（pt）と主な項目が出る。</p>
       </section>
     </div>
   </details>;
@@ -833,7 +834,11 @@ export default function RaceDetailPage() {
         const detail = [`3着以内確率への影響 ${signed(pt(p, c!.phi))}`, items.length ? "主な項目：" + items.join("、") : null,
           abilityText[g]?.(h.prediction!) ?? null, OLD[g] ? oldDetail(h.horseId, OLD[g]) : null].filter(Boolean).join(" / ");
         const list = out.get(h.horseId) ?? [];
-        list.push({ label: g, rank: 1 + vals.filter((x) => x.c!.phi > c!.phi).length, total: vals.length, detail });
+        // 観点の偏差値：その観点の寄与（SHAP）の、出走馬の中での偏差値（平均50・標準偏差10）
+        const mean = vals.reduce((a, x) => a + x.c!.phi, 0) / vals.length;
+        const sd = Math.sqrt(vals.reduce((a, x) => a + (x.c!.phi - mean) * (x.c!.phi - mean), 0) / vals.length);
+        const score = sd > 0 ? 50 + 10 * (c!.phi - mean) / sd : 50;
+        list.push({ label: g, rank: 1 + vals.filter((x) => x.c!.phi > c!.phi).length, total: vals.length, detail, score });
         out.set(h.horseId, list);
       }
     }
