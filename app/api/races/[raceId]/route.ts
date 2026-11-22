@@ -387,7 +387,8 @@ function extractRaceEntries(html: string): RaceEntry[] {
       const popularityText = get(indexes.popularity);
 
       const bodyMatch = bodyText.match(/(\d{3})\s*\(([+-]?\d+)\)/);
-      const bodyOnlyMatch = bodyText.match(/^\s*(\d{3})\s*$/);
+      // 「464」だけ、または初出走の「464(初出走)」など増減が数でないもの（2026-11-22 まで新馬は馬体重なし扱いで、性別の中央値で計算していた）
+      const bodyOnlyMatch = bodyText.match(/^\s*(\d{3})\s*(?:\([^)0-9+-]*\))?\s*$/);
       const sexAge = /^[牡牝セ]\s*\d+$/.test(sexAgeText)
         ? sexAgeText.replace(/\s+/g, "")
         : null;

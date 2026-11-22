@@ -112,7 +112,8 @@ def parse_race(block: str, date: str, venue_code: str) -> dict | None:
         jt = cell.get("jockey", "")
         jmark = re.search(r'class="mark jockey">(.*?)<', jt)
         jockey = text(re.sub(r"<span[^>]*>.*?</span>", "", jt)).replace(" ", "")
-        hw = re.match(r"(\d+)\s*\(([+\-]?\d+)\)", text(cell.get("h_weight", "")))
+        # 「480(+2)」。初出走は「464(初出走)」など増減が数でない（2026-11-22 まで新馬は馬体重ごと欠けていた）。成績表と同じく増減は空
+        hw = re.match(r"(\d+)\s*(?:\(([+\-]?\d+)\))?", text(cell.get("h_weight", "")))
         corners = [int(x) for x in re.findall(r"<li[^>]*>(\d+)</li>", tr)]
         status = place if place in ("取消", "除外", "中止", "失格") else None
         results.append({
@@ -121,7 +122,7 @@ def parse_race(block: str, date: str, venue_code: str) -> dict | None:
             "sex": sex_age(sa)[0], "age": sex_age(sa)[1], "weight": num(text(cell.get("weight", ""))),
             "jockey": jockey, "jockey_mark": jmark[1] if jmark else None, "owner": None, "breeder": None,
             "trainer": text(cell.get("trainer", "")).replace(" ", ""), "status": status,
-            "body_weight": int(hw[1]) if hw else None, "body_weight_diff": int(hw[2]) if hw else None,
+            "body_weight": int(hw[1]) if hw else None, "body_weight_diff": int(hw[2]) if hw and hw[2] is not None else None,
             "popularity": num(text(cell.get("pop", ""))), "time": text(cell.get("time", "")),
             "time_sec": time_sec(text(cell.get("time", ""))) if place.isdigit() else None,
             "finish": int(place) if place.isdigit() else None, "corner_positions": corners or None,
@@ -235,6 +236,7 @@ OVERSEAS_PRIZE = [(r"\((?:GI|G1)\)", 17000), (r"\((?:GII|G2)\)", 5700), (r"\((?:
                   (r"新馬", 750), (r"未勝利", 560)]
 TIME_DIFF_BY_FINISH = [0, 0, 0.2, 0.4, 0.6, 0.7, 0.9, 1.1, 1.2, 1.4, 1.6, 1.7, 1.9, 2.2, 2.4, 2.7, 3.1]
 OVERSEAS_GOING = {"良": 0, "稍": 1, "重": 2, "不": 3}
+DEBUT_BODY_WEIGHT = {"牡": 476, "牝": 448, "セ": 468}  # アプリ（route.ts）と同じ
 GRADED_PRIZE = 38_000_000  # 1着賞金がこれ以上（G3 以上）のレースの出走馬は、日本馬でも海外の走があるか調べる
 
 
@@ -341,23 +343,33 @@ def fill_owner_breeder(days: list[dict], date: str) -> None:
     """結果ページには2着以下の馬主・生産牧場がない。成績表の同じ馬名の、その日より前の一番新しい走から補う
     （空のままだと「初めて見る馬主・生産牧場」として計算され、学習データとずれる）."""
     last: dict[str, tuple[str, str | None, str | None]] = {}
+    last_bw: dict[str, tuple[str, int]] = {}
     for fp in (DATA / "json").glob("*/*.json"):
         for r in json.loads(fp.read_text(encoding="utf-8"))["races"]:
             d = r.get("date") or ""
             for h in r["results"]:
                 if h.get("owner") and d < date and (h["horse"] not in last or d >= last[h["horse"]][0]):
                     last[h["horse"]] = (d, h.get("owner"), h.get("breeder"))
-    n = m = 0
+                if h.get("body_weight") and d < date and (h["horse"] not in last_bw or d >= last_bw[h["horse"]][0]):
+                    last_bw[h["horse"]] = (d, h["body_weight"])
+    n = m = nb = 0
     for day in days:
         for r in day["races"]:
             for h in r["results"]:
+                # 馬体重が「計不」（外国馬など）：アプリと同じく、前走の馬体重・増減0、なければ初出走馬の性別ごとの中央値
+                # （空のままだと、学習データにない値として確率が大きく下がる）
+                if h.get("body_weight") is None and h.get("status") not in ("取消", "除外"):
+                    debut = "新馬" in (r.get("race_name") or "") or "デビュー" in (r.get("race_name") or "")
+                    h["body_weight"] = last_bw[h["horse"]][1] if h["horse"] in last_bw else DEBUT_BODY_WEIGHT.get(h.get("sex") or "", 476)
+                    h["body_weight_diff"] = None if debut else 0  # 新馬は成績表と同じく増減なし（11/22 までに保存した日は新馬の馬体重が欠けている）
+                    nb += 1
                 if h.get("owner"):
                     continue
                 m += 1
                 if h["horse"] in last:
                     _, h["owner"], h["breeder"] = last[h["horse"]]
                     n += 1
-    print(f"馬主・生産牧場を前の走から補った: {n} / {m} 頭（残りは初出走など）", file=sys.stderr, flush=True)
+    print(f"馬主・生産牧場を前の走から補った: {n} / {m} 頭（残りは初出走など）。馬体重を補った: {nb} 頭", file=sys.stderr, flush=True)
 
 
 def save_raw(date: str, days: list[dict]) -> None:
@@ -390,6 +402,12 @@ def main() -> None:
     from datetime import datetime, timedelta, timezone
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     date = args[0] if args else datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+    if "--resave" in sys.argv:  # 結果ページを取り直して保存し直すだけ（解析を直したとき。予測はしない）
+        days = fetch_day(date)
+        if days:
+            save_raw(date, days)
+            print(date, sum(len(d["races"]) for d in days), "races resaved", file=sys.stderr)
+        return
     if "--saved" in sys.argv:  # 保存済みの結果ページの中身から予測し直す（取り直さない）
         days = json.loads((RAW / f"{date}.json").read_text(encoding="utf-8"))["days"]
     else:
