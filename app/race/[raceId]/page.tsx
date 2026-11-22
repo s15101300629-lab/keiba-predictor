@@ -538,6 +538,18 @@ function strengthsOf(categories: CategoryRank[]) {
   };
 }
 
+/** AIスコア＝3着以内確率の、出走馬の中での偏差値（平均50・標準偏差10）。全馬同じ確率なら50 */
+function scoreDeviations(horses: Horse[]): Map<string, number> {
+  const rows = horses.filter((h) => h.prediction);
+  const ps = rows.map((h) => h.prediction!.probability);
+  const mean = ps.reduce((s, x) => s + x, 0) / (ps.length || 1);
+  const sd = Math.sqrt(ps.reduce((s, x) => s + (x - mean) * (x - mean), 0) / (ps.length || 1));
+  return new Map(rows.map((h) => [h.horseId, sd > 0 ? 50 + 10 * (h.prediction!.probability - mean) / sd : 50]));
+}
+
+/** 偏差値をバーの長さ（%）に：20→0%、80→100%（平均50は真ん中） */
+const scoreBar = (score: number) => Math.max(0, Math.min(100, (score - 20) / 60 * 100));
+
 function probabilityTier(rank: number | undefined) {
   if (rank === undefined) return "";
   return rank <= 3 ? " tier-top" : rank <= 6 ? " tier-mid" : "";
@@ -545,9 +557,9 @@ function probabilityTier(rank: number | undefined) {
 
 const VALUE_CLASS: Record<string, string> = { 妙味あり: "good", 妥当: "even", 割高: "bad" };
 
-function OverallHorseCard({ horse, categories, factors, mark, odds, value, average }: {
+function OverallHorseCard({ horse, categories, factors, mark, odds, value, score }: {
   horse: Horse; total: number; categories: CategoryRank[]; factors: FactorScore[]; mark: string;
-  odds: HorseOdds | null; value: ValueResult | null; average: number;
+  odds: HorseOdds | null; value: ValueResult | null; score: number | null;
 }) {
   const prediction = horse.prediction;
   const probability = prediction ? prediction.probability * 100 : null;
@@ -571,11 +583,11 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, avera
       <span className="ai-odds">
         {odds?.win != null ? <><b className={odds.popularity != null && odds.popularity <= 3 ? "fav" : ""}>{odds.win.toFixed(1)}</b><small>{odds.popularity}番人気</small></> : <small>-</small>}
       </span>
-      <span className="ai-score" role="img" aria-label={horse.name + " AIスコア（3着以内確率） " + probabilityText}>
-        <strong>{probability === null ? "-" : Math.round(probability)}</strong>
+      <span className="ai-score" role="img" aria-label={horse.name + " AIスコア（出走馬の中の偏差値） " + (score === null ? "算出不可" : score.toFixed(1)) + "、3着以内確率 " + probabilityText}>
+        <strong>{score === null ? "-" : Math.round(score)}</strong>
         <span className="ai-score-track">
-          <span className="ai-score-fill" style={{ width: (probability === null ? 0 : Math.max(0, Math.min(100, probability))) + "%" }} />
-          <span className="ai-score-avg" style={{ left: Math.min(100, average) + "%" }} />
+          <span className="ai-score-fill" style={{ width: (score === null ? 0 : scoreBar(score)) + "%" }} />
+          <span className="ai-score-avg" style={{ left: scoreBar(50) + "%" }} />
         </span>
       </span>
       <span className={"ai-value " + (value ? VALUE_CLASS[value.label] : "none")}>{value?.label ?? "-"}</span>
@@ -590,7 +602,7 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, avera
           {prediction && prediction.winProbability != null && prediction.top2Probability != null &&
             <small>勝率 {(prediction.winProbability * 100).toFixed(1)}% ・ 連対率 {(prediction.top2Probability * 100).toFixed(1)}% ・ 3着以内 {probabilityText}</small>}
         </div>
-        <span className="ai-detail-score"><small>AIスコア</small><strong>{probability === null ? "-" : Math.round(probability)}</strong></span>
+        <span className="ai-detail-score"><small>AIスコア</small><strong>{score === null ? "-" : Math.round(score)}</strong><small>3着内 {probability === null ? "-" : probability.toFixed(1) + "%"}</small></span>
       </div>
       {strong.length > 0 && <section className="ai-points plus">
         <h4>プラス評価ポイント</h4><p>出走馬の中で上位3頭に入る観点</p>
@@ -613,7 +625,7 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, avera
           </details>;
         })}
         {missing.length > 0 && <p className="missing-note">データなし：{missing.join("・")}</p>}
-        <p className="ai-ranks-note">AIスコアは、これらを含む160項目から機械学習でまとめて出した確率。順位は理由の目安（行を押すと中身）。</p>
+        <p className="ai-ranks-note">AIスコアは、これらを含む182項目から機械学習でまとめて出した3着以内確率を、出走馬の中の偏差値にしたもの。順位は理由の目安（行を押すと中身）。</p>
       </section>
     </div>
   </details>;
@@ -668,6 +680,7 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, horseOdds, winC
   };
   const pct = (x: number | null) => (x == null ? "-" : Math.round(x * 100) + "%");
   const marked = AI_MARK_ORDER.flatMap((m) => horses.filter((h) => marks.get(h.horseId)?.mark === m));
+  const scores = useMemo(() => scoreDeviations(horses), [horses]);
 
   return <section className="bets-panel">
     {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。印は参考として見ること。</p>}
@@ -683,7 +696,7 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, horseOdds, winC
             <HorseNumberBadge entry={h.raceEntry} />
             <span className="ai-mark-name"><b>{h.name}</b><small>{r.reason}</small></span>
             <span className="ai-odds">{o?.win != null ? <><b>{o.win.toFixed(1)}</b><small>{o.popularity}番人気</small></> : <small>-</small>}</span>
-            <span className="ai-mark-score"><b>{Math.round(h.prediction!.probability * 100)}</b><small>AIスコア</small></span>
+            <span className="ai-mark-score"><b>{Math.round(scores.get(h.horseId) ?? 50)}</b><small>AIスコア</small></span>
           </li>;
         })}
       </ul>
@@ -838,7 +851,7 @@ export default function RaceDetailPage() {
     return valueLabels(base, odds.win, model);
   }, [odds, horses, data?.ml?.valueModel]);
   const predictedCount = horses.filter((h) => h.prediction).length;
-  const averageScore = predictedCount ? Math.min(3, predictedCount) / predictedCount * 100 : 0;
+  const scores = useMemo(() => scoreDeviations(horses), [horses]);
   const evidence = data?.ml?.valueModel?.evidence;
   const evidenceYear = evidence ? Object.keys(evidence).sort().at(-1) : undefined;
   const handleMarkChange = (horseId: string, mark: string) => {
@@ -927,11 +940,11 @@ export default function RaceDetailPage() {
               mark={marks[horse.horseId] ?? ""}
               odds={horseOdds.get(horse.horseId) ?? null}
               value={horse.raceEntry?.horseNumber != null ? values?.get(horse.raceEntry.horseNumber) ?? null : null}
-              average={averageScore}
+              score={scores.get(horse.horseId) ?? null}
               categories={categoryRanks.get(horse.horseId) ?? []}
               factors={factorScores.get(horse.horseId) ?? []} />)}
             <div className="ai-legend">
-              <p><b>AIスコア</b>＝AIが出した3着以内に入る確率（%）。線は出走馬の平均。行を押すと理由が出る。</p>
+              <p><b>AIスコア</b>＝AIが出した3着以内に入る確率を、出走馬の中での偏差値にしたもの（平均50。差が大きいほど抜けている）。線は平均の50。確率（%）は行を押すと出る。</p>
               <p><b>目安</b>＝AIと市場（単勝オッズ）を合わせた3着以内の確率が、オッズから見た確率より高いか。
                 <span className="ai-value good">妙味あり</span>1.1倍以上・<span className="ai-value even">妥当</span>・<span className="ai-value bad">割高</span>0.9倍以下。
                 {!odds && " オッズを取得すると出る。"}</p>

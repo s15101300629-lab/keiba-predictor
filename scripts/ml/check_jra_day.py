@@ -15,6 +15,7 @@
 
 from __future__ import annotations
 
+import copy
 import html as htmlmod
 import json
 import math
@@ -207,6 +208,29 @@ def predict(model: dict, X: np.ndarray) -> np.ndarray:
 RAW = Path(__file__).resolve().parents[2] / "data" / "jra-results"
 
 
+def fill_owner_breeder(days: list[dict], date: str) -> None:
+    """結果ページには2着以下の馬主・生産牧場がない。成績表の同じ馬名の、その日より前の一番新しい走から補う
+    （空のままだと「初めて見る馬主・生産牧場」として計算され、学習データとずれる）."""
+    last: dict[str, tuple[str, str | None, str | None]] = {}
+    for fp in (DATA / "json").glob("*/*.json"):
+        for r in json.loads(fp.read_text(encoding="utf-8"))["races"]:
+            d = r.get("date") or ""
+            for h in r["results"]:
+                if h.get("owner") and d < date and (h["horse"] not in last or d >= last[h["horse"]][0]):
+                    last[h["horse"]] = (d, h.get("owner"), h.get("breeder"))
+    n = m = 0
+    for day in days:
+        for r in day["races"]:
+            for h in r["results"]:
+                if h.get("owner"):
+                    continue
+                m += 1
+                if h["horse"] in last:
+                    _, h["owner"], h["breeder"] = last[h["horse"]]
+                    n += 1
+    print(f"馬主・生産牧場を前の走から補った: {n} / {m} 頭（残りは初出走など）", file=sys.stderr, flush=True)
+
+
 def save_raw(date: str, days: list[dict]) -> None:
     """結果ページの中身（全レース。推定でない上がり3F・通過・ラップ・確定オッズ・競走中の出来事）をためる（後で特徴量に使う）."""
     RAW.mkdir(parents=True, exist_ok=True)
@@ -219,8 +243,10 @@ def backfill() -> None:
     """結果ページで見られる過去の開催日（約2か月分）のうち、まだ保存していない日を取る（予測はしない）."""
     top = post("/JRADB/accessS.html", "pw01sli00/AF")
     dates = sorted({f"{m[:4]}-{m[4:6]}-{m[6:]}" for m in re.findall(r"'pw01srl\d{12}(\d{8})/", top)})
+    from datetime import datetime, timedelta, timezone
+    today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
     for date in dates:
-        if (RAW / f"{date}.json").exists():
+        if date >= today or (RAW / f"{date}.json").exists():  # 当日は途中までしかないので取らない（夕方の毎日の実行で取る）
             continue
         days = fetch_day(date)
         if days:
@@ -235,18 +261,28 @@ def main() -> None:
     from datetime import datetime, timedelta, timezone
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     date = args[0] if args else datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
-    days = fetch_day(date)
-    if not days:
-        print(f"{date}: 結果ページなし", file=sys.stderr)
-        return
-    save_raw(date, days)
+    if "--saved" in sys.argv:  # 保存済みの結果ページの中身から予測し直す（取り直さない）
+        days = json.loads((RAW / f"{date}.json").read_text(encoding="utf-8"))["days"]
+    else:
+        days = fetch_day(date)
+        if not days:
+            print(f"{date}: 結果ページなし", file=sys.stderr)
+            return
+        save_raw(date, days)
+    days = copy.deepcopy(days)
+    fill_owner_breeder(days, date)
     flat = [r for d in days for r in d["races"] if r["surface"] in ("芝", "ダート")]
     print(f"{date}: {len(flat)} races", file=sys.stderr, flush=True)
     tmp = Path(tempfile.mkdtemp())
     root = tmp / "jra-seiseki"
     (root / "json").mkdir(parents=True)
+    # 成績表がもう出ている日（--saved で後から予測し直すとき）は、その日のファイルを除く（結果ページの分と重なるため）
     for y in (DATA / "json").iterdir():
-        (root / "json" / y.name).symlink_to(y.resolve())
+        (root / "json" / y.name).mkdir()
+        for fp in y.glob("*.json"):
+            if date[:4] == y.name and any(r.get("date") == date for r in json.loads(fp.read_text(encoding="utf-8"))["races"]):
+                continue
+            (root / "json" / y.name / fp.name).symlink_to(fp.resolve())
     (root / "json" / "extra").mkdir()
     for d in days:
         (root / "json" / "extra" / (d["file"] + ".json")).write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
@@ -282,7 +318,10 @@ def main() -> None:
     rows, _ = build_dataset(root)
     ids = {r["race_id"] for r in flat}
     rows = [r for r in rows if r["race_id"] in ids]
-    model = json.loads((OUT / "model.json").read_text(encoding="utf-8"))
+    # --model=パス：その日より前のデータで学習したモデル（後から予測し直すときは、その日を学習したモデルを使わない）
+    mpath = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--model=")), str(OUT / "model.json"))
+    model = json.loads(Path(mpath).read_text(encoding="utf-8"))
+    print("model", mpath, len(model["features"]), "features", file=sys.stderr, flush=True)
     X = np.array([[r.get(f, float("nan")) for f in model["features"]] for r in rows], dtype=np.float64)
     rid = np.array([r["race_id"] for r in rows])
     p = normalize_sum(rid, predict(model, X))
