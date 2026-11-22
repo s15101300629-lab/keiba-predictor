@@ -624,8 +624,15 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
         {categories.filter((c) => !missing.includes(c.label)).map((c) => {
           const top = c.rank !== null && c.rank <= 3 && c.total >= 4;
           return <details key={c.label} className={top ? "top" : ""}>
-            <summary><span>{c.label}</span><span>{c.score != null ? <><b>{Math.round(c.score)}</b><small>{c.rank}位/{c.total}頭</small></>
-              : c.rank !== null ? <><b>{c.rank}</b>位<small>/{c.total}頭</small></> : <small>-</small>}</span></summary>
+            <summary><span className="rank-label">{c.label}<small>{c.rank !== null ? `${c.rank}位/${c.total}頭` : ""}</small></span>
+              {c.score != null ? <span className="rank-bar" role="img" aria-label={`${c.label} 偏差値 ${Math.round(c.score)}`}>
+                <b>{Math.round(c.score)}</b>
+                <span className="rank-track">
+                  <span className="rank-fill" style={{ width: scoreBar(c.score) + "%" }} />
+                  {[30, 40, 60, 70].map((v) => <span key={v} className="rank-grid" style={{ left: scoreBar(v) + "%" }} />)}
+                  <span className="rank-avg" style={{ left: scoreBar(50) + "%" }} />
+                </span>
+              </span> : <span>{c.rank !== null ? <><b>{c.rank}</b>位<small>/{c.total}頭</small></> : <small>-</small>}</span>}</summary>
             {c.detail && <p>{c.detail}</p>}
           </details>;
         })}
