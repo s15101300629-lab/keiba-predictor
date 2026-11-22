@@ -26,7 +26,16 @@ for (const raceRows of byRace.values()) {
     turn: raceRows[0].turn ?? null, sband: raceRows[0].sband ?? null,
     cStraight: num(f0.c_straight), cElev: num(f0.c_elev), cLap: num(f0.c_lap),
   };
-  const computed = raceRows.map((row) => runnerFeatures(store, race, {
+  // レーティングは store に最終日の更新後の点数しかない（アプリが予測するのは最終日より後のレース）。
+  // 過去のレースでは、Python がそのレース前の点数で計算しているので、その値（行の elom・elos）を入れて比べる
+  const ratings: Store["ratings"] = {};
+  for (const row of raceRows) {
+    const r = row.features;
+    const s = [r.elos ?? 1500, r.elos_n ?? 0];
+    ratings[row.horse] = [r.elom ?? 1500, r.elom_n ?? 0, ...(race.surface === 0 ? s : [1500, 0]), ...(race.surface === 0 ? [1500, 0] : s)] as [number, number, number, number, number, number];
+  }
+  const raceStore: Store = { ...store, ratings };
+  const computed = raceRows.map((row) => runnerFeatures(raceStore, race, {
     horse: row.horse, jockeyKey: normJockey(row.jockey) || null, trainerKey: normJockey(row.trainer) || null,
     waku: num(row.features.waku), umaban: num(row.features.umaban), weight: num(row.features.weight),
     age: num(row.features.age), sex: row.features.sex === null ? null : ["牡", "牝", "セ"][row.features.sex],
@@ -36,8 +45,8 @@ for (const raceRows of byRace.values()) {
   }));
   addFormDeviation(computed);
   addFieldFeatures(computed);
-  addOpponentFeatures(store, race, computed, raceRows.map((row) => row.horse));
-  addSimilarCondFeatures(store, race, computed, raceRows.map((row) => row.horse));
+  addOpponentFeatures(raceStore, race, computed, raceRows.map((row) => row.horse));
+  addSimilarCondFeatures(raceStore, race, computed, raceRows.map((row) => row.horse));
   raceRows.forEach((row, i) => {
     for (const name of model.features) {
       const expected = row.features[name];
