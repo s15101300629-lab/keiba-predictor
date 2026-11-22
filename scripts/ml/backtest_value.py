@@ -160,12 +160,15 @@ def prepare() -> dict:
     finish = np.array([r["finish"] if r["finish"] is not None else 99 for r in rows])
     params = PARAMS  # train.py の設定（調整済み）
     cache = OUT / "cache" / "value_pred.npz"
-    if cache.exists() and list(np.load(cache)["features"]) == FEATURES and len(np.load(cache)["win"]) == len(rows):
-        pred = {k: np.load(cache)[k] for k in ("win", "top3")}
+    # 予測をためておく（同じ特徴量・同じ行数で、今の PRED_YEARS をすべて含むときだけ使う）
+    c = np.load(cache) if cache.exists() else None
+    if (c is not None and list(c["features"]) == FEATURES and len(c["win"]) == len(rows)
+            and "years" in c and set(PRED_YEARS) <= set(c["years"].tolist())):
+        pred = {k: c[k] for k in ("win", "top3")}
     else:
         pred = predict_years(X, year, {"win": (finish == 1).astype(float), "top3": (finish <= 3).astype(float)}, params)
         cache.parent.mkdir(parents=True, exist_ok=True)
-        np.savez(cache, features=np.array(FEATURES), **pred)
+        np.savez(cache, features=np.array(FEATURES), years=np.array(PRED_YEARS), **pred)
 
     # 評価する年（2023〜）の行だけにする
     keep = np.isin(year, PRED_YEARS)

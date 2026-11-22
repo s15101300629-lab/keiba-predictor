@@ -18,7 +18,7 @@ jobs:
   train:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 340
     steps:
       - uses: actions/checkout@v4
 
@@ -79,5 +79,33 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "model: retrain AI prediction ($(date -u +%Y-%m-%d))"
+          git pull --rebase --autostash
+          git push
+
+      # 本体が変わったら、オッズと合わせる係数・AI印の過去の成績・人気薄専用の2段目（☆）も作り直す（2026-11-22）
+      # どれも年ごとに前年までで学習した本体の予測（backtest_value.prepare）を使う。最初の train_longshot.py が 2022年からの予測を作ってためる
+      - name: Train longshot model (AI mark ☆)
+        working-directory: scripts/ml
+        run: python train_longshot.py
+
+      - name: Check Python/TypeScript longshot parity
+        run: npx tsx scripts/ml/parity_longshot.ts
+
+      - name: Refit market combination (value labels)
+        working-directory: scripts/ml
+        run: python backtest_value.py
+
+      - name: Backtest AI marks
+        working-directory: scripts/ml
+        run: python backtest_marks.py
+
+      - name: Commit market models
+        run: |
+          git add data/ml
+          if git diff --cached --quiet; then
+            echo "no changes"
+            exit 0
+          fi
+          git commit -m "model: refit market combination, AI marks and longshot model ($(date -u +%Y-%m-%d))"
           git pull --rebase --autostash
           git push
