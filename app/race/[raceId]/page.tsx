@@ -65,6 +65,7 @@ type Extras = {
 };
 type Prediction = {
   ability?: { ab: number | null; agari: number | null; cond: number | null; early?: number | null };
+  lapType?: { type: string; accel: number; last4: number; runs: number } | null;
   pace?: PaceInfo;
   extras?: Extras;
   trainerName?: string | null;
@@ -116,16 +117,9 @@ type HorseOdds = { win: number | null; place: { min: number; max: number | null 
 type FactorScore = { label: string; score: number; starts: number; rate: number; rank: number; rankedCount: number };
 type CategoryRank = { label: string; rank: number | null; total: number; detail: string; score?: number; type?: string | null };
 
-/**
- * ラップタイプ（近走の推定上がりの速さと、ゴール前600m 地点での先頭との差。どちらも直近加重平均）。
- * 区切りは store の全馬の3等分（2026-11-22）：600m 地点の差 0.65秒以下＝前、1.09秒以上＝後ろ。上がり +0.16以上＝速い、−0.54以下＝遅い
- */
+/** ラップタイプ（API の lapType：netkeiba の本物の上がり3F から、その馬自身の終いの加速の度合い。近5走の平均） */
 function lapType(p: Prediction): string | null {
-  const ag = p.ability?.agari, eg = p.ability?.early;
-  if (ag == null || eg == null) return null;
-  if (eg <= 0.65) return ag <= -0.54 ? "先行失速型" : "持続型";
-  if (eg >= 1.09 && ag >= 0.16) return "終い伸び型";
-  return "平均型";
+  return p.lapType?.type ?? null;
 }
 const typeOf = (group: string, p: Prediction) =>
   group === "脚質" ? p.pace?.style ?? null : group === "上がり・ラップタイプ" ? lapType(p) : null;
@@ -689,7 +683,7 @@ function FactorView({ horses, categoryRanks, factor, onFactor }: {
       </li>)}
     </ul>
     <p className="ai-ranks-note">観点の数字＝その観点がAIスコアをどれだけ押し上げたか（SHAP）の、出走馬の中の偏差値（平均50）。押すと中身が出る。
-      ラップタイプは近走の推定上がりの速さと、ゴール前600m 地点での先頭との差から：持続型（前で粘る）・終い伸び型（後ろから伸びる）・先行失速型・平均型。</p>
+      ラップタイプは近5走の本物の上がり3F（netkeiba）から、その馬自身が終いに加速しているか：加速型（前で運んで終いに加速）・終い伸び型（後ろから加速）・持続型（一定のペース）・失速型（終いに落ちる）。</p>
   </section>;
 }
 
@@ -876,7 +870,8 @@ export default function RaceDetailPage() {
     const oldDetail = (horseId: string, label: string) => base.get(horseId)?.find((c) => c.label === label && c.detail !== NO_DATA)?.detail ?? null;
     const abilityText: Record<string, (p: Prediction) => string | null> = {
       能力指数: (p) => p.ability?.ab != null ? "近走（同じ芝ダ）の能力指数の直近加重平均 " + (p.ability.ab >= 0 ? "+" : "") + p.ability.ab.toFixed(2) + "（その日の馬場差・斤量を補正したタイム指数。1000mあたりの秒）" : null,
-      "上がり・ラップタイプ": (p) => p.ability?.agari != null ? "近走の推定上がり3F が、そのレースの平均より " + Math.abs(p.ability.agari).toFixed(2) + "秒" + (p.ability.agari >= 0 ? "速い" : "遅い") + "（直近加重平均。成績表の隊列から推定）" : null,
+      "上がり・ラップタイプ": (p) => [p.ability?.agari != null ? "近走の推定上がり3F が、そのレースの平均より " + Math.abs(p.ability.agari).toFixed(2) + "秒" + (p.ability.agari >= 0 ? "速い" : "遅い") + "（直近加重平均。成績表の隊列から推定）" : null,
+        p.lapType ? `ラップタイプ ${p.lapType.type}：近${p.lapType.runs}走の上がり3F は、それより前より 200m あたり ${Math.abs(p.lapType.accel).toFixed(2)}秒${p.lapType.accel >= 0 ? "速い" : "遅い"}（最後のコーナーは平均で前から${Math.round(p.lapType.last4 * 100)}%の位置。netkeiba の上り）` : null].filter(Boolean).join(" / ") || null,
       条件適性: (p) => p.ability?.cond != null ? "能力指数に、今回の距離・競馬場・馬場での得意不得意を足した値 " + (p.ability.cond >= 0 ? "+" : "") + p.ability.cond.toFixed(2) : null,
     };
     const OLD: Record<string, string> = { 騎手: "騎手", 調子: "調子", 血統: "血統" };

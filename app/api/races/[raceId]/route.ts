@@ -107,6 +107,35 @@ function overseasRuns(performances: { values: Record<string, string> }[]): Store
 const DEBUT_BODY_WEIGHT: Record<string, number> = { "牡": 476, "牝": 448, "セ": 468 };
 
 /** netkeiba の戦績から、レース日より前の一番新しい馬体重（「480(+2)」の 480）。計不・海外などは飛ばす */
+/**
+ * ラップタイプ（表示用。モデルには入れない）：netkeiba の戦績の本物の上がり3F から、その馬自身のペースの変化を見る。
+ * 加速の度合い＝（上がり3F より前の 200m あたり）−（上がり3F の 200m あたり）。プラスなら終いに加速している。
+ * レース日より前の近5走（1000m を超える平地・タイムと上り・通過がある走）の平均。区切りは JRA の結果ページの 2026年9〜11月の約7,200走の3等分
+ * （加速 0.35秒以上・−0.28秒以下）。加速が大きい走のうち、最後のコーナーが前半分なら加速型、後ろ半分なら終い伸び型
+ */
+function lapType(performances: { values: Record<string, string> }[], raceDate: string): { type: string; accel: number; last4: number; runs: number } | null {
+  const sel: { accel: number; last4: number }[] = [];
+  for (const p of performances) {
+    const v = p.values;
+    const date = (v["日付"] ?? "").replace(/\//g, "-");
+    if (!(date < raceDate)) continue;
+    const dist = Number((v["距離"] ?? "").match(/^[芝ダ](\d+)/)?.[1]);
+    const t = (v["タイム"] ?? "").match(/^(?:(\d+):)?(\d+)\.(\d)$/);
+    const agari = Number(v["上り"]);
+    const corners = (v["通過"] ?? "").split("-").map(Number).filter((x) => x > 0);
+    const field = Number(v["頭数"]);
+    if (!(dist > 1000) || !t || !(agari > 0) || !corners.length || !(field > 1)) continue;
+    const time = Number(t[1] ?? 0) * 60 + Number(t[2]) + Number(t[3]) / 10;
+    sel.push({ accel: (time - agari) / ((dist - 600) / 200) - agari / 3, last4: corners[corners.length - 1] / field });
+    if (sel.length >= 5) break;
+  }
+  if (!sel.length) return null;
+  const accel = sel.reduce((a, x) => a + x.accel, 0) / sel.length;
+  const last4 = sel.reduce((a, x) => a + x.last4, 0) / sel.length;
+  const type = accel >= 0.35 ? (last4 <= 0.5 ? "加速型" : "終い伸び型") : accel <= -0.28 ? "失速型" : "持続型";
+  return { type, accel, last4, runs: sel.length };
+}
+
 function previousBodyWeight(performances: { values: Record<string, string> }[], raceDate: string): number | null {
   let best: { date: string; weight: number } | null = null;
   for (const p of performances) {
@@ -1028,6 +1057,7 @@ export async function GET(
           },
           // 各観点の順位（画面）に使う、モデルで効いている項目。能力指数の直近加重平均・推定上がり偏差の直近加重平均・今回の条件での能力
           ability: { ab: num(f.ab_wmean), agari: num(f.ag_dev_wmean), cond: num(f.cond_ab), early: num(f.early_gap_wmean) },
+          lapType: lapType((results[i] as { performances?: { values: Record<string, string> }[] }).performances ?? [], raceConditions.date!),
           // 本体モデルの入力（model.json の features の並び）。人気薄専用の2段目（☆）に使う
           inputRow: ml.model.features.map((name) => { const v = f[name]; return v == null || Number.isNaN(v) ? null : v; }),
           // 各観点：SHAP の寄与（log-odds）を観点ごとに足したもの。項目の値も付ける
