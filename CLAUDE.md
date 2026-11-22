@@ -289,7 +289,7 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
     - アプリ：オッズを取ると、画面が各馬の本体の入力（レース詳細 API の `inputRow`）・確率・単勝オッズを `/api/longshot` に送り、倍率をもらう（`app/lib/longshot.ts`）。一致テストは `npx tsx scripts/ml/parity_longshot.ts`（40レース・322頭で一致）
     - 過去の成績（`backtest_marks.py`、その年より前で学習した2段目。2024・2025・2026年）：1レース 0.8〜1.1頭、3着内率 12.4・13.2・15.1%、複勝回収率 84.9・83.0・95.3%（基準 72.5・73.3・74.7%）。前の☆（目安1.1以上）は 3年平均 79%（基準69%）
     - 比べ方は `star_eval.py`（`data/ml/star_eval.json`）。しきい値 1.2 は結果を見て選んだので少し甘い。確定オッズでの検証
-    - 2段目は毎週の再学習（ml-train.yml）では学び直さない。本体の特徴量を変えたら学び直す（並びが違うと API は☆を出さない）
+    - 2段目は毎週の再学習（ml-train.yml）で本体のあとに学び直す（2026-11-22 から）。本体と並びが違うと API は☆を出さない
   - 勝率の合わせ方の係数は `value_combine.json` の `win`（今は 2025年で当てはめた値。`backtest_value.py` を次に回すと 2026年で当てはめ直す）。API は `marks_backtest.json` を読んで画面に過去の成績を出す
   - 買い目の計算（`app/lib/bets.ts` の `rankByType`）は残してあるが、画面では使っていない
 - 合わせる係数を決める期間と予測の作り方の比較（2026-11-21、`compare_combine_window.py` → `data/ml/combine_window_comparison.json`。試す年 2025・2026）
