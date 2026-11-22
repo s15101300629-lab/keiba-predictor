@@ -750,6 +750,8 @@ export async function GET(
   const searchParams = new URL(_request.url).searchParams;
   const summaryOnly = searchParams.get("summary") === "1";
   const forceRefresh = searchParams.get("refresh") === "1";
+  // weights=1：出馬表だけ取り直す（オッズの取得のあとに、発表された馬体重を予想に入れるため。ほかのページはためた分を使う）
+  const refreshEntries = forceRefresh || searchParams.get("weights") === "1";
 
   if (!/^\d{12}$/.test(raceId)) {
     return NextResponse.json(
@@ -762,7 +764,7 @@ export async function GET(
     const raceUrl =
       `https://race.netkeiba.com/race/shutuba.html?race_id=${raceId}`;
     const [race, trainingPage] = await Promise.all([
-      fetchHtml(raceUrl, 3600, forceRefresh),
+      fetchHtml(raceUrl, 3600, refreshEntries),
       fetchHtml(`https://race.netkeiba.com/race/oikiri.html?race_id=${raceId}`, 3600, forceRefresh).catch(() => null),
     ]);
     const training = trainingPage?.ok ? parseTrainingPage(trainingPage.html) : new Map<number, { rank: string | null; critic: string | null }>();
