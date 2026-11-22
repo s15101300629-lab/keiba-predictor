@@ -169,6 +169,7 @@ def prepare() -> dict:
 
     # 評価する年（2023〜）の行だけにする
     keep = np.isin(year, PRED_YEARS)
+    keep_idx = np.flatnonzero(keep)
     rows = [r for r, k in zip(rows, keep) if k]
     year, finish, pwin, ptop3 = year[keep], finish[keep], pred["win"][keep], pred["top3"][keep]
     race_id = np.array([r["race_id"] for r in rows])
@@ -207,7 +208,7 @@ def prepare() -> dict:
     is_win = finish == 1
     is_top3 = finish <= 3
     logit = lambda p: np.log(p / (1 - p))  # noqa: E731
-    return dict(race_id=race_id, year=year, finish=finish, odds=odds, win_ret=win_ret, place_ret=place_ret, gs=gs, race_idx=race_idx, n=n,
+    return dict(X=X[keep_idx[sel_rows]], race_id=race_id, year=year, finish=finish, odds=odds, win_ret=win_ret, place_ret=place_ret, gs=gs, race_idx=race_idx, n=n,
                 ai_win=ai_win, mkt_win=mkt_win, ai_top3=ai_top3, mkt_top3=mkt_top3, la=la, lm=lm, is_win=is_win, is_top3=is_top3)
 
 
