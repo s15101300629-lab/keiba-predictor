@@ -58,6 +58,23 @@ export type StallionRaw = {
   sections: Partial<Record<StallionRole, Partial<Record<StallionKind, RawTable>>>>;
 };
 
+/** 今の年（日本時間）. */
+export const jstYear = () => Number(new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 4));
+export const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+
+/**
+ * 産駒成績を取り直すべきか（scripts/ml/collect_*.ts）。特徴量はレース前年までの成績を使うので、年が変わると、
+ * 去年のうちに取ったページは去年の分が途中までしかない。去年より前に取ったページで、取った年に産駒が走っていた種牡馬は取り直す
+ * （もう産駒が走っていない種牡馬は変わらないので取り直さない）.
+ */
+export function stallionNeedsRefresh(raw: StallionRaw | undefined, year = jstYear()): boolean {
+  if (!raw) return true;
+  const fetchedYear = Number(raw.fetchedAt.slice(0, 4));
+  if (!(fetchedYear < year)) return false;
+  return Object.values(raw.sections).some((byKind) => Object.values(byKind ?? {}).some((t) =>
+    (t?.rows[String(fetchedYear)] ?? []).some((v) => v > 0)));
+}
+
 function parseSection(html: string): RawTable {
   const labels: string[] = [];
   const rows: Record<string, number[]> = {};

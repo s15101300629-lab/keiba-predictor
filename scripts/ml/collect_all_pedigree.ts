@@ -5,7 +5,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { cleanText, extractPedigree } from "@/app/lib/netkeiba";
-import { parseStallionPages, PEDIGREE_SOURCES, type StallionRaw } from "@/app/lib/pedigree";
+import { jstToday, parseStallionPages, stallionNeedsRefresh, PEDIGREE_SOURCES, type StallionRaw } from "@/app/lib/pedigree";
 import type { GradedRace, HorsePedigree } from "./collect_pedigree";
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -130,9 +130,10 @@ async function main() {
       if (a?.[0]) names.set(a[0], a[1]);
     }
   }
-  const stallionTodo = [...names.keys()].filter((id) => !stallions[id]);
+  // まだ取っていない種牡馬を先に、次に年が変わって取り直す種牡馬（stallionNeedsRefresh）
+  const stallionTodo = [...[...names.keys()].filter((id) => !stallions[id]), ...[...names.keys()].filter((id) => stallions[id] && stallionNeedsRefresh(stallions[id]))];
   console.log(`stallions: ${names.size} referenced, ${stallionTodo.length} to fetch`);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = jstToday(); // 取った日（日本時間）。年が変わったかの判定に使う
   await pool(stallionTodo, "stallions", 100, () => writeJson(stallionFile, stallions), async (id) => {
     const url = (t: number) => `https://db.netkeiba.com/horse/sire/${id}/?syusai=10&mode=1&type=${t}`;
     const going = await get(url(1));
