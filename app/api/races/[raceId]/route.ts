@@ -860,7 +860,7 @@ export async function GET(
     // 学習データと揃えるため、レース前年までの成績を使う
     const throughYear = raceConditions.date ? Number(raceConditions.date.slice(0, 4)) - 1 : null;
     const stallionRaws = new Map<string, Promise<StallionRaw | null>>();
-    const loadStallion = async (stallionId: string, role: "sire" | "damsire", name: string | null) => {
+    const loadStallion = async (stallionId: string, role: "sire" | "damsire", name: string | null, yearsBack = 0) => {
       let raw = stallionRaws.get(stallionId);
       if (!raw) {
         raw = (async () => {
@@ -873,9 +873,11 @@ export async function GET(
         stallionRaws.set(stallionId, raw);
       }
       const value = await raw;
-      return value ? stallionRecord(value, role, throughYear) : null;
+      if (yearsBack && throughYear === null) return null;
+      return value ? stallionRecord(value, role, throughYear === null ? null : throughYear - yearsBack) : null;
     };
     const pedigreeRecords: (StallionRecord | null)[][] = horses.map(() => []);
+    const pedigreeOlder: (StallionRecord | null)[][] = horses.map(() => []); // 3年前までの成績（血統の pb_recent_top3 用）
     let nextIndex = 0;
 
     async function worker() {
@@ -898,6 +900,10 @@ export async function GET(
           pedigreeRecords[index] = await Promise.all(PEDIGREE_SOURCES.map((source) => {
             const ancestor = pedigree?.ancestors.find((item) => item.position === source.position);
             return ancestor?.horseId ? loadStallion(ancestor.horseId, source.role, ancestor.name) : Promise.resolve(null);
+          }));
+          pedigreeOlder[index] = await Promise.all(PEDIGREE_SOURCES.map((source) => {
+            const ancestor = pedigree?.ancestors.find((item) => item.position === source.position);
+            return ancestor?.horseId ? loadStallion(ancestor.horseId, source.role, ancestor.name, 3) : Promise.resolve(null);
           }));
           if (!profilePage.ok && !historyResult.performance) {
             results[index] = {
@@ -992,7 +998,8 @@ export async function GET(
           bodyWeight: entry?.bodyWeight ?? assumedBodyWeight,
           bodyWeightDiff: entry?.bodyWeight == null ? 0 : entry?.bodyWeightChange ?? null,
           extraRuns: overseas,
-          pedigree: pedigreeModelValues(pedigreeRecords[index] ?? [], surfaceName, raceConditions.distanceMeters),
+          pedigree: pedigreeModelValues(pedigreeRecords[index] ?? [], surfaceName, raceConditions.distanceMeters,
+            raceConditions.going ?? "良", pedigreeOlder[index] ?? []),
           trainRank: TRAIN_RANK[(entry?.horseNumber != null ? training.get(entry.horseNumber)?.rank : null) ?? ""] ?? null,
           // 馬主・生産者（netkeiba の馬のプロフィール。名前は features.ts の normOwner で成績表の書き方にそろえる）
           owner: (results[index] as { profile?: { label: string; value: string }[] | null }).profile?.find((p) => p.label === "馬主")?.value ?? null,

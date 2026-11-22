@@ -1,13 +1,13 @@
 // 成績表の全平地レースの出走馬について、父・母父・母母父の産駒成績（レース前年まで）から血統の特徴量を作る。
 //   npx tsx scripts/ml/pedigree_all_features.ts  -> data/pedigree/all/runner_features.csv
 // 入力：data/pedigree/all/race_horses.json（レース→馬番→馬ID）、horses.json（馬→父・母父・母母父）、data/pedigree/stallions.json
-// 列：ped_heavy・ped_wet・ped_top3・ped_dist（父・母父・母母父を 50:25:12.5 で平均。本体モデルの入力。アプリと同じ pedigreeModelValues）
+// 列：ped_heavy・ped_wet・ped_top3・ped_dist と pb_*（血統の追加。父・母父・母母父を 50:25:12.5 で平均。本体モデルの入力。アプリと同じ pedigreeModelValues）
 // ほかに比較用の列（祖先 F・MF・MMF ごと）：
 //   heavy：重・不良の3着内率 ÷ 良（縮小推定）、wet：稍重〜不良 ÷ 良、starts：今回の芝ダでの産駒の出走数、
 //   top3：今回の芝ダでの産駒の3着内率、dist：今回の距離区分の3着内率 ÷ 全距離区分の平均
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { ancestorModelValues, PEDIGREE_MODEL_FEATURES, PEDIGREE_SOURCES, pedigreeModelValues, stallionRecord, type StallionRaw, type StallionRecord } from "@/app/lib/pedigree";
+import { ancestorModelValues, PEDIGREE_ALL_FEATURES, PEDIGREE_SOURCES, pedigreeModelValues, stallionRecord, type StallionRaw, type StallionRecord } from "@/app/lib/pedigree";
 import type { CompactPedigree } from "./collect_all_pedigree";
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -25,7 +25,7 @@ function record(id: string, role: "sire" | "damsire", throughYear: number): Stal
 }
 
 const cols = PEDIGREE_SOURCES.flatMap((s) => ["heavy", "wet", "starts", "top3", "dist"].map((k) => `${s.position}_${k}`));
-const lines = ["race_id,umaban,horse_id," + [...PEDIGREE_MODEL_FEATURES, ...cols].join(",")];
+const lines = ["race_id,umaban,horse_id," + [...PEDIGREE_ALL_FEATURES, ...cols].join(",")];
 let races = 0;
 let missing = 0;
 for (const year of readdirSync(SEISEKI).sort()) {
@@ -43,9 +43,14 @@ for (const year of readdirSync(SEISEKI).sort()) {
           const id = ped?.[s.position as "F" | "MF" | "MMF"]?.[0];
           return id ? record(id, s.role as "sire" | "damsire", throughYear) : null;
         });
-        const combined = pedigreeModelValues(records, race.surface, race.distance ?? null);
+        const older = PEDIGREE_SOURCES.map((s) => {
+          const id = ped?.[s.position as "F" | "MF" | "MMF"]?.[0];
+          return id ? record(id, s.role as "sire" | "damsire", throughYear - 3) : null;
+        });
+        const going = ["良", "稍重", "重", "不良"].includes(race.going) ? race.going : null;
+        const combined = pedigreeModelValues(records, race.surface, race.distance ?? null, going, older);
         const values = [
-          ...PEDIGREE_MODEL_FEATURES.map((k) => combined[k] ?? ""),
+          ...PEDIGREE_ALL_FEATURES.map((k) => combined[k] ?? ""),
           ...records.flatMap((rec) => {
             if (!rec) return ["", "", "", "", ""];
             const v = ancestorModelValues(rec, race.surface, race.distance ?? null);

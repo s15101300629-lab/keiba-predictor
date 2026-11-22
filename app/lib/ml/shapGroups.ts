@@ -30,7 +30,7 @@ const PREFIX: [string, ShapGroup][] = [
   ["form_", "調子"], ["last1_", "調子"], ["g_", "調子"],
   ["pos_", "脚質"], ["nige_", "脚質"], ["senko_", "脚質"], ["hp_", "脚質"], ["sp_", "脚質"], ["field_", "脚質"], ["pace_", "脚質"],
   ["prize_ratio", "出走レースレベル"], ["rel_prize", "出走レースレベル"], ["rank_prize", "出走レースレベル"], ["lv_", "出走レースレベル"], ["h2h_", "出走レースレベル"],
-  ["jockey_", "騎手"], ["trainer_", "調教師"], ["owner_", "馬主・生産者"], ["breeder_", "馬主・生産者"], ["ped_", "血統"], ["train_rank", "調教"],
+  ["jockey_", "騎手"], ["trainer_", "調教師"], ["owner_", "馬主・生産者"], ["breeder_", "馬主・生産者"], ["ped_", "血統"], ["pb_", "血統"], ["train_rank", "調教"], ["abd_", "能力指数"], ["abn_", "能力指数"],
 ];
 
 /** 馬ごとの観点として出さない（出走馬の全員で同じ値の項目。寄与の差は他の項目との組み合わせから出るだけで、馬の良し悪しを表さない） */
@@ -60,6 +60,11 @@ const LABELS: Record<string, string> = {
   jockey_top3: "騎手の今年の3着内率", jockey_venue_top3: "騎手の同じ競馬場の3着内率", jockey_course_top3: "騎手の同じコースの3着内率", jockey_top3_py: "騎手の前年の3着内率",
   trainer_top3: "調教師の今年の3着内率", trainer_venue_top3: "調教師の同じ競馬場の3着内率", trainer_top3_py: "調教師の前年の3着内率",
   owner_top3_y: "馬主の今年の3着内率", owner_top3_py: "馬主の前年の3着内率", breeder_top3_y: "生産者の今年の3着内率", breeder_top3_py: "生産者の前年の3着内率",
+  abd_w: "能力指数（今回の距離に近い走ほど重く見た平均）", abd_w_rank: "距離で重み付けした能力指数の順位", abd_w_dmax: "距離で重み付けした能力指数の、出走馬の最高との差",
+  abd_w_d3: "距離で重み付けした能力指数の、3番手との差", abn_w: "能力指数（今回の距離 ±400m の走の平均）", abn_w_rank: "近い距離の能力指数の順位",
+  abn_w_dmax: "近い距離の能力指数の、出走馬の最高との差", abn_w_d3: "近い距離の能力指数の、3番手との差",
+  pb_band_top3: "血統の今回の芝ダ×距離での3着内率", pb_going_top3: "血統の今回の芝ダ×馬場での3着内率", pb_win: "血統の今回の芝ダでの勝率",
+  pb_recent_top3: "血統の直近3年の3着内率", pb_f_band_top3: "父の今回の芝ダ×距離での3着内率",
   ped_top3: "血統の今回の芝ダでの3着内率", ped_dist: "血統の距離の得意さ", ped_heavy: "血統の道悪倍率", ped_wet: "血統の稍重〜不良の倍率",
   train_rank: "調教評価", train_rank_rel: "調教評価の、出走馬平均との差", train_rank_pos: "調教評価の出走馬の中の順位",
   weight: "斤量", age: "年齢", sex: "性別", body_weight: "馬体重", body_weight_diff: "馬体重の増減",

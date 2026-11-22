@@ -1,3 +1,5 @@
 # 1行1コマンド。上から順に実行し、data/ml（と data/jra-results）の変化をコマンドごとに commit する
-# 2026-11-22：血統の追加候補（芝ダ×距離・芝ダ×馬場の3着内率、産駒の勝率、直近3年、父だけ）の比較
-npx tsx scripts/ml/pedigree_all_features.ts && npx tsx scripts/ml/pedigree_extra_features.ts && cd scripts/ml && python compare_pedigree2.py
+# 2026-11-23：距離で重み付けした能力指数＋血統の追加（209項目）の確かめ → 学習 → 一致テスト
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python compare_abdist_ped2.py
+cd scripts/ml && python train.py
+npm run ml:parity

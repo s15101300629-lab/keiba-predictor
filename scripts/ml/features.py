@@ -108,8 +108,21 @@ RATING_FEATURES = ["elom", "elom_n", "elom_rank", "elom_z", "elom_dmax", "elos",
 RATING_K = 32.0
 RATING_MARGIN = 0.3
 FEATURES = FEATURES + RATING_FEATURES
+FEATURES_BEFORE_ABDIST = list(FEATURES)  # 距離で重み付けした能力指数・血統の追加を入れる前の196項目
+# 今回の距離に近い走ほど重く見る能力指数（compare_abdist.py の H1＋H2。3年とも logloss 改善、2026-11-22。依頼者の指摘：マイルCS のスターアニス）
+# abd_w：同じ芝ダの近10走（能力指数がある走）で、重み＝0.8^k × exp(−|今回の距離 − その走の距離| ÷ 400m) の加重平均
+# abn_w：そのうち今回の距離 ±400m 以内の走（新しい順に最大5走）の 0.8^k 加重平均。なければ欠損
+# それぞれ出走馬の中での順位÷頭数・最高との差・3番手との差
+ABDIST_FEATURES = [f"{k}{s}" for k in ("abd_w", "abn_w") for s in ("", "_rank", "_dmax", "_d3")]
+ABD_RUNS = 10
+ABD_SCALE = 400.0
+ABD_NEAR = 400
+# 血統の追加（compare_pedigree2.py の「全部」。3年とも logloss 改善、2026-11-22）。app/lib/pedigree.ts の pedigreeModelValues
+# 芝ダ×距離区分・芝ダ×馬場の3着内率、今回の芝ダでの産駒の勝率、直近3年の3着内率（父・母父・母母父を 50:25:12.5）、父だけの芝ダ×距離区分
+PEDIGREE2_FEATURES = ["pb_band_top3", "pb_going_top3", "pb_win", "pb_recent_top3", "pb_f_band_top3"]
+FEATURES = FEATURES + ABDIST_FEATURES + PEDIGREE2_FEATURES
 STRONG_AB_SLOPE, STRONG_AB_INTERCEPT = 4.074320892848245, -2.911852114339949  # 能力指数 ~ 相手の調子の平均（全走で1本の直線。ラベルは使わない）
-PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"]
+PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist", *PEDIGREE2_FEATURES]  # runner_features.csv から読む列
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
 
 INDEX_RUNS = 20  # 4つの指数の「ふだんの能力」・条件ごとの走は、同じ芝ダの指数がある走の新しい順に最大20走
@@ -663,6 +676,17 @@ def horse_features(runs: list[dict], race: dict) -> dict:
         f[f"{key}_wmean"] = summarize_ability(vals)["wmean"]
         f[f"{key}_best"] = (min if key in AGARI_LOWER_BETTER else max)(vals) if vals else NAN
 
+    # 距離で重み付けした能力指数（ABDIST_FEATURES）
+    dw = [r for r in runs if r["surface"] == s and r["ab"] is not None and r["distance"]][-ABD_RUNS:][::-1]
+    f["abd_w"] = f["abn_w"] = NAN
+    if dw and d:
+        w = [AB_DECAY ** k * math.exp(-abs(d - x["distance"]) / ABD_SCALE) for k, x in enumerate(dw)]
+        f["abd_w"] = sum(a * x["ab"] for a, x in zip(w, dw)) / sum(w)
+        near = [x for x in dw if abs(d - x["distance"]) <= ABD_NEAR][:AB_RUNS]
+        if near:
+            wn = [AB_DECAY ** k for k in range(len(near))]
+            f["abn_w"] = sum(a * x["ab"] for a, x in zip(wn, near)) / sum(wn)
+
     f.update(index_features(runs, race))
     f.update(similar_course_features(runs, race))
 
@@ -989,6 +1013,8 @@ def add_field_features(rows: list[dict]) -> None:
     add_relative(rows, "ag_dev_wmean", True)
     add_top_gap(rows, "ab_wmean", False)
     add_top_gap(rows, "cond_ab", True)
+    add_top_gap(rows, "abd_w", True)
+    add_top_gap(rows, "abn_w", True)
     # 調教評価の、出走馬の平均との差と、自分より評価が高い馬の数÷頭数
     ranks = [r["train_rank"] for r in rows if not math.isnan(r["train_rank"])]
     mr = sum(ranks) / len(ranks) if ranks else NAN
