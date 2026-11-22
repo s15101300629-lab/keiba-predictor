@@ -6,6 +6,8 @@ import { JRA_BABA_PAGES, parseJraBaba } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
 import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
+import { treeShap } from "@/app/lib/ml/shap";
+import { groupShap } from "@/app/lib/ml/shapGroups";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionRecord,
   type StackModel, type StallionRaw, type StallionRecord,
@@ -1025,13 +1027,19 @@ export async function GET(
           },
           // 各観点の順位（画面）に使う、モデルで効いている項目。能力指数の直近加重平均・推定上がり偏差の直近加重平均・今回の条件での能力
           ability: { ab: num(f.ab_wmean), agari: num(f.ag_dev_wmean), cond: num(f.cond_ab) },
-          // 人気薄専用の2段目の入力（本体モデルの入力の並び。2段目の先頭が本体と同じ並びのときだけ）
-          inputRow: longshotReady ? ml.model.features.map((name) => { const v = f[name]; return v == null || Number.isNaN(v) ? null : v; }) : undefined,
+          // 本体モデルの入力（model.json の features の並び）。人気薄専用の2段目（☆）に使う
+          inputRow: ml.model.features.map((name) => { const v = f[name]; return v == null || Number.isNaN(v) ? null : v; }),
+          // 各観点：SHAP の寄与（log-odds）を観点ごとに足したもの。項目の値も付ける
+          shapGroups: groupShap(ml.model.features, treeShap(ml.model, f)).map((g) => ({
+            group: g.group, phi: g.phi,
+            top: g.top.map((t) => ({ name: t.name, phi: t.phi, value: num(f[t.name] ?? NaN) })),
+          })),
         };
       });
       const f0 = rows[activeIdx[0]]?.features;
       mlSummary = {
         status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource, valueModel: ml.valueModel, marksEvidence: ml.marksEvidence,
+        longshotReady, featureCount: ml.model.features.length,
         bodyWeightAssumed: activeIdx.some((i) => rows[i].bodyWeightAssumed),
         // このレースの結果がすでに学習データに入っている（答えを見て学習した状態）
         raceInTraining: raceConditions.date <= ml.store.lastDate,

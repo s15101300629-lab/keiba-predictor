@@ -4,6 +4,7 @@ import { type BetType } from "@/app/lib/bets";
 import { AI_MARK_ORDER, assignAiMarks, type AiMark } from "@/app/lib/marks";
 import { useParams } from "next/navigation";
 import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
+import { featureLabel, SHAP_GROUPS } from "@/app/lib/ml/shapGroups";
 
 type Conditions = {
   raceName: string | null; date: string | null; venue: string | null;
@@ -71,6 +72,7 @@ type Prediction = {
   probability: number; baseProbability: number; pedigreeIncluded: boolean;
   winProbability?: number | null; top2Probability?: number | null; baseWinProbability?: number | null;
   inputRow?: (number | null)[]; // 人気薄専用の2段目（☆）の入力
+  shapGroups?: { group: string; phi: number; top: { name: string; phi: number; value: number | null }[] }[]; // 各観点（SHAP）
   rank: number; modelFormDeviation: number | null; priorRuns: number; overseasRuns?: number; training?: { rank: string | null; critic: string | null } | null;
   heavyNote: {
     applied: boolean; show: boolean; label: string | null; ratio: number;
@@ -86,6 +88,7 @@ type MlSummary = {
   goingSource?: "announced" | "user" | "default";
   metrics?: { auc: number; raceTop3Hit: number; testYear: string };
   valueModel?: ValueModel | null;
+  longshotReady?: boolean;
   marksEvidence?: Record<string, { marks: Record<string, MarkStats>; popLe3: MarkStats }> | null;
 };
 type MarkStats = { n: number; win_rate?: number; top3_rate?: number; win_roi?: number; place_roi?: number; place_roi_market_matched?: number };
@@ -626,7 +629,7 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
           </details>;
         })}
         {missing.length > 0 && <p className="missing-note">データなし：{missing.join("・")}</p>}
-        <p className="ai-ranks-note">AIスコアは、これらを含む182項目から機械学習でまとめて出した3着以内確率を、出走馬の中の偏差値にしたもの。順位は理由の目安（行を押すと中身）。</p>
+        <p className="ai-ranks-note">観点の順位＝AIの182項目を観点ごとにまとめ、その観点がAIスコアをどれだけ押し上げたか（SHAP）の、出走馬の中での順位。押すと、確率への影響（pt）と主な項目が出る。</p>
       </section>
     </div>
   </details>;
@@ -808,22 +811,30 @@ export default function RaceDetailPage() {
   const horses = data?.results ?? [];
   const factorScores = useMemo(() => buildFactorScores(horses), [horses]);
   const categoryRanks = useMemo(() => {
+    // 各観点：SHAP の寄与を観点ごとに足し、出走馬の中で AIスコアを押し上げた量の順位（app/lib/ml/shapGroups.ts）
     const base = buildCategoryRanks(horses, factorScores, conditions?.distanceMeters ?? null, conditions?.venue ?? null);
-    // モデルで効いている3項目（能力指数・推定上がり・今回の条件での能力）の、出走馬の中での順位を先頭に足す
-    const extra: [string, (p: Prediction) => number | null | undefined, (v: number) => string][] = [
-      ["能力指数", (p) => p.ability?.ab, (v) => "近走（同じ芝ダ）の能力指数の直近加重平均 " + (v >= 0 ? "+" : "") + v.toFixed(2) + "（その日の馬場差・斤量を補正したタイム指数。1000mあたりの秒）"],
-      ["上がり", (p) => p.ability?.agari, (v) => "近走の推定上がり3F が、そのレースの平均より " + Math.abs(v).toFixed(2) + "秒" + (v >= 0 ? "速い" : "遅い") + "（直近加重平均。成績表の隊列から推定）"],
-      ["今回の条件", (p) => p.ability?.cond, (v) => "能力指数に、今回の距離・競馬場・馬場での得意不得意を足した値 " + (v >= 0 ? "+" : "") + v.toFixed(2)],
-    ];
+    const oldDetail = (horseId: string, label: string) => base.get(horseId)?.find((c) => c.label === label && c.detail !== NO_DATA)?.detail ?? null;
+    const abilityText: Record<string, (p: Prediction) => string | null> = {
+      能力指数: (p) => p.ability?.ab != null ? "近走（同じ芝ダ）の能力指数の直近加重平均 " + (p.ability.ab >= 0 ? "+" : "") + p.ability.ab.toFixed(2) + "（その日の馬場差・斤量を補正したタイム指数。1000mあたりの秒）" : null,
+      上がり: (p) => p.ability?.agari != null ? "近走の推定上がり3F が、そのレースの平均より " + Math.abs(p.ability.agari).toFixed(2) + "秒" + (p.ability.agari >= 0 ? "速い" : "遅い") + "（直近加重平均。成績表の隊列から推定）" : null,
+      条件適性: (p) => p.ability?.cond != null ? "能力指数に、今回の距離・競馬場・馬場での得意不得意を足した値 " + (p.ability.cond >= 0 ? "+" : "") + p.ability.cond.toFixed(2) : null,
+    };
+    const OLD: Record<string, string> = { 騎手: "騎手", 調子: "調子", 血統: "血統" };
+    const logit = (p: number) => Math.log(p / (1 - p));
+    const pt = (p: number, phi: number) => (p - 1 / (1 + Math.exp(-(logit(p) - phi)))) * 100; // その寄与がなかったときとの確率の差（pt）
+    const signed = (x: number) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(1) + "pt";
+    const rows = horses.filter((h) => h.prediction?.shapGroups);
     const out = new Map<string, CategoryRank[]>();
-    for (const h of horses) out.set(h.horseId, [...(base.get(h.horseId) ?? [])]);
-    for (const [label, get, text] of [...extra].reverse()) {
-      const vals = horses.map((h) => (h.prediction ? get(h.prediction) : null)).filter((v): v is number => v != null);
-      for (const h of horses) {
-        const v = h.prediction ? get(h.prediction) : null;
-        out.get(h.horseId)!.unshift(v == null
-          ? { label, rank: null, total: vals.length, detail: NO_DATA }
-          : { label, rank: 1 + vals.filter((x) => x > v).length, total: vals.length, detail: text(v) });
+    for (const g of SHAP_GROUPS) {
+      const vals = rows.map((h) => ({ h, c: h.prediction!.shapGroups!.find((x) => x.group === g) })).filter((x) => x.c);
+      for (const { h, c } of vals) {
+        const p = h.prediction!.probability;
+        const items = c!.top.map((t) => `${featureLabel(t.name)}${t.value != null ? " " + (Math.abs(t.value) >= 100 ? Math.round(t.value) : Math.round(t.value * 100) / 100) : "（なし）"}（${signed(pt(p, t.phi))}）`);
+        const detail = [`3着以内確率への影響 ${signed(pt(p, c!.phi))}`, items.length ? "主な項目：" + items.join("、") : null,
+          abilityText[g]?.(h.prediction!) ?? null, OLD[g] ? oldDetail(h.horseId, OLD[g]) : null].filter(Boolean).join(" / ");
+        const list = out.get(h.horseId) ?? [];
+        list.push({ label: g, rank: 1 + vals.filter((x) => x.c!.phi > c!.phi).length, total: vals.length, detail });
+        out.set(h.horseId, list);
       }
     }
     return out;
@@ -858,7 +869,7 @@ export default function RaceDetailPage() {
     setLongshot(null);
     const rows = horses.filter((h) => h.prediction?.inputRow && h.prediction.baseWinProbability != null && h.raceEntry?.horseNumber != null)
       .map((h) => ({ n: h.raceEntry!.horseNumber!, x: h.prediction!.inputRow!, top3: h.prediction!.baseProbability, win: h.prediction!.baseWinProbability! }));
-    if (!odds || rows.length < 3) return;
+    if (!odds || rows.length < 3 || !data?.ml?.longshotReady) return;
     const winOdds = Object.fromEntries(rows.filter((r) => odds.win[String(r.n)]?.min).map((r) => [r.n, odds.win[String(r.n)].min]));
     let cancelled = false;
     fetch("/api/longshot", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rows, odds: winOdds }) })
@@ -868,7 +879,7 @@ export default function RaceDetailPage() {
       })
       .catch(() => { /* ☆なしで続ける */ });
     return () => { cancelled = true; };
-  }, [odds, horses]);
+  }, [odds, horses, data?.ml?.longshotReady]);
   const predictedCount = horses.filter((h) => h.prediction).length;
   const scores = useMemo(() => scoreDeviations(horses), [horses]);
   const evidence = data?.ml?.valueModel?.evidence;

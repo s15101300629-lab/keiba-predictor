@@ -203,7 +203,7 @@ export function pedigreeAptitudes(
 
   const result = all.map((list, i) => {
     const usable = sources.map((s, j) => ({ ...s, record: records[i][j], aptitude: list[j] }))
-      .filter((s): s is typeof s & { aptitude: StallionAptitude } => s.aptitude !== null);
+      .filter((s): s is typeof s & { aptitude: StallionAptitude } => s.aptitude != null); // 取得に失敗した祖先（undefined）も除く
     const avg = (get: (a: StallionAptitude) => number | null) => {
       let sum = 0;
       let w = 0;
