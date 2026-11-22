@@ -1,11 +1,11 @@
 name: 成績表の過去分の変換（作業ブランチ用）
 
-# JRA 成績表 PDF の過去分（2019〜2021年）を JSON/CSV に変換して、作業ブランチに commit する。
+# JRA 成績表 PDF の過去分を JSON/CSV に変換して、作業ブランチに commit する（2019〜2021年は 2026-11-20 に済み。2026-11-22 から 2018・2017年）。
 # 「JRA 成績表 PDF 変換」とは別の名前にしてあるので、終わっても main での再学習（ml-train.yml）は動かない。
 # 1年ずつ順番に変換し、50ファイルごとに commit する（manifest に記録されるので、止まっても続きから変換できる）。
 on:
   push:
-    branches: [claude/horse-racing-pdf-conversion-ucigrq]
+    branches: [claude/horse-racing-pdf-conversion-ucigrq, claude/nice-feynman-qgk2q6]
     paths: [.github/workflows/seiseki-backfill.yml]
   workflow_dispatch:
 
@@ -21,7 +21,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        year: ["2021", "2020", "2019"]
+        year: ["2018", "2017"]
     runs-on: ubuntu-latest
     timeout-minutes: 350
     steps:

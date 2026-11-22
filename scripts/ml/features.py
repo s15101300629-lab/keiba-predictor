@@ -446,12 +446,18 @@ def add_relative(rows: list[dict], key: str, with_fstd: bool) -> None:
             r[f"{key}_fstd"] = sd
 
 
+# 成績表を読む最初の年（過去走・基準タイムなどの元）。2017・2018年を足すかは compare_years.py で決める（2026-11-22）
+HISTORY_FROM = "2019"
+
+
 def load_races(data_root: Path) -> list[dict]:
     """平地レースを日付・race_id 順に。各出走馬に time_diff（勝ち馬との差, 秒）と調教評価を付ける."""
     ranks = load_training_ranks(data_root)
     peds = load_pedigree_features(data_root)
     races = []
     for path in sorted((data_root / "json").glob("*/*.json")):
+        if path.parent.name < HISTORY_FROM:
+            continue
         day = json.loads(path.read_text(encoding="utf-8"))
         for r in day["races"]:
             if r.get("surface") not in SURFACE or not r.get("race_id") or not r.get("date"):
