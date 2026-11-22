@@ -301,18 +301,65 @@ export function ancestorModelValues(record: StallionRecord, surface: string, dis
   };
 }
 
-/** 父・母父・母母父（PEDIGREE_SOURCES の順の records）の値を、50:25:12.5 の重みで平均（値のない祖先は除いて重みを割り直す）. */
-export function pedigreeModelValues(records: (StallionRecord | null)[], surface: string, distance: number | null): PedigreeModelValues {
-  const out = {} as PedigreeModelValues;
+// 血統の追加（compare_pedigree2.py の「全部」。3年とも logloss 改善、2026-11-22。scripts/ml/features.py の PEDIGREE2_FEATURES）
+//   pb_band_top3：今回の芝ダ×距離区分での産駒の3着内率（出走数が少ない区分は、その芝ダ全体の率に寄せる）
+//   pb_going_top3：今回の芝ダ×今回の馬場での3着内率（同じく寄せる）
+//   pb_win：今回の芝ダでの産駒の勝率
+//   pb_recent_top3：今回の芝ダでの、直近3年（レース前年まで）の3着内率
+//   pb_f_band_top3：父だけの pb_band_top3
+export const PEDIGREE_EXTRA_FEATURES = ["pb_band_top3", "pb_going_top3", "pb_win", "pb_recent_top3", "pb_f_band_top3"] as const;
+export const PEDIGREE_ALL_FEATURES = [...PEDIGREE_MODEL_FEATURES, ...PEDIGREE_EXTRA_FEATURES] as const;
+export type PedigreeAllValues = Record<(typeof PEDIGREE_ALL_FEATURES)[number], number | null>;
+const PB_SHRINK = 30;
+type PbKey = "pb_band_top3" | "pb_going_top3" | "pb_win" | "pb_recent_top3";
+
+/** 祖先1頭分の追加の値. older：同じ祖先の、3年前まで（レース前年 − 3）の成績（直近3年の差を出す）. */
+export function ancestorExtraValues(record: StallionRecord, older: StallionRecord | null, surface: string, distance: number | null,
+  going: string | null): Record<PbKey, number | null> | null {
+  const g = record.going[surface] ?? {};
+  const add = (a: Counts, b: Counts | undefined): Counts => (b ? a.map((v, i) => v + b[i]) as Counts : a);
+  let all = [0, 0, 0, 0] as Counts;
+  for (const c of Object.values(g)) all = add(all, c);
+  if (!starts(all)) return null;
+  const rate = top3(all) / starts(all);
+  const bands = record.distance[surface] ?? [];
+  let band = distance === null ? undefined : bands.find((b) => b.upper !== null && distance <= b.upper);
+  if (!band && distance !== null) band = bands.find((b) => b.upper === null);
+  const bc = band?.counts;
+  const gc = going ? g[going as "良" | "稍重" | "重" | "不良"] : undefined;
+  let recent = all;
+  if (older) {
+    let o = [0, 0, 0, 0] as Counts;
+    for (const c of Object.values(older.going[surface] ?? {})) o = add(o, c);
+    recent = all.map((v, i) => Math.max(0, v - o[i])) as Counts;
+  }
+  const shrink = (c: Counts) => (top3(c) + PB_SHRINK * rate) / (starts(c) + PB_SHRINK);
+  return {
+    pb_band_top3: bc ? shrink(bc) : null,
+    pb_going_top3: gc ? shrink(gc) : null,
+    pb_win: all[0] / starts(all),
+    pb_recent_top3: starts(recent) ? shrink(recent) : null,
+  };
+}
+
+/** 父・母父・母母父（PEDIGREE_SOURCES の順の records）の値を、50:25:12.5 の重みで平均（値のない祖先は除いて重みを割り直す）.
+ * older：同じ順の、3年前までの成績（pb_recent_top3 用）。going：今回の馬場（未発表は「良」。モデルの going と同じ）. */
+export function pedigreeModelValues(records: (StallionRecord | null)[], surface: string, distance: number | null,
+  going: string | null = null, older: (StallionRecord | null)[] = []): PedigreeAllValues {
+  const out = {} as PedigreeAllValues;
   const per = records.map((r) => (r ? ancestorModelValues(r, surface, distance) : null));
-  for (const key of PEDIGREE_MODEL_FEATURES) {
+  const extra = records.map((r, i) => (r ? ancestorExtraValues(r, older[i] ?? null, surface, distance, going) : null));
+  const avg = (get: (i: number) => number | null | undefined) => {
     let sum = 0;
     let w = 0;
-    per.forEach((v, i) => {
-      const x = v?.[key];
+    records.forEach((_, i) => {
+      const x = get(i);
       if (x !== null && x !== undefined) { sum += PEDIGREE_SOURCES[i].weight * x; w += PEDIGREE_SOURCES[i].weight; }
     });
-    out[key] = w ? sum / w : null;
-  }
+    return w ? sum / w : null;
+  };
+  for (const key of PEDIGREE_MODEL_FEATURES) out[key] = avg((i) => per[i]?.[key]);
+  for (const key of ["pb_band_top3", "pb_going_top3", "pb_win", "pb_recent_top3"] as const) out[key] = avg((i) => extra[i]?.[key]);
+  out.pb_f_band_top3 = extra[0]?.pb_band_top3 ?? null;
   return out;
 }

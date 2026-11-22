@@ -82,7 +82,7 @@ export type RunnerInput = {
   extraRuns?: Store["horses"][string];
   trainRank?: number | null; // 調教評価 A=4〜D=1（netkeiba の調教ページ）。なければ null
   // 血統（app/lib/pedigree.ts の pedigreeModelValues。父・母父・母母父の産駒成績の 50:25:12.5 平均）
-  pedigree?: Partial<Record<"ped_heavy" | "ped_wet" | "ped_top3" | "ped_dist", number | null>> | null;
+  pedigree?: Partial<Record<(typeof PEDIGREE_KEYS)[number], number | null>> | null;
   owner?: string | null; // 馬主（netkeiba のプロフィール）
   breeder?: string | null; // 生産者（netkeiba のプロフィール「生産者(産地)」。産地の括弧は normOwner で取る）
 };
@@ -105,6 +105,12 @@ export const FRONT_RATIO = 1 / 3; // 最初のコーナーで前3分の1 → 先
 export const TIME_DIFF_SCALE = 2;
 export const AB_RUNS = 5; // 能力指数・推定上がりは、今回と同じ芝ダの過去走（指数がある走）の新しい順に最大5走
 export const AB_DECAY = 0.8;
+// 距離で重み付けした能力指数（scripts/ml/features.py の ABDIST_FEATURES）
+const ABD_RUNS = 10;
+const ABD_SCALE = 400;
+const ABD_NEAR = 400;
+// 血統（app/lib/pedigree.ts の PEDIGREE_ALL_FEATURES と同じ並び）
+const PEDIGREE_KEYS = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist", "pb_band_top3", "pb_going_top3", "pb_win", "pb_recent_top3", "pb_f_band_top3"] as const;
 const INDEX_RUNS = 20; // 4つの指数の「ふだんの能力」・条件ごとの走は、同じ芝ダの指数がある走の新しい順に最大20走
 const INDEX_SHRINK = 2; // 条件適性 = その条件での（指数 − ふだんの能力）の合計 ÷ (走数 + 2)
 const LAYOFF_DAYS = 90; // 直近加重平均の重み 0.8^k
@@ -227,6 +233,24 @@ function horseFeatures(store: Store, race: RaceInput, horse: string, extra?: Sto
     const vals = ag.map((r) => r[key]!);
     f[key + "_wmean"] = summarizeAbility(vals).wmean;
     f[key + "_best"] = vals.length ? (AGARI_LOWER_BETTER.has(key) ? Math.min(...vals) : Math.max(...vals)) : NaN;
+  }
+
+  // 距離で重み付けした能力指数（features.py の ABDIST_FEATURES）
+  const dw = runs.filter((r) => r.surface === s && r.ab !== null && r.distance).slice(-ABD_RUNS).reverse();
+  f.abd_w = NaN;
+  f.abn_w = NaN;
+  if (dw.length && d) {
+    let ws = 0;
+    let wv = 0;
+    dw.forEach((x, k) => { const w = AB_DECAY ** k * Math.exp(-Math.abs(d - x.distance!) / ABD_SCALE); ws += w; wv += w * x.ab!; });
+    f.abd_w = wv / ws;
+    const near = dw.filter((x) => Math.abs(d - x.distance!) <= ABD_NEAR).slice(0, AB_RUNS);
+    if (near.length) {
+      let ns = 0;
+      let nv = 0;
+      near.forEach((x, k) => { const w = AB_DECAY ** k; ns += w; nv += w * x.ab!; });
+      f.abn_w = nv / ns;
+    }
   }
 
   Object.assign(f, indexFeatures(runs, race));
@@ -649,7 +673,7 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
     body_weight_diff: runner.bodyWeightDiff ?? NaN,
     train_rank: nz(runner.trainRank ?? null),
   };
-  for (const k of ["ped_heavy", "ped_wet", "ped_top3", "ped_dist"] as const) f[k] = runner.pedigree?.[k] ?? NaN;
+  for (const k of PEDIGREE_KEYS) f[k] = runner.pedigree?.[k] ?? NaN;
   f.umaban_ratio = Number.isNaN(f.umaban) ? NaN : f.umaban / race.fieldSize;
   Object.assign(f, horseFeatures(store, race, runner.horse, runner.extraRuns));
   Object.assign(f, c4Features(store, race, horseRuns(store, runner.horse, runner.extraRuns).filter((r) => r[0] < race.date)));
@@ -748,6 +772,8 @@ export function addFieldFeatures(rows: Features[]): void {
   addRelative(rows, "ab_best", false);
   addRelative(rows, "ag_dev_wmean", true);
   addTopGap(rows, "ab_wmean", false);
+  addTopGap(rows, "abd_w", true);
+  addTopGap(rows, "abn_w", true);
   addTopGap(rows, "cond_ab", true);
   // 調教評価の、出走馬の平均との差と、自分より評価が高い馬の数÷頭数
   const ranks = rows.map((r) => r.train_rank).filter((x) => !Number.isNaN(x));
