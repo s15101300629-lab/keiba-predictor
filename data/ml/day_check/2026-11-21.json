@@ -1,12 +1,12 @@
 {
  "date": "2026-11-21",
  "races": 22,
- "runners": 343,
- "training": false,
- "train_rank_coverage": 0.0,
- "ped_coverage": 0.843,
- "logloss": 0.396,
- "auc": 0.8262,
+ "runners": 317,
+ "training": true,
+ "train_rank_coverage": 0.994,
+ "ped_coverage": 0.83,
+ "logloss": 0.3836,
+ "auc": 0.8406,
  "ai_top3_hit": 0.5,
  "pop_top3_hit": 0.5,
  "ai_top1_win": 0.3636,
@@ -23,23 +23,26 @@
     {
      "umaban": 15,
      "horse": "ネージュドレーヴ",
-     "p": 0.718,
+     "p": 0.743,
      "finish": 1,
-     "pop": 1
+     "pop": 1,
+     "odds": 2.6
     },
     {
      "umaban": 3,
      "horse": "セイウンラミエル",
-     "p": 0.514,
+     "p": 0.57,
      "finish": 2,
-     "pop": 4
+     "pop": 4,
+     "odds": 7.0
     },
     {
-     "umaban": 9,
-     "horse": "フィールザウィル",
-     "p": 0.328,
-     "finish": 11,
-     "pop": 2
+     "umaban": 11,
+     "horse": "アルフェラッツ",
+     "p": 0.337,
+     "finish": 3,
+     "pop": 3,
+     "odds": 6.3
     }
    ],
    "result_top3": [
@@ -47,22 +50,25 @@
      "umaban": 15,
      "horse": "ネージュドレーヴ",
      "pop": 1,
+     "odds": 2.6,
      "ai_rank": 1
     },
     {
      "umaban": 3,
      "horse": "セイウンラミエル",
      "pop": 4,
+     "odds": 7.0,
      "ai_rank": 2
     },
     {
      "umaban": 11,
      "horse": "アルフェラッツ",
      "pop": 3,
-     "ai_rank": 4
+     "odds": 6.3,
+     "ai_rank": 3
     }
    ],
-   "ai_hits": 2,
+   "ai_hits": 3,
    "pop_hits": 2
   },
   {
@@ -76,23 +82,26 @@
     {
      "umaban": 11,
      "horse": "コウソクルリアン",
-     "p": 0.55,
+     "p": 0.572,
      "finish": 1,
-     "pop": 1
+     "pop": 1,
+     "odds": 1.7
+    },
+    {
+     "umaban": 5,
+     "horse": "ワイドデコラシオン",
+     "p": 0.333,
+     "finish": 2,
+     "pop": 4,
+     "odds": 10.3
     },
     {
      "umaban": 16,
      "horse": "スイーヴル",
-     "p": 0.343,
+     "p": 0.317,
      "finish": 4,
-     "pop": 3
-    },
-    {
-     "umaban": 8,
-     "horse": "ステラノヴァ",
-     "p": 0.336,
-     "finish": 3,
-     "pop": 2
+     "pop": 3,
+     "odds": 8.4
     }
    ],
    "result_top3": [
@@ -100,19 +109,22 @@
      "umaban": 11,
      "horse": "コウソクルリアン",
      "pop": 1,
+     "odds": 1.7,
      "ai_rank": 1
     },
     {
      "umaban": 5,
      "horse": "ワイドデコラシオン",
      "pop": 4,
-     "ai_rank": 4
+     "odds": 10.3,
+     "ai_rank": 2
     },
     {
      "umaban": 8,
      "horse": "ステラノヴァ",
      "pop": 2,
-     "ai_rank": 3
+     "odds": 7.0,
+     "ai_rank": 4
     }
    ],
    "ai_hits": 2,
@@ -129,23 +141,26 @@
     {
      "umaban": 14,
      "horse": "ランフェザー",
-     "p": 0.725,
+     "p": 0.737,
      "finish": 1,
-     "pop": 1
+     "pop": 1,
+     "odds": 1.8
     },
     {
      "umaban": 11,
      "horse": "テンソンコウリン",
-     "p": 0.44,
+     "p": 0.479,
      "finish": 2,
-     "pop": 2
+     "pop": 2,
+     "odds": 5.3
     },
     {
-     "umaban": 12,
-     "horse": "スクリプトール",
-     "p": 0.372,
-     "finish": 7,
-     "pop": 4
+     "umaban": 15,
+     "horse": "プリマアルバ",
+     "p": 0.451,
+     "finish": 4,
+     "pop": 5,
+     "odds": 14.4
     }
    ],
    "result_top3": [
@@ -153,19 +168,22 @@
      "umaban": 14,
      "horse": "ランフェザー",
      "pop": 1,
+     "odds": 1.8,
      "ai_rank": 1
     },
     {
      "umaban": 11,
      "horse": "テンソンコウリン",
      "pop": 2,
+     "odds": 5.3,
      "ai_rank": 2
     },
     {
      "umaban": 13,
      "horse": "エコロガルディア",
      "pop": 3,
-     "ai_rank": 5
+     "odds": 8.0,
+     "ai_rank": 4
     }
    ],
    "ai_hits": 2,
@@ -182,23 +200,26 @@
     {
      "umaban": 3,
      "horse": "ポンピエ",
-     "p": 0.523,
+     "p": 0.44,
      "finish": 4,
-     "pop": 3
+     "pop": 3,
+     "odds": 6.1
     },
     {
      "umaban": 7,
      "horse": "リュウカルネ",
-     "p": 0.353,
+     "p": 0.39,
      "finish": 1,
-     "pop": 1
+     "pop": 1,
+     "odds": 2.1
     },
     {
-     "umaban": 6,
-     "horse": "レッドフロイデ",
-     "p": 0.325,
-     "finish": 10,
-     "pop": 4
+     "umaban": 8,
+     "horse": "ナクライト",
+     "p": 0.371,
+     "finish": 15,
+     "pop": 5,
+     "odds": 12.7
     }
    ],
    "result_top3": [
@@ -206,18 +227,21 @@
      "umaban": 7,
      "horse": "リュウカルネ",
      "pop": 1,
+     "odds": 2.1,
      "ai_rank": 2
     },
     {
      "umaban": 11,
      "horse": "メイショウアボット",
      "pop": 6,
+     "odds": 16.7,
      "ai_rank": 13
     },
     {
      "umaban": 9,
      "horse": "クルビデンス",
      "pop": 9,
+     "odds": 30.7,
      "ai_rank": 9
     }
    ],
@@ -235,23 +259,26 @@
     {
      "umaban": 14,
      "horse": "コスモバルムンク",
-     "p": 0.431,
+     "p": 0.456,
      "finish": 5,
-     "pop": 1
-    },
-    {
-     "umaban": 9,
-     "horse": "アントレピード",
-     "p": 0.36,
-     "finish": 4,
-     "pop": 2
+     "pop": 1,
+     "odds": 4.6
     },
     {
      "umaban": 1,
      "horse": "スターマイン",
-     "p": 0.338,
+     "p": 0.407,
      "finish": 3,
-     "pop": 3
+     "pop": 3,
+     "odds": 6.9
+    },
+    {
+     "umaban": 9,
+     "horse": "アントレピード",
+     "p": 0.376,
+     "finish": 4,
+     "pop": 2,
+     "odds": 4.7
     }
    ],
    "result_top3": [
@@ -259,19 +286,22 @@
      "umaban": 7,
      "horse": "イドム",
      "pop": 4,
+     "odds": 7.4,
      "ai_rank": 5
     },
     {
      "umaban": 3,
      "horse": "プリズンブレイク",
      "pop": 7,
-     "ai_rank": 7
+     "odds": 12.4,
+     "ai_rank": 6
     },
     {
      "umaban": 1,
      "horse": "スターマイン",
      "pop": 3,
-     "ai_rank": 3
+     "odds": 6.9,
+     "ai_rank": 2
     }
    ],
    "ai_hits": 1,
@@ -288,23 +318,26 @@
     {
      "umaban": 3,
      "horse": "ピカキウイ",
-     "p": 0.561,
+     "p": 0.52,
      "finish": 3,
-     "pop": 1
+     "pop": 1,
+     "odds": 2.4
     },
     {
      "umaban": 10,
      "horse": "カリーン",
-     "p": 0.287,
+     "p": 0.309,
      "finish": 7,
-     "pop": 12
+     "pop": 12,
+     "odds": 23.0
     },
     {
-     "umaban": 1,
-     "horse": "サッポロイクコ",
-     "p": 0.274,
-     "finish": 2,
-     "pop": 9
+     "umaban": 15,
+     "horse": "フジサン",
+     "p": 0.231,
+     "finish": 14,
+     "pop": 11,
+     "odds": 22.8
     }
    ],
    "result_top3": [
@@ -312,22 +345,25 @@
      "umaban": 11,
      "horse": "フレキシブル",
      "pop": 4,
-     "ai_rank": 5
+     "odds": 12.9,
+     "ai_rank": 4
     },
     {
      "umaban": 1,
      "horse": "サッポロイクコ",
      "pop": 9,
-     "ai_rank": 3
+     "odds": 18.6,
+     "ai_rank": 8
     },
     {
      "umaban": 3,
      "horse": "ピカキウイ",
      "pop": 1,
+     "odds": 2.4,
      "ai_rank": 1
     }
    ],
-   "ai_hits": 2,
+   "ai_hits": 1,
    "pop_hits": 1
   },
   {
@@ -341,23 +377,26 @@
     {
      "umaban": 2,
      "horse": "ディバインウインド",
-     "p": 0.641,
+     "p": 0.682,
      "finish": 7,
-     "pop": 2
+     "pop": 2,
+     "odds": 2.3
     },
     {
      "umaban": 12,
      "horse": "ホールドザデイ",
-     "p": 0.481,
+     "p": 0.491,
      "finish": 6,
-     "pop": 1
+     "pop": 1,
+     "odds": 2.1
     },
     {
      "umaban": 15,
      "horse": "バンオンタイム",
-     "p": 0.387,
+     "p": 0.384,
      "finish": 1,
-     "pop": 3
+     "pop": 3,
+     "odds": 9.8
     }
    ],
    "result_top3": [
@@ -365,18 +404,21 @@
      "umaban": 15,
      "horse": "バンオンタイム",
      "pop": 3,
+     "odds": 9.8,
      "ai_rank": 3
     },
     {
      "umaban": 16,
      "horse": "メリザンド",
      "pop": 7,
+     "odds": 35.0,
      "ai_rank": 4
     },
     {
      "umaban": 13,
      "horse": "ベネディクション",
      "pop": 11,
+     "odds": 59.9,
      "ai_rank": 11
     }
    ],
@@ -394,23 +436,26 @@
     {
      "umaban": 1,
      "horse": "ソニックブレイカー",
-     "p": 0.443,
+     "p": 0.508,
      "finish": 2,
-     "pop": 1
+     "pop": 1,
+     "odds": 4.7
     },
     {
      "umaban": 7,
      "horse": "モズオウンゴール",
-     "p": 0.418,
+     "p": 0.404,
      "finish": 4,
-     "pop": 3
+     "pop": 3,
+     "odds": 5.0
     },
     {
-     "umaban": 3,
-     "horse": "ビーマックス",
-     "p": 0.326,
-     "finish": 1,
-     "pop": 7
+     "umaban": 15,
+     "horse": "コックピットサイト",
+     "p": 0.306,
+     "finish": 8,
+     "pop": 4,
+     "odds": 5.9
     }
    ],
    "result_top3": [
@@ -418,22 +463,25 @@
      "umaban": 3,
      "horse": "ビーマックス",
      "pop": 7,
-     "ai_rank": 3
+     "odds": 11.1,
+     "ai_rank": 5
     },
     {
      "umaban": 1,
      "horse": "ソニックブレイカー",
      "pop": 1,
+     "odds": 4.7,
      "ai_rank": 1
     },
     {
      "umaban": 14,
      "horse": "ゼファーテソーロ",
      "pop": 6,
-     "ai_rank": 6
+     "odds": 10.6,
+     "ai_rank": 4
     }
    ],
-   "ai_hits": 2,
+   "ai_hits": 1,
    "pop_hits": 1
   },
   {
@@ -447,23 +495,26 @@
     {
      "umaban": 13,
      "horse": "マリアイリダータ",
-     "p": 0.566,
+     "p": 0.526,
      "finish": 1,
-     "pop": 1
+     "pop": 1,
+     "odds": 3.3
     },
     {
      "umaban": 1,
      "horse": "カラマティアノス",
-     "p": 0.491,
+     "p": 0.488,
      "finish": 3,
-     "pop": 4
+     "pop": 4,
+     "odds": 8.1
     },
     {
      "umaban": 11,
      "horse": "フォルテアンジェロ",
-     "p": 0.385,
+     "p": 0.358,
      "finish": 7,
-     "pop": 2
+     "pop": 2,
+     "odds": 5.4
     }
    ],
    "result_top3": [
@@ -471,18 +522,21 @@
      "umaban": 13,
      "horse": "マリアイリダータ",
      "pop": 1,
+     "odds": 3.3,
      "ai_rank": 1
     },
     {
      "umaban": 3,
      "horse": "ゼンダンハヤブサ",
      "pop": 11,
+     "odds": 28.5,
      "ai_rank": 10
     },
     {
      "umaban": 1,
      "horse": "カラマティアノス",
      "pop": 4,
+     "odds": 8.1,
      "ai_rank": 2
     }
    ],
@@ -500,23 +554,26 @@
     {
      "umaban": 13,
      "horse": "グロリアスマーチ",
-     "p": 0.46,
+     "p": 0.447,
      "finish": 10,
-     "pop": 1
+     "pop": 1,
+     "odds": 3.9
     },
     {
      "umaban": 4,
      "horse": "ヤマニンフェイエル",
-     "p": 0.356,
+     "p": 0.354,
      "finish": 3,
-     "pop": 4
+     "pop": 4,
+     "odds": 7.8
     },
     {
-     "umaban": 2,
-     "horse": "ニルマーネル",
-     "p": 0.344,
-     "finish": 13,
-     "pop": 6
+     "umaban": 7,
+     "horse": "ルシェロアズーリ",
+     "p": 0.319,
+     "finish": 4,
+     "pop": 2,
+     "odds": 6.2
     }
    ],
    "result_top3": [
@@ -524,18 +581,21 @@
      "umaban": 1,
      "horse": "ステキサプライズ",
      "pop": 5,
-     "ai_rank": 4
+     "odds": 7.9,
+     "ai_rank": 6
     },
     {
      "umaban": 14,
      "horse": "マテンロウカナロア",
      "pop": 3,
-     "ai_rank": 9
+     "odds": 6.6,
+     "ai_rank": 8
     },
     {
      "umaban": 4,
      "horse": "ヤマニンフェイエル",
      "pop": 4,
+     "odds": 7.8,
      "ai_rank": 2
     }
    ],
@@ -551,25 +611,28 @@
    "going": "良",
    "ai_top3": [
     {
-     "umaban": 4,
-     "horse": "ドミナント",
-     "p": 0.635,
-     "finish": 6,
-     "pop": 1
-    },
-    {
      "umaban": 8,
      "horse": "クリコリンダ",
-     "p": 0.553,
+     "p": 0.584,
      "finish": 5,
-     "pop": 5
+     "pop": 5,
+     "odds": 8.1
+    },
+    {
+     "umaban": 4,
+     "horse": "ドミナント",
+     "p": 0.529,
+     "finish": 6,
+     "pop": 1,
+     "odds": 2.6
     },
     {
      "umaban": 13,
      "horse": "ラッキーハナコ",
-     "p": 0.369,
+     "p": 0.467,
      "finish": 2,
-     "pop": 3
+     "pop": 3,
+     "odds": 6.1
     }
    ],
    "result_top3": [
@@ -577,19 +640,22 @@
      "umaban": 14,
      "horse": "スターリーデー",
      "pop": 2,
+     "odds": 4.9,
      "ai_rank": 4
     },
     {
      "umaban": 13,
      "horse": "ラッキーハナコ",
      "pop": 3,
+     "odds": 6.1,
      "ai_rank": 3
     },
     {
      "umaban": 11,
      "horse": "オンアロール",
      "pop": 11,
-     "ai_rank": 9
+     "odds": 42.4,
+     "ai_rank": 8
     }
    ],
    "ai_hits": 1,
@@ -606,23 +672,26 @@
     {
      "umaban": 9,
      "horse": "スタニスラス",
-     "p": 0.56,
+     "p": 0.559,
      "finish": 2,
-     "pop": 1
+     "pop": 1,
+     "odds": 1.7
     },
     {
      "umaban": 12,
      "horse": "エボニーウイング",
-     "p": 0.377,
+     "p": 0.41,
      "finish": 5,
-     "pop": 3
+     "pop": 3,
+     "odds": 9.0
     },
     {
      "umaban": 5,
      "horse": "アメリカンノヴァ",
-     "p": 0.368,
+     "p": 0.4,
      "finish": 6,
-     "pop": 2
+     "pop": 2,
+     "odds": 5.4
     }
    ],
    "result_top3": [
@@ -630,19 +699,22 @@
      "umaban": 8,
      "horse": "レイテスツドリーム",
      "pop": 5,
-     "ai_rank": 6
+     "odds": 11.3,
+     "ai_rank": 5
     },
     {
      "umaban": 9,
      "horse": "スタニスラス",
      "pop": 1,
+     "odds": 1.7,
      "ai_rank": 1
     },
     {
      "umaban": 2,
      "horse": "スエヒロビリーブ",
      "pop": 6,
-     "ai_rank": 5
+     "odds": 15.9,
+     "ai_rank": 6
     }
    ],
    "ai_hits": 1,
@@ -659,23 +731,26 @@
     {
      "umaban": 17,
      "horse": "カツダルマ",
-     "p": 0.56,
+     "p": 0.588,
      "finish": 4,
-     "pop": 1
+     "pop": 1,
+     "odds": 2.8
     },
     {
      "umaban": 8,
      "horse": "アルテクィーン",
-     "p": 0.496,
+     "p": 0.46,
      "finish": 5,
-     "pop": 2
+     "pop": 2,
+     "odds": 3.5
     },
     {
      "umaban": 12,
      "horse": "ジョリープリュム",
-     "p": 0.305,
+     "p": 0.358,
      "finish": 7,
-     "pop": 4
+     "pop": 4,
+     "odds": 15.1
     }
    ],
    "result_top3": [
@@ -683,18 +758,21 @@
      "umaban": 13,
      "horse": "ジャヤ",
      "pop": 13,
-     "ai_rank": 8
+     "odds": 63.4,
+     "ai_rank": 12
     },
     {
      "umaban": 15,
      "horse": "ティンタアマレラ",
      "pop": 3,
+     "odds": 5.0,
      "ai_rank": 5
     },
     {
      "umaban": 4,
      "horse": "スマートエール",
      "pop": 6,
+     "odds": 15.9,
      "ai_rank": 4
     }
    ],
@@ -712,23 +790,26 @@
     {
      "umaban": 9,
      "horse": "シホノノービレ",
-     "p": 0.683,
+     "p": 0.711,
      "finish": 2,
-     "pop": 1
+     "pop": 1,
+     "odds": 1.7
     },
     {
      "umaban": 2,
      "horse": "ジャンゴッド",
-     "p": 0.577,
+     "p": 0.593,
      "finish": 3,
-     "pop": 3
+     "pop": 3,
+     "odds": 5.4
     },
     {
      "umaban": 6,
      "horse": "ゾンネシュトラール",
-     "p": 0.484,
+     "p": 0.524,
      "finish": 1,
-     "pop": 2
+     "pop": 2,
+     "odds": 3.3
     }
    ],
    "result_top3": [
@@ -736,18 +817,21 @@
      "umaban": 6,
      "horse": "ゾンネシュトラール",
      "pop": 2,
+     "odds": 3.3,
      "ai_rank": 3
     },
     {
      "umaban": 9,
      "horse": "シホノノービレ",
      "pop": 1,
+     "odds": 1.7,
      "ai_rank": 1
     },
     {
      "umaban": 2,
      "horse": "ジャンゴッド",
      "pop": 3,
+     "odds": 5.4,
      "ai_rank": 2
     }
    ],
@@ -765,23 +849,26 @@
     {
      "umaban": 10,
      "horse": "アウダチェ",
-     "p": 0.446,
+     "p": 0.553,
      "finish": 1,
-     "pop": 1
+     "pop": 1,
+     "odds": 1.7
     },
     {
      "umaban": 15,
      "horse": "ベネヴェローチェ",
-     "p": 0.335,
+     "p": 0.441,
      "finish": 4,
-     "pop": 2
+     "pop": 2,
+     "odds": 3.2
     },
     {
-     "umaban": 8,
-     "horse": "ペプチドヘドウィグ",
-     "p": 0.296,
-     "finish": 2,
-     "pop": 5
+     "umaban": 16,
+     "horse": "ルージュアルミーラ",
+     "p": 0.363,
+     "finish": 3,
+     "pop": 4,
+     "odds": 15.0
     }
    ],
    "result_top3": [
@@ -789,19 +876,22 @@
      "umaban": 10,
      "horse": "アウダチェ",
      "pop": 1,
+     "odds": 1.7,
      "ai_rank": 1
     },
     {
      "umaban": 8,
      "horse": "ペプチドヘドウィグ",
      "pop": 5,
-     "ai_rank": 3
+     "odds": 19.7,
+     "ai_rank": 4
     },
     {
      "umaban": 16,
      "horse": "ルージュアルミーラ",
      "pop": 4,
-     "ai_rank": 7
+     "odds": 15.0,
+     "ai_rank": 3
     }
    ],
    "ai_hits": 2,
@@ -818,23 +908,26 @@
     {
      "umaban": 7,
      "horse": "ロゼフレイバー",
-     "p": 0.631,
+     "p": 0.689,
      "finish": 5,
-     "pop": 2
+     "pop": 2,
+     "odds": 3.2
     },
     {
      "umaban": 6,
      "horse": "ファルディルーチェ",
-     "p": 0.564,
+     "p": 0.603,
      "finish": 3,
-     "pop": 4
+     "pop": 4,
+     "odds": 4.6
     },
     {
-     "umaban": 2,
-     "horse": "ジェルモーリオ",
-     "p": 0.421,
-     "finish": 4,
-     "pop": 5
+     "umaban": 5,
+     "horse": "セレクトルビー",
+     "p": 0.415,
+     "finish": 1,
+     "pop": 1,
+     "odds": 3.1
     }
    ],
    "result_top3": [
@@ -842,22 +935,25 @@
      "umaban": 5,
      "horse": "セレクトルビー",
      "pop": 1,
-     "ai_rank": 4
+     "odds": 3.1,
+     "ai_rank": 3
     },
     {
      "umaban": 1,
      "horse": "サンダージョー",
      "pop": 3,
-     "ai_rank": 5
+     "odds": 3.7,
+     "ai_rank": 4
     },
     {
      "umaban": 6,
      "horse": "ファルディルーチェ",
      "pop": 4,
+     "odds": 4.6,
      "ai_rank": 2
     }
    ],
-   "ai_hits": 1,
+   "ai_hits": 2,
    "pop_hits": 2
   },
   {
@@ -871,23 +967,26 @@
     {
      "umaban": 15,
      "horse": "ヤエギリ",
-     "p": 0.564,
+     "p": 0.516,
      "finish": 1,
-     "pop": 1
+     "pop": 1,
+     "odds": 2.1
     },
     {
      "umaban": 2,
      "horse": "タマモランプ",
-     "p": 0.497,
+     "p": 0.475,
      "finish": 9,
-     "pop": 2
+     "pop": 2,
+     "odds": 6.3
     },
     {
      "umaban": 12,
      "horse": "アメリカンスタイル",
-     "p": 0.313,
+     "p": 0.356,
      "finish": 5,
-     "pop": 3
+     "pop": 3,
+     "odds": 6.4
     }
    ],
    "result_top3": [
@@ -895,19 +994,22 @@
      "umaban": 15,
      "horse": "ヤエギリ",
      "pop": 1,
+     "odds": 2.1,
      "ai_rank": 1
     },
     {
      "umaban": 1,
      "horse": "アメリカンバー",
      "pop": 7,
-     "ai_rank": 7
+     "odds": 17.7,
+     "ai_rank": 5
     },
     {
      "umaban": 4,
      "horse": "ワザオギ",
      "pop": 8,
-     "ai_rank": 13
+     "odds": 21.1,
+     "ai_rank": 10
     }
    ],
    "ai_hits": 1,
@@ -926,21 +1028,24 @@
      "horse": "ポートデラメール",
      "p": 0.569,
      "finish": 1,
-     "pop": 1
+     "pop": 1,
+     "odds": 2.3
     },
     {
      "umaban": 14,
      "horse": "ホットシート",
-     "p": 0.542,
+     "p": 0.551,
      "finish": 8,
-     "pop": 4
+     "pop": 4,
+     "odds": 11.3
     },
     {
      "umaban": 7,
      "horse": "ジューンアゲイン",
-     "p": 0.381,
+     "p": 0.386,
      "finish": 12,
-     "pop": 2
+     "pop": 2,
+     "odds": 3.7
     }
    ],
    "result_top3": [
@@ -948,18 +1053,21 @@
      "umaban": 13,
      "horse": "ポートデラメール",
      "pop": 1,
+     "odds": 2.3,
      "ai_rank": 1
     },
     {
      "umaban": 5,
      "horse": "ブロンテス",
      "pop": 5,
+     "odds": 14.0,
      "ai_rank": 4
     },
     {
      "umaban": 10,
      "horse": "レーティッシュ",
      "pop": 8,
+     "odds": 17.4,
      "ai_rank": 5
     }
    ],
@@ -977,23 +1085,26 @@
     {
      "umaban": 3,
      "horse": "アンムート",
-     "p": 0.899,
+     "p": 0.88,
      "finish": 2,
-     "pop": 1
+     "pop": 1,
+     "odds": 1.7
     },
     {
      "umaban": 7,
      "horse": "カレンハウ",
-     "p": 0.842,
+     "p": 0.853,
      "finish": 1,
-     "pop": 2
+     "pop": 2,
+     "odds": 1.9
     },
     {
      "umaban": 6,
      "horse": "ジャスパーレーブ",
-     "p": 0.652,
+     "p": 0.699,
      "finish": 5,
-     "pop": 3
+     "pop": 3,
+     "odds": 10.6
     }
    ],
    "result_top3": [
@@ -1001,18 +1112,21 @@
      "umaban": 7,
      "horse": "カレンハウ",
      "pop": 2,
+     "odds": 1.9,
      "ai_rank": 2
     },
     {
      "umaban": 3,
      "horse": "アンムート",
      "pop": 1,
+     "odds": 1.7,
      "ai_rank": 1
     },
     {
      "umaban": 1,
      "horse": "ミハテヌユメ",
      "pop": 4,
+     "odds": 21.5,
      "ai_rank": 4
     }
    ],
@@ -1030,23 +1144,26 @@
     {
      "umaban": 7,
      "horse": "ロードフィレール",
-     "p": 0.654,
+     "p": 0.656,
      "finish": 1,
-     "pop": 1
+     "pop": 1,
+     "odds": 2.4
     },
     {
      "umaban": 5,
      "horse": "ベトルス",
-     "p": 0.557,
+     "p": 0.549,
      "finish": 2,
-     "pop": 2
+     "pop": 2,
+     "odds": 3.7
     },
     {
      "umaban": 2,
      "horse": "サトノパトリオット",
-     "p": 0.361,
+     "p": 0.352,
      "finish": 6,
-     "pop": 4
+     "pop": 4,
+     "odds": 7.7
     }
    ],
    "result_top3": [
@@ -1054,19 +1171,22 @@
      "umaban": 7,
      "horse": "ロードフィレール",
      "pop": 1,
+     "odds": 2.4,
      "ai_rank": 1
     },
     {
      "umaban": 5,
      "horse": "ベトルス",
      "pop": 2,
+     "odds": 3.7,
      "ai_rank": 2
     },
     {
      "umaban": 9,
      "horse": "オメガナビゲーター",
      "pop": 8,
-     "ai_rank": 8
+     "odds": 29.6,
+     "ai_rank": 9
     }
    ],
    "ai_hits": 2,
@@ -1083,23 +1203,26 @@
     {
      "umaban": 14,
      "horse": "チェリヴェント",
-     "p": 0.418,
+     "p": 0.419,
      "finish": 5,
-     "pop": 2
-    },
-    {
-     "umaban": 10,
-     "horse": "テーオーマルコーニ",
-     "p": 0.384,
-     "finish": 2,
-     "pop": 1
+     "pop": 2,
+     "odds": 3.8
     },
     {
      "umaban": 12,
      "horse": "メルカントゥール",
-     "p": 0.379,
+     "p": 0.415,
      "finish": 1,
-     "pop": 3
+     "pop": 3,
+     "odds": 4.0
+    },
+    {
+     "umaban": 6,
+     "horse": "ヤマニンブークリエ",
+     "p": 0.363,
+     "finish": 11,
+     "pop": 6,
+     "odds": 14.5
     }
    ],
    "result_top3": [
@@ -1107,22 +1230,25 @@
      "umaban": 12,
      "horse": "メルカントゥール",
      "pop": 3,
-     "ai_rank": 3
+     "odds": 4.0,
+     "ai_rank": 2
     },
     {
      "umaban": 10,
      "horse": "テーオーマルコーニ",
      "pop": 1,
-     "ai_rank": 2
+     "odds": 3.3,
+     "ai_rank": 5
     },
     {
      "umaban": 9,
      "horse": "レッドプロフェシー",
      "pop": 8,
-     "ai_rank": 7
+     "odds": 20.2,
+     "ai_rank": 6
     }
    ],
-   "ai_hits": 2,
+   "ai_hits": 1,
    "pop_hits": 2
   },
   {
@@ -1136,23 +1262,26 @@
     {
      "umaban": 10,
      "horse": "ロールザダイス",
-     "p": 0.445,
+     "p": 0.529,
      "finish": 5,
-     "pop": 1
+     "pop": 1,
+     "odds": 2.8
     },
     {
-     "umaban": 7,
-     "horse": "ホウオウタイタン",
-     "p": 0.355,
-     "finish": 2,
-     "pop": 5
+     "umaban": 6,
+     "horse": "バルティカ",
+     "p": 0.423,
+     "finish": 1,
+     "pop": 2,
+     "odds": 5.0
     },
     {
-     "umaban": 11,
-     "horse": "オメガインペリアル",
-     "p": 0.329,
-     "finish": 4,
-     "pop": 7
+     "umaban": 8,
+     "horse": "メイショウアイル",
+     "p": 0.385,
+     "finish": 3,
+     "pop": 8,
+     "odds": 18.6
     }
    ],
    "result_top3": [
@@ -1160,24 +1289,26 @@
      "umaban": 6,
      "horse": "バルティカ",
      "pop": 2,
-     "ai_rank": 4
+     "odds": 5.0,
+     "ai_rank": 2
     },
     {
      "umaban": 7,
      "horse": "ホウオウタイタン",
      "pop": 5,
-     "ai_rank": 2
+     "odds": 8.1,
+     "ai_rank": 7
     },
     {
      "umaban": 8,
      "horse": "メイショウアイル",
      "pop": 8,
-     "ai_rank": 7
+     "odds": 18.6,
+     "ai_rank": 3
     }
    ],
-   "ai_hits": 1,
+   "ai_hits": 2,
    "pop_hits": 1
   }
- ],
- "note": "最初の版は障害2レースを含めて計算した。上位3頭・1位の数字は障害を除いて計算し直した（logloss・AUC は障害2レース込みの値）"
+ ]
 }
