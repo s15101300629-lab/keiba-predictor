@@ -1,0 +1,716 @@
+{
+ "note": "印から作る買い目。1点100円、確定の払戻。見込みはハービルの式の確率の合計",
+ "years": {
+  "2024": {
+   "races": 3340,
+   "rules": {
+    "合わせた勝率｜印": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.4865,
+      "roi": 0.8059,
+      "expected_hit": 0.7253
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.262,
+      "roi": 0.8266,
+      "expected_hit": 0.2817
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.129,
+      "roi": 0.8584,
+      "expected_hit": 0.1334
+     },
+     "3連複": {
+      "points_per_race": 8.37,
+      "hit_rate": 0.3051,
+      "roi": 0.8484,
+      "expected_hit": 0.3673
+     },
+     "3連単": {
+      "points_per_race": 9.37,
+      "hit_rate": 0.0964,
+      "roi": 0.7712,
+      "expected_hit": 0.103
+     }
+    },
+    "合わせた勝率｜確率上位（印）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5787,
+      "roi": 0.8123,
+      "expected_hit": 0.9944
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3548,
+      "roi": 0.8025,
+      "expected_hit": 0.4005
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1763,
+      "roi": 0.81,
+      "expected_hit": 0.1986
+     },
+     "3連複": {
+      "points_per_race": 8.37,
+      "hit_rate": 0.3716,
+      "roi": 0.8288,
+      "expected_hit": 0.4555
+     },
+     "3連単": {
+      "points_per_race": 9.37,
+      "hit_rate": 0.1488,
+      "roi": 0.7276,
+      "expected_hit": 0.21
+     }
+    },
+    "合わせた勝率｜確率上位（全馬）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5868,
+      "roi": 0.8214,
+      "expected_hit": 1.016
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3608,
+      "roi": 0.7972,
+      "expected_hit": 0.4103
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1769,
+      "roi": 0.8065,
+      "expected_hit": 0.2008
+     },
+     "3連複": {
+      "points_per_race": 8.37,
+      "hit_rate": 0.3982,
+      "roi": 0.8088,
+      "expected_hit": 0.5129
+     },
+     "3連単": {
+      "points_per_race": 9.37,
+      "hit_rate": 0.1524,
+      "roi": 0.7204,
+      "expected_hit": 0.2197
+     }
+    },
+    "合わせた勝率｜確率上位 3点": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5787,
+      "roi": 0.8123,
+      "expected_hit": 0.9944
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3548,
+      "roi": 0.8025,
+      "expected_hit": 0.4005
+     },
+     "馬単": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.2368,
+      "roi": 0.7864,
+      "expected_hit": 0.2637
+     }
+    },
+    "合わせた勝率｜確率上位 5点": {
+     "3連複": {
+      "points_per_race": 5.0,
+      "hit_rate": 0.2922,
+      "roi": 0.8338,
+      "expected_hit": 0.3768
+     }
+    },
+    "合わせた勝率｜確率上位 6点": {
+     "3連単": {
+      "points_per_race": 6.0,
+      "hit_rate": 0.1066,
+      "roi": 0.6765,
+      "expected_hit": 0.1599
+     }
+    },
+    "AIの勝率｜確率上位（印）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5284,
+      "roi": 0.8244,
+      "expected_hit": 0.7983
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3129,
+      "roi": 0.8245,
+      "expected_hit": 0.3131
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1431,
+      "roi": 0.7938,
+      "expected_hit": 0.1457
+     },
+     "3連複": {
+      "points_per_race": 8.37,
+      "hit_rate": 0.3386,
+      "roi": 0.8135,
+      "expected_hit": 0.3696
+     },
+     "3連単": {
+      "points_per_race": 9.37,
+      "hit_rate": 0.118,
+      "roi": 0.7415,
+      "expected_hit": 0.1455
+     }
+    },
+    "AIの勝率｜確率上位（全馬）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5278,
+      "roi": 0.8174,
+      "expected_hit": 0.7989
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.312,
+      "roi": 0.8195,
+      "expected_hit": 0.3134
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1431,
+      "roi": 0.7938,
+      "expected_hit": 0.1457
+     },
+     "3連複": {
+      "points_per_race": 8.37,
+      "hit_rate": 0.341,
+      "roi": 0.8139,
+      "expected_hit": 0.3838
+     },
+     "3連単": {
+      "points_per_race": 9.37,
+      "hit_rate": 0.1162,
+      "roi": 0.7332,
+      "expected_hit": 0.146
+     }
+    },
+    "AIの勝率｜確率上位 3点": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5284,
+      "roi": 0.8244,
+      "expected_hit": 0.7983
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3129,
+      "roi": 0.8245,
+      "expected_hit": 0.3131
+     },
+     "馬単": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.1958,
+      "roi": 0.7798,
+      "expected_hit": 0.1968
+     }
+    },
+    "AIの勝率｜確率上位 5点": {
+     "3連複": {
+      "points_per_race": 5.0,
+      "hit_rate": 0.2563,
+      "roi": 0.8219,
+      "expected_hit": 0.29
+     }
+    },
+    "AIの勝率｜確率上位 6点": {
+     "3連単": {
+      "points_per_race": 6.0,
+      "hit_rate": 0.0823,
+      "roi": 0.7234,
+      "expected_hit": 0.1081
+     }
+    }
+   }
+  },
+  "2025": {
+   "races": 3352,
+   "rules": {
+    "合わせた勝率｜印": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5266,
+      "roi": 0.8062,
+      "expected_hit": 0.8624
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.2971,
+      "roi": 0.7647,
+      "expected_hit": 0.3371
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1396,
+      "roi": 0.7635,
+      "expected_hit": 0.1521
+     },
+     "3連複": {
+      "points_per_race": 8.36,
+      "hit_rate": 0.3109,
+      "roi": 0.7708,
+      "expected_hit": 0.3875
+     },
+     "3連単": {
+      "points_per_race": 9.36,
+      "hit_rate": 0.1065,
+      "roi": 0.7709,
+      "expected_hit": 0.1157
+     }
+    },
+    "合わせた勝率｜確率上位（印）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5713,
+      "roi": 0.8128,
+      "expected_hit": 0.9975
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3443,
+      "roi": 0.7884,
+      "expected_hit": 0.4025
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.173,
+      "roi": 0.8036,
+      "expected_hit": 0.2018
+     },
+     "3連複": {
+      "points_per_race": 8.36,
+      "hit_rate": 0.3496,
+      "roi": 0.7752,
+      "expected_hit": 0.4519
+     },
+     "3連単": {
+      "points_per_race": 9.36,
+      "hit_rate": 0.1498,
+      "roi": 0.7133,
+      "expected_hit": 0.2108
+     }
+    },
+    "合わせた勝率｜確率上位（全馬）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5767,
+      "roi": 0.8089,
+      "expected_hit": 1.0188
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3514,
+      "roi": 0.79,
+      "expected_hit": 0.4121
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1751,
+      "roi": 0.8071,
+      "expected_hit": 0.2039
+     },
+     "3連複": {
+      "points_per_race": 8.36,
+      "hit_rate": 0.3756,
+      "roi": 0.7586,
+      "expected_hit": 0.5122
+     },
+     "3連単": {
+      "points_per_race": 9.36,
+      "hit_rate": 0.1513,
+      "roi": 0.697,
+      "expected_hit": 0.2212
+     }
+    },
+    "合わせた勝率｜確率上位 3点": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5713,
+      "roi": 0.8128,
+      "expected_hit": 0.9975
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3443,
+      "roi": 0.7884,
+      "expected_hit": 0.4025
+     },
+     "馬単": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.2324,
+      "roi": 0.7956,
+      "expected_hit": 0.2667
+     }
+    },
+    "合わせた勝率｜確率上位 5点": {
+     "3連複": {
+      "points_per_race": 5.0,
+      "hit_rate": 0.2807,
+      "roi": 0.8128,
+      "expected_hit": 0.3749
+     }
+    },
+    "合わせた勝率｜確率上位 6点": {
+     "3連単": {
+      "points_per_race": 6.0,
+      "hit_rate": 0.1119,
+      "roi": 0.7009,
+      "expected_hit": 0.1619
+     }
+    },
+    "AIの勝率｜確率上位（印）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5257,
+      "roi": 0.8074,
+      "expected_hit": 0.8234
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3073,
+      "roi": 0.7736,
+      "expected_hit": 0.3244
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1462,
+      "roi": 0.767,
+      "expected_hit": 0.1531
+     },
+     "3連複": {
+      "points_per_race": 8.36,
+      "hit_rate": 0.3243,
+      "roi": 0.7669,
+      "expected_hit": 0.3838
+     },
+     "3連単": {
+      "points_per_race": 9.36,
+      "hit_rate": 0.1259,
+      "roi": 0.7797,
+      "expected_hit": 0.1534
+     }
+    },
+    "AIの勝率｜確率上位（全馬）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5245,
+      "roi": 0.8044,
+      "expected_hit": 0.8241
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3058,
+      "roi": 0.762,
+      "expected_hit": 0.3247
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1462,
+      "roi": 0.767,
+      "expected_hit": 0.1531
+     },
+     "3連複": {
+      "points_per_race": 8.36,
+      "hit_rate": 0.3344,
+      "roi": 0.8012,
+      "expected_hit": 0.399
+     },
+     "3連単": {
+      "points_per_race": 9.36,
+      "hit_rate": 0.1265,
+      "roi": 0.771,
+      "expected_hit": 0.154
+     }
+    },
+    "AIの勝率｜確率上位 3点": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5257,
+      "roi": 0.8074,
+      "expected_hit": 0.8234
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3073,
+      "roi": 0.7736,
+      "expected_hit": 0.3244
+     },
+     "馬単": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.1921,
+      "roi": 0.7267,
+      "expected_hit": 0.2054
+     }
+    },
+    "AIの勝率｜確率上位 5点": {
+     "3連複": {
+      "points_per_race": 5.0,
+      "hit_rate": 0.2467,
+      "roi": 0.7684,
+      "expected_hit": 0.3034
+     }
+    },
+    "AIの勝率｜確率上位 6点": {
+     "3連単": {
+      "points_per_race": 6.0,
+      "hit_rate": 0.0919,
+      "roi": 0.7105,
+      "expected_hit": 0.1151
+     }
+    }
+   }
+  },
+  "2026": {
+   "races": 3022,
+   "rules": {
+    "合わせた勝率｜印": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.4904,
+      "roi": 0.783,
+      "expected_hit": 0.7373
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.2581,
+      "roi": 0.7638,
+      "expected_hit": 0.2872
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1228,
+      "roi": 0.6846,
+      "expected_hit": 0.1346
+     },
+     "3連複": {
+      "points_per_race": 8.35,
+      "hit_rate": 0.322,
+      "roi": 0.7826,
+      "expected_hit": 0.3682
+     },
+     "3連単": {
+      "points_per_race": 9.35,
+      "hit_rate": 0.0976,
+      "roi": 0.645,
+      "expected_hit": 0.1036
+     }
+    },
+    "合わせた勝率｜確率上位（印）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5688,
+      "roi": 0.7893,
+      "expected_hit": 0.9762
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3398,
+      "roi": 0.7604,
+      "expected_hit": 0.3939
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1674,
+      "roi": 0.7288,
+      "expected_hit": 0.196
+     },
+     "3連複": {
+      "points_per_race": 8.35,
+      "hit_rate": 0.37,
+      "roi": 0.7799,
+      "expected_hit": 0.4466
+     },
+     "3連単": {
+      "points_per_race": 9.35,
+      "hit_rate": 0.1565,
+      "roi": 0.7313,
+      "expected_hit": 0.2038
+     }
+    },
+    "合わせた勝率｜確率上位（全馬）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5821,
+      "roi": 0.8053,
+      "expected_hit": 0.9906
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3461,
+      "roi": 0.7679,
+      "expected_hit": 0.4005
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1691,
+      "roi": 0.7335,
+      "expected_hit": 0.1974
+     },
+     "3連複": {
+      "points_per_race": 8.35,
+      "hit_rate": 0.3862,
+      "roi": 0.7829,
+      "expected_hit": 0.497
+     },
+     "3連単": {
+      "points_per_race": 9.35,
+      "hit_rate": 0.1575,
+      "roi": 0.7068,
+      "expected_hit": 0.2109
+     }
+    },
+    "合わせた勝率｜確率上位 3点": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5688,
+      "roi": 0.7893,
+      "expected_hit": 0.9762
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3398,
+      "roi": 0.7604,
+      "expected_hit": 0.3939
+     },
+     "馬単": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.228,
+      "roi": 0.7487,
+      "expected_hit": 0.2597
+     }
+    },
+    "合わせた勝率｜確率上位 5点": {
+     "3連複": {
+      "points_per_race": 5.0,
+      "hit_rate": 0.2879,
+      "roi": 0.7821,
+      "expected_hit": 0.3678
+     }
+    },
+    "合わせた勝率｜確率上位 6点": {
+     "3連単": {
+      "points_per_race": 6.0,
+      "hit_rate": 0.1158,
+      "roi": 0.7269,
+      "expected_hit": 0.1554
+     }
+    },
+    "AIの勝率｜確率上位（印）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5281,
+      "roi": 0.7939,
+      "expected_hit": 0.8599
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3114,
+      "roi": 0.7796,
+      "expected_hit": 0.3404
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1423,
+      "roi": 0.7378,
+      "expected_hit": 0.1617
+     },
+     "3連複": {
+      "points_per_race": 8.35,
+      "hit_rate": 0.3422,
+      "roi": 0.7595,
+      "expected_hit": 0.4034
+     },
+     "3連単": {
+      "points_per_race": 9.35,
+      "hit_rate": 0.1337,
+      "roi": 0.6533,
+      "expected_hit": 0.164
+     }
+    },
+    "AIの勝率｜確率上位（全馬）": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5278,
+      "roi": 0.7949,
+      "expected_hit": 0.8603
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3114,
+      "roi": 0.7782,
+      "expected_hit": 0.3406
+     },
+     "馬単": {
+      "points_per_race": 2.0,
+      "hit_rate": 0.1423,
+      "roi": 0.7378,
+      "expected_hit": 0.1617
+     },
+     "3連複": {
+      "points_per_race": 8.35,
+      "hit_rate": 0.3392,
+      "roi": 0.7395,
+      "expected_hit": 0.418
+     },
+     "3連単": {
+      "points_per_race": 9.35,
+      "hit_rate": 0.134,
+      "roi": 0.6642,
+      "expected_hit": 0.1645
+     }
+    },
+    "AIの勝率｜確率上位 3点": {
+     "ワイド": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.5281,
+      "roi": 0.7939,
+      "expected_hit": 0.8599
+     },
+     "馬連": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.3114,
+      "roi": 0.7796,
+      "expected_hit": 0.3404
+     },
+     "馬単": {
+      "points_per_race": 3.0,
+      "hit_rate": 0.1982,
+      "roi": 0.7298,
+      "expected_hit": 0.2168
+     }
+    },
+    "AIの勝率｜確率上位 5点": {
+     "3連複": {
+      "points_per_race": 5.0,
+      "hit_rate": 0.2601,
+      "roi": 0.744,
+      "expected_hit": 0.3203
+     }
+    },
+    "AIの勝率｜確率上位 6点": {
+     "3連単": {
+      "points_per_race": 6.0,
+      "hit_rate": 0.0976,
+      "roi": 0.6552,
+      "expected_hit": 0.1231
+     }
+    }
+   }
+  }
+ }
+}
