@@ -708,3 +708,12 @@ footer span { letter-spacing:0; }
 .factor-horse { flex: 1 1 0; display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; margin-right: 8px; }
 .factor-horse .rank-label { min-width: 0; overflow: hidden; white-space: nowrap; }
 .factor-list .rank-bar { flex: 0 0 52%; }
+
+/* 観点の点（AIスコアの内訳）：真ん中が0点、プラスは右・マイナスは左 */
+.pts-fill { position: absolute; top: 0; bottom: 0; border-radius: 999px; }
+.pts-fill.plus { background: #e0473c; }
+.pts-fill.minus { background: #4a7fd6; }
+.ai-ranks .rank-bar b.pts { flex: 0 0 40px; font-size: 15px; }
+.ai-ranks .rank-bar b.pts.plus { color: #e0473c; }
+.ai-ranks .rank-bar b.pts.minus { color: #6a9cf0; }
+.points-total { margin: 4px 0 8px; font-size: 13px; opacity: 0.85; }

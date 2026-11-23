@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
-import { JRA_BABA_PAGES, parseJraBaba } from "@/app/lib/jraBaba";
+import { fetchJraBaba } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
 import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
 import { treeShap } from "@/app/lib/ml/shap";
-import { groupShap } from "@/app/lib/ml/shapGroups";
+import { groupPoints, scorePoints } from "@/app/lib/ml/shapGroups";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionRecord,
   type StackModel, type StallionRaw, type StallionRecord,
@@ -200,7 +200,7 @@ type RaceConditions = {
   courseLetter: string | null;
   weather: string | null;
   weatherForecast: boolean; // netkeiba の天候が「予報」（まだ発表前）
-  conditionSource?: string; // 天候・馬場を JRA の馬場情報から取ったとき「JRA（11月21日（土曜）10時現在）」など
+  conditionSource?: string; // 天候・馬場を JRA の馬場情報から取ったとき「JRA（11月23日 9:20 取得）」など
   going: string | null;
   fieldStatus: Record<string, string>;
 };
@@ -817,9 +817,8 @@ export async function GET(
     }
 
     const raceConditions = extractRaceConditions(race.html, raceId);
-    // 天候・馬場は JRA の馬場情報ページ（同じ競馬場・同じ開催日のもの）から取る。当日は9時ごろ、前日は正午ごろに更新される（10分ためる）
-    const jraPages = await Promise.all(JRA_BABA_PAGES.map((url) => fetchHtml(url, 600, forceRefresh)
-      .then((page) => (page.ok ? parseJraBaba(page.html) : null)).catch(() => null)));
+    // 天候・馬場は JRA の馬場情報（同じ競馬場・同じ開催日のもの）から取る（app/lib/jraBaba.ts。10分ためる）
+    const jraPages = await fetchJraBaba(forceRefresh).catch(() => []);
     const jra = jraPages.find((b) => b && raceConditions.venue && b.venue === raceConditions.venue && b.date === raceConditions.date) ?? null;
     const jraGoing = jra ? (raceConditions.surface === "ダート" ? jra.dirt : jra.turf) : null;
     // netkeiba の天候・馬場は使わない（依頼者の指示、2026-11-21）。JRA に同じ日のページがなければ未発表
@@ -1038,6 +1037,9 @@ export async function GET(
       const baseWinProbs = rows.map((row) => ml.winModel ? predictProbability(ml.winModel, row.features) : null); // AI印の◎・▲（そろえる前の勝率）
       const winProbs = rows.map((_, i) => baseWinProbs[i] != null ? Math.min(baseWinProbs[i]!, top2Probs[i] ?? probs[i]) : null);
       const order = activeIdx.map((i) => ({ p: probs[i], i })).sort((a, b) => b.p - a.p);
+      // 各観点：SHAP の寄与を AIスコアの点に直す（内訳の合計 ＝ AIスコア − 50。app/lib/ml/shapGroups.ts の scorePoints）
+      const phis = activeIdx.map((i) => treeShap(ml.model, rows[i].features));
+      const pointsByIdx = new Map(scorePoints(phis, activeIdx.map((i) => probs[i])).map((pts, k) => [activeIdx[k], { phi: phis[k], pts }]));
       const longshotReady = !!ml.longshotFeatures && ml.model.features.every((name, k) => ml.longshotFeatures![k] === name);
       order.forEach(({ i }, rank) => {
         const f = rows[i].features;
@@ -1067,10 +1069,10 @@ export async function GET(
           lapType: lapType((results[i] as { performances?: { values: Record<string, string> }[] }).performances ?? [], raceConditions.date!),
           // 本体モデルの入力（model.json の features の並び）。人気薄専用の2段目（☆）に使う
           inputRow: ml.model.features.map((name) => { const v = f[name]; return v == null || Number.isNaN(v) ? null : v; }),
-          // 各観点：SHAP の寄与（log-odds）を観点ごとに足したもの。項目の値も付ける
-          shapGroups: groupShap(ml.model.features, treeShap(ml.model, f)).map((g) => ({
-            group: g.group, phi: g.phi,
-            top: g.top.map((t) => ({ name: t.name, phi: t.phi, value: num(f[t.name] ?? NaN) })),
+          // 各観点：SHAP の寄与（log-odds）と AIスコアの点を観点ごとに足したもの。項目の値も付ける
+          shapGroups: groupPoints(ml.model.features, pointsByIdx.get(i)!.phi, pointsByIdx.get(i)!.pts).map((g) => ({
+            group: g.group, phi: g.phi, points: g.points,
+            top: g.top.map((t) => ({ name: t.name, phi: t.phi, points: t.points, value: num(f[t.name] ?? NaN) })),
           })),
         };
       });

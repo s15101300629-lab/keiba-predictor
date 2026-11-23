@@ -120,3 +120,51 @@ export function groupShap(features: string[], phi: number[]): GroupContribution[
   for (const c of out.values()) c.top = c.top.sort((a, b) => Math.abs(b.phi) - Math.abs(a.phi)).slice(0, 3);
   return SHAP_GROUPS.filter((g) => out.has(g)).map((g) => out.get(g)!);
 }
+
+/**
+ * SHAP の寄与（log-odds）を、AIスコア（3着以内確率の出走馬の中での偏差値）の「点」に直す。
+ * 内訳を全部足すと、AIスコア − 50 にぴったり一致する（確率の pt を足すのとは違い、近似ではない）。
+ *   AIスコア − 50 = 10 × (p_i − 平均) ÷ 標準偏差、p_i − 平均 = Σ_j (p_i − p_j) ÷ 頭数
+ *   2頭の確率の差 p_i − p_j = s_ij × (L_i − L_j)。s_ij はその2頭の間の傾き（確率の差 ÷ log-odds の差。同じなら p(1−p)）
+ *   L_i − L_j = Σ_項目 (φ_ik − φ_jk)（合計3にそろえる補正は全馬同じなので消える）
+ *   → 項目 k の点 = 10 ÷ (頭数 × 標準偏差) × Σ_j s_ij × (φ_ik − φ_jk)
+ * phis：出走馬ごとの SHAP（features と同じ並び）、probs：画面に出す3着以内確率（同じ馬の並び）.
+ */
+export function scorePoints(phis: number[][], probs: number[]): number[][] {
+  const n = probs.length;
+  const mean = probs.reduce((a, x) => a + x, 0) / (n || 1);
+  const sd = Math.sqrt(probs.reduce((a, x) => a + (x - mean) * (x - mean), 0) / (n || 1));
+  const m = phis[0]?.length ?? 0;
+  const out = probs.map(() => new Array<number>(m).fill(0));
+  if (!(sd > 0)) return out;
+  const L = probs.map((p) => Math.log(p / (1 - p)));
+  const scale = 10 / (n * sd);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      const dl = L[i] - L[j];
+      const s = Math.abs(dl) < 1e-12 ? probs[i] * (1 - probs[i]) : (probs[i] - probs[j]) / dl;
+      for (let k = 0; k < m; k++) out[i][k] += s * (phis[i][k] - phis[j][k]);
+    }
+    for (let k = 0; k < m; k++) out[i][k] *= scale;
+  }
+  return out;
+}
+
+export type GroupPoints = { group: ShapGroup; phi: number; points: number; top: { name: string; phi: number; points: number }[] };
+
+/** 1頭の SHAP と点を観点ごとに足す。top は観点の中で点の絶対値が大きい項目3つ. */
+export function groupPoints(features: string[], phi: number[], points: number[]): GroupPoints[] {
+  const out = new Map<ShapGroup, GroupPoints>();
+  features.forEach((name, k) => {
+    const g = shapGroupOf(name);
+    if (!g) return;
+    const c = out.get(g) ?? { group: g, phi: 0, points: 0, top: [] };
+    c.phi += phi[k];
+    c.points += points[k];
+    c.top.push({ name, phi: phi[k], points: points[k] });
+    out.set(g, c);
+  });
+  for (const c of out.values()) c.top = c.top.sort((a, b) => Math.abs(b.points) - Math.abs(a.points)).slice(0, 3);
+  return SHAP_GROUPS.filter((g) => out.has(g)).map((g) => out.get(g)!);
+}

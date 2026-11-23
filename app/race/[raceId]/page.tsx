@@ -73,7 +73,8 @@ type Prediction = {
   probability: number; baseProbability: number; pedigreeIncluded: boolean;
   winProbability?: number | null; top2Probability?: number | null; baseWinProbability?: number | null;
   inputRow?: (number | null)[]; // 人気薄専用の2段目（☆）の入力
-  shapGroups?: { group: string; phi: number; top: { name: string; phi: number; value: number | null }[] }[]; // 各観点（SHAP）
+  // 各観点（SHAP）。points：AIスコアの点（全観点を足すと AIスコア − 50。app/lib/ml/shapGroups.ts の scorePoints）
+  shapGroups?: { group: string; phi: number; points?: number; top: { name: string; phi: number; points?: number; value: number | null }[] }[];
   rank: number; modelFormDeviation: number | null; priorRuns: number; overseasRuns?: number; training?: { rank: string | null; critic: string | null } | null;
   heavyNote: {
     applied: boolean; show: boolean; label: string | null; ratio: number;
@@ -115,7 +116,7 @@ type OddsData = { ok: boolean; fetchedAt: string; officialTime: string | null; e
   win: OddsMap; place: OddsMap; umaren: OddsMap; wide: OddsMap; trio: OddsMap; trifecta: OddsMap };
 type HorseOdds = { win: number | null; place: { min: number; max: number | null } | null; popularity: number | null };
 type FactorScore = { label: string; score: number; starts: number; rate: number; rank: number; rankedCount: number };
-type CategoryRank = { label: string; rank: number | null; total: number; detail: string; score?: number; type?: string | null };
+type CategoryRank = { label: string; rank: number | null; total: number; detail: string; score?: number; points?: number; type?: string | null };
 
 // 型の名前は脚質だけ出す。ラップタイプは、200m ごとの個別のラップがないと加速型と持続型を分けられないので名前は出さず、
 // 観点の中身に終いの加速の数字だけ出す（依頼者の判断、2026-11-22）
@@ -559,6 +560,23 @@ function scoreDeviations(horses: Horse[]): Map<string, number> {
 /** 偏差値をバーの長さ（%）に：20→0%、80→100%（平均50は真ん中） */
 const scoreBar = (score: number) => Math.max(0, Math.min(100, (score - 20) / 60 * 100));
 
+const round1 = (x: number) => Math.round(x * 10) / 10;
+const signedPoints = (x: number) => (round1(x) >= 0 ? "+" : "−") + Math.abs(round1(x)).toFixed(1) + "点";
+const POINTS_FULL = 10; // バーの端＝±10点
+
+/** 観点の点のバー：真ん中（0点）から、プラスは右・マイナスは左に伸ばす。端は ±10点 */
+function PointsBar({ points, label }: { points: number; label: string }) {
+  const w = Math.min(50, Math.abs(points) / POINTS_FULL * 50);
+  return <span className="rank-bar" role="img" aria-label={`${label} ${signedPoints(points)}`}>
+    <b className={"pts " + (round1(points) > 0 ? "plus" : round1(points) < 0 ? "minus" : "")}>{(round1(points) >= 0 ? "+" : "−") + Math.abs(round1(points)).toFixed(1)}</b>
+    <span className="rank-track">
+      <span className={"pts-fill " + (points >= 0 ? "plus" : "minus")} style={{ left: (points >= 0 ? 50 : 50 - w) + "%", width: w + "%" }} />
+      {[25, 75].map((v) => <span key={v} className="rank-grid" style={{ left: v + "%" }} />)}
+      <span className="rank-avg" style={{ left: "50%" }} />
+    </span>
+  </span>;
+}
+
 function probabilityTier(rank: number | undefined) {
   if (rank === undefined) return "";
   return rank <= 3 ? " tier-top" : rank <= 6 ? " tier-mid" : "";
@@ -625,24 +643,32 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
         ⚠ 道悪（重・不良）未経験・血統は道悪{heavy.label}（血統の道悪倍率 {heavy.ratio.toFixed(2)}倍）。血統の道悪適性は、AIスコアにすでに含めて計算している。
       </p>}
       <section className="ai-ranks">
-        <h4>各観点の偏差値</h4>
+        <h4>各観点の点（AIスコアの内訳）</h4>
+        {score !== null && (() => {
+          const shown = categories.filter((c) => !missing.includes(c.label) && c.points != null);
+          const total = round1(score - 50);
+          const sum = shown.reduce((a, c) => a + round1(c.points!), 0);
+          return <p className="points-total">AIスコア {round1(score).toFixed(1)} ＝ 50 {total >= 0 ? "＋" : "−"} {Math.abs(total).toFixed(1)}（下の観点の点と「その他」の合計。その他 {signedPoints(total - sum)}）</p>;
+        })()}
         {categories.filter((c) => !missing.includes(c.label)).map((c) => {
           const top = c.rank !== null && c.rank <= 3 && c.total >= 4;
           return <details key={c.label} className={top ? "top" : ""}>
             <summary><span className="rank-label">{c.label}<small>{[c.type, c.rank !== null ? `${c.rank}位/${c.total}頭` : ""].filter(Boolean).join("・")}</small></span>
-              {c.score != null ? <span className="rank-bar" role="img" aria-label={`${c.label} 偏差値 ${Math.round(c.score)}`}>
-                <b>{Math.round(c.score)}</b>
-                <span className="rank-track">
-                  <span className="rank-fill" style={{ width: scoreBar(c.score) + "%" }} />
-                  {[30, 40, 60, 70].map((v) => <span key={v} className="rank-grid" style={{ left: scoreBar(v) + "%" }} />)}
-                  <span className="rank-avg" style={{ left: scoreBar(50) + "%" }} />
-                </span>
-              </span> : <span>{c.rank !== null ? <><b>{c.rank}</b>位<small>/{c.total}頭</small></> : <small>-</small>}</span>}</summary>
+              {c.points != null ? <PointsBar points={c.points} label={c.label} />
+                : <span>{c.rank !== null ? <><b>{c.rank}</b>位<small>/{c.total}頭</small></> : <small>-</small>}</span>}</summary>
             {c.detail && <p>{c.detail}</p>}
           </details>;
         })}
+        {score !== null && (() => {
+          const shown = categories.filter((c) => !missing.includes(c.label) && c.points != null);
+          const other = round1(score - 50) - shown.reduce((a, c) => a + round1(c.points!), 0);
+          return <details className="other">
+            <summary><span className="rank-label">その他<small>レース条件など</small></span><PointsBar points={other} label="その他" /></summary>
+            <p>レース条件（距離・頭数・1着賞金など、出走馬の全員で同じ値の項目）が、ほかの項目との組み合わせで馬ごとに少しずつ違う点を付けた分と、表示の四捨五入のずれ。観点の点と足すと AIスコアに一致する。</p>
+          </details>;
+        })()}
         {missing.length > 0 && <p className="missing-note">データなし：{missing.join("・")}</p>}
-        <p className="ai-ranks-note">観点の数字＝AIの182項目を観点ごとにまとめ、その観点がAIスコアをどれだけ押し上げたか（SHAP）を、出走馬の中の偏差値（平均50）にしたもの。順位も同じ順。押すと、確率への影響（pt）と主な項目が出る。</p>
+        <p className="ai-ranks-note">観点の点＝AIの項目を観点ごとにまとめ、その観点が AIスコアを何点上げたか・下げたか（SHAP を、出走馬1頭ずつとの確率の差に分けて偏差値の点に直したもの）。50 に全部の点を足すと AIスコアになる。順位は点の高い順。押すと主な項目（同じ点）が出る。</p>
       </section>
     </div>
   </details>;
@@ -654,8 +680,8 @@ function FactorView({ horses, categoryRanks, factor, onFactor }: {
 }) {
   const groups = SHAP_GROUPS.filter((g) => horses.some((h) => categoryRanks.get(h.horseId)?.some((c) => c.label === g)));
   const rows = horses.map((h) => ({ h, c: categoryRanks.get(h.horseId)?.find((c) => c.label === factor) }))
-    .filter((x): x is { h: Horse; c: CategoryRank } => !!x.c && x.c.score != null)
-    .sort((a, b) => b.c.score! - a.c.score!);
+    .filter((x): x is { h: Horse; c: CategoryRank } => !!x.c && x.c.points != null)
+    .sort((a, b) => b.c.points! - a.c.points!);
   return <section className="factor-view">
     <div className="factor-chips" role="group" aria-label="観点">
       {groups.map((g) => <button key={g} type="button" className={g === factor ? "active" : ""} onClick={() => onFactor(g)}>{g}</button>)}
@@ -666,20 +692,13 @@ function FactorView({ horses, categoryRanks, factor, onFactor }: {
           <summary>
             <span className="factor-horse"><HorseNumberBadge entry={h.raceEntry} /><span className="rank-label">{h.name}
               <small>{[c.type, `${c.rank}位/${c.total}頭`].filter(Boolean).join("・")}</small></span></span>
-            <span className="rank-bar" role="img" aria-label={`${h.name} ${factor} 偏差値 ${Math.round(c.score!)}`}>
-              <b>{Math.round(c.score!)}</b>
-              <span className="rank-track">
-                <span className="rank-fill" style={{ width: scoreBar(c.score!) + "%" }} />
-                {[30, 40, 60, 70].map((v) => <span key={v} className="rank-grid" style={{ left: scoreBar(v) + "%" }} />)}
-                <span className="rank-avg" style={{ left: scoreBar(50) + "%" }} />
-              </span>
-            </span>
+            <PointsBar points={c.points!} label={`${h.name} ${factor}`} />
           </summary>
           {c.detail && <p>{c.detail}</p>}
         </details>
       </li>)}
     </ul>
-    <p className="ai-ranks-note">観点の数字＝その観点がAIスコアをどれだけ押し上げたか（SHAP）の、出走馬の中の偏差値（平均50）。押すと中身が出る。
+    <p className="ai-ranks-note">観点の点＝その観点が AIスコアを何点上げたか・下げたか（全部の観点を足すと AIスコア − 50）。点の高い順。押すと中身が出る。
       上がり・ラップタイプの中身には、近5走の本物の上がり3F（netkeiba）から見た終いの加速の度合いを出す。</p>
   </section>;
 }
@@ -872,24 +891,18 @@ export default function RaceDetailPage() {
       条件適性: (p) => p.ability?.cond != null ? "能力指数に、今回の距離・競馬場・馬場での得意不得意を足した値 " + (p.ability.cond >= 0 ? "+" : "") + p.ability.cond.toFixed(2) : null,
     };
     const OLD: Record<string, string> = { 騎手: "騎手", 調子: "調子", 血統: "血統" };
-    const logit = (p: number) => Math.log(p / (1 - p));
-    const pt = (p: number, phi: number) => (p - 1 / (1 + Math.exp(-(logit(p) - phi)))) * 100; // その寄与がなかったときとの確率の差（pt）
-    const signed = (x: number) => (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(1) + "pt";
     const rows = horses.filter((h) => h.prediction?.shapGroups);
     const out = new Map<string, CategoryRank[]>();
     for (const g of SHAP_GROUPS.filter((x) => !HIDDEN_GROUPS.includes(x))) {
-      const vals = rows.map((h) => ({ h, c: h.prediction!.shapGroups!.find((x) => x.group === g) })).filter((x) => x.c);
+      const vals = rows.map((h) => ({ h, c: h.prediction!.shapGroups!.find((x) => x.group === g) }))
+        .filter((x): x is { h: Horse; c: NonNullable<typeof x.c> } => !!x.c && x.c.points != null);
       for (const { h, c } of vals) {
-        const p = h.prediction!.probability;
-        const items = c!.top.map((t) => `${featureLabel(t.name)}${t.value != null ? " " + (Math.abs(t.value) >= 100 ? Math.round(t.value) : Math.round(t.value * 100) / 100) : "（なし）"}（${signed(pt(p, t.phi))}）`);
-        const detail = [`3着以内確率への影響 ${signed(pt(p, c!.phi))}`, items.length ? "主な項目：" + items.join("、") : null,
+        // 観点の点：その観点が AIスコアを何点動かしたか（全観点を足すと AIスコア − 50）。主な項目も同じ点で出す
+        const items = c.top.map((t) => `${featureLabel(t.name)}${t.value != null ? " " + (Math.abs(t.value) >= 100 ? Math.round(t.value) : Math.round(t.value * 100) / 100) : "（なし）"}（${signedPoints(t.points ?? 0)}）`);
+        const detail = [`AIスコアへの影響 ${signedPoints(c.points!)}`, items.length ? "主な項目：" + items.join("、") : null,
           abilityText[g]?.(h.prediction!) ?? null, OLD[g] ? oldDetail(h.horseId, OLD[g]) : null].filter(Boolean).join(" / ");
         const list = out.get(h.horseId) ?? [];
-        // 観点の偏差値：その観点の寄与（SHAP）の、出走馬の中での偏差値（平均50・標準偏差10）
-        const mean = vals.reduce((a, x) => a + x.c!.phi, 0) / vals.length;
-        const sd = Math.sqrt(vals.reduce((a, x) => a + (x.c!.phi - mean) * (x.c!.phi - mean), 0) / vals.length);
-        const score = sd > 0 ? 50 + 10 * (c!.phi - mean) / sd : 50;
-        list.push({ label: g, rank: 1 + vals.filter((x) => x.c!.phi > c!.phi).length, total: vals.length, detail, score, type: typeOf(g, h.prediction!) });
+        list.push({ label: g, rank: 1 + vals.filter((x) => x.c.points! > c.points!).length, total: vals.length, detail, points: c.points, type: typeOf(g, h.prediction!) });
         out.set(h.horseId, list);
       }
     }
