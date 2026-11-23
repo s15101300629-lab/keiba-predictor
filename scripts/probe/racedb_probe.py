@@ -1,5 +1,5 @@
 """racedb.com の中身を確かめる（依頼者の案。このセッションからは接続できないので GitHub Actions で数ページだけ取る）.
-robots.txt・名前の一覧ページ・そこからたどれる馬のページとレースのページを1つずつ取り、文字だけにして data/ml/racedb_probe.txt に書く."""
+頭文字 O の一覧から Ombudsman の馬のページ、そこから最初のレースのページを取り、文字だけにして data/ml/racedb_probe.txt に書く."""
 import html, re, time, urllib.request
 from pathlib import Path
 UA = "keiba-predictor (personal research)"
@@ -15,20 +15,17 @@ def get(url):
     except Exception as e:
         return f"ERROR {e}"
 def text(s): return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", re.sub(r"<(script|style).*?</\1>", "", s, flags=re.S))))
+def absu(l): return l if l.startswith("http") else "https://racedb.com" + (l if l.startswith("/") else "/" + l)
 out = []
-for url in ["https://racedb.com/robots.txt", "https://racedb.com/name/index.html"]:
-    s = get(url); time.sleep(3)
-    out += [f"===== {url}", text(s)[:3000], "LINKS: " + " ".join(re.findall(r'href="([^"]+)"', s)[:120])]
-    if url.endswith("index.html"):
-        links = re.findall(r'href="([^"]+)"', s)
-        horse = next((l for l in links if re.search(r"horse|uma|/name/[^i]", l)), None)
-        if horse:
-            u = horse if horse.startswith("http") else "https://racedb.com" + ("" if horse.startswith("/") else "/name/") + horse
-            h = get(u); time.sleep(3)
-            out += [f"===== {u}", text(h)[:4000], "LINKS: " + " ".join(re.findall(r'href="([^"]+)"', h)[:120])]
-            race = next((l for l in re.findall(r'href="([^"]+)"', h) if re.search(r"race", l)), None)
-            if race:
-                u2 = race if race.startswith("http") else "https://racedb.com" + ("" if race.startswith("/") else "/") + race
-                r2 = get(u2)
-                out += [f"===== {u2}", text(r2)[:4000]]
+o = get("https://racedb.com/name/o.html"); time.sleep(3)
+m = re.search(r'href="([^"]+)"[^>]*>\s*Ombudsman', o)
+out.append("OMBUDSMAN LINK: " + (m.group(1) if m else "なし"))
+if m:
+    h = get(absu(m.group(1))); time.sleep(3)
+    out += ["===== " + absu(m.group(1)), text(h)[:6000], "LINKS: " + " ".join(re.findall(r'href="([^"]+)"', h)[:150])]
+    races = [l for l in re.findall(r'href="([^"]+)"', h) if not l.startswith(("http", "#", "/name", "/p/", "/a/")) or "/r" in l]
+    out.append("RACE LINK CANDIDATES: " + " ".join(races[:20]))
+    for l in races[:2]:
+        r = get(absu(l)); time.sleep(3)
+        out += ["===== " + absu(l), text(r)[:5000]]
 OUT.write_text("\n".join(out) + "\n", encoding="utf-8")

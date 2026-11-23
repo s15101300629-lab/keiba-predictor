@@ -1,3 +1,3 @@
 # 1行1コマンド。上から順に実行し、data/ml（と data/jra-results）の変化をコマンドごとに commit する
 # 2026-11-23：racedb.com の中身を確かめる（数ページだけ）
-python scripts/probe/racedb_probe.py
+python scripts/probe/racedb_probe.py  # 2回目：馬とレースのページ
