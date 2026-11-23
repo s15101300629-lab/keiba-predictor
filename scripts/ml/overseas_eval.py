@@ -36,7 +36,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TEST_YEARS = ["2021", "2022", "2023", "2024", "2025", "2026"]
 # 通貨 → 円（おおよその値。年による違いは見ない）
 FX = {"ポンド": 190.0, "ユーロ": 160.0, "ドル": 150.0, "オーストラリアドル": 100.0, "ニュージーランドドル": 88.0, "香港ドル": 19.0,
-      "ディルハム": 41.0, "リヤル": 40.0, "カナダドル": 108.0, "円": 1.0}
+      "ディルハム": 41.0, "リヤル": 40.0, "カナダドル": 108.0, "ウォン": 0.11, "円": 1.0}
 MAJOR = ["アイルランド", "イギリス", "フランス", "アメリカ", "アラブ首長国連邦", "オーストラリア", "ニュージーランド", "香港", "カナダ", "ドイツ", "サウジアラビア"]
 # netkeiba の開催（競馬場名）→ 国が主要国か。主要国の競馬場名の一部（racedb にない走の格を下げるかどうかにだけ使う）
 MAJOR_VENUES = ["アスコット", "ヨーク", "サンダウン", "ニューマーケット", "グッドウッド", "エプソム", "ドンカスター", "ヘイドック", "レスター", "ケンプトン",
@@ -64,18 +64,35 @@ def parse_margin(s: str) -> float | None:
     return None
 
 
+def jp_number(t: str) -> float | None:
+    """「737,260」「1億8,000万」「130万」→ 数."""
+    t = t.replace(",", "")
+    total = 0.0
+    m = re.fullmatch(r"(?:([\d\.]+)億)?(?:([\d\.]+)万)?([\d\.]+)?", t)
+    if not m or not any(m.groups()):
+        return None
+    if m.group(1):
+        total += float(m.group(1)) * 1e8
+    if m.group(2):
+        total += float(m.group(2)) * 1e4
+    if m.group(3):
+        total += float(m.group(3)) * (1e4 if (m.group(1) and not m.group(2)) else 1)
+    return total
+
+
 def parse_race(r: dict) -> dict | None:
     """racedb のレースのページ → 1着賞金（円）と、馬名（英語・カナ）ごとの着順・勝ち馬からの着差（馬身）・単勝倍率."""
     head = r.get("text") or r["head"]
     dm = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", head)
     date = f"{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else None
-    m = re.search(r"１着賞金\s*([\d,\.]+)\s*(万)?\s*([^\s\d,]+?)\s", head)
+    m = re.search(r"１着賞金\s*([\d,\.億万]+)\s*([^\s\d,\.億万][^\s]*)", head)
     prize = None
     if m:
-        cur = m.group(3)
-        rate = FX.get(cur) or next((v for k, v in FX.items() if cur.endswith(k)), None)
-        if rate:
-            prize = float(m.group(1).replace(",", "")) * (10000 if m.group(2) else 1) * rate
+        cur = m.group(2)
+        rate = FX.get(cur) or next((v for k, v in sorted(FX.items(), key=lambda kv: -len(kv[0])) if cur.startswith(k)), None)
+        amount = jp_number(m.group(1))
+        if rate and amount:
+            prize = amount * rate
     table = next((t for t in r["tables"] if t and any("着差" in c for c in t[0])), None)
     if not table:
         return {"date": date, "prize": prize, "horses": {}}
@@ -193,7 +210,7 @@ def main() -> None:
             x = racedb_for_run(hid, hist[hid].get("title", ""), run["date"], rdb, races)
             prize = run["prize"]
             if x and x.get("prize"):
-                prize = x["prize"] / 10000
+                prize = min(x["prize"] / 10000, 50000)  # JRA の一番高い1着賞金（ジャパンカップ・有馬記念）で頭打ち
             elif not any(m in v.get("開催", "") for m in MAJOR_VENUES):
                 # 主要国以外：格を1つ下げる
                 for pat, p in OVERSEAS_PRIZE:
