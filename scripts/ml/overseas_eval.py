@@ -66,7 +66,7 @@ def parse_margin(s: str) -> float | None:
 
 def parse_race(r: dict) -> dict | None:
     """racedb のレースのページ → 1着賞金（円）と、馬名（英語・カナ）ごとの着順・勝ち馬からの着差（馬身）・単勝倍率."""
-    head = r["head"]
+    head = r.get("text") or r["head"]
     dm = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", head)
     date = f"{dm.group(1)}-{int(dm.group(2)):02d}-{int(dm.group(3)):02d}" if dm else None
     m = re.search(r"１着賞金\s*([\d,\.]+)\s*(万)?\s*([^\s\d,]+?)\s", head)
@@ -99,7 +99,9 @@ def parse_race(r: dict) -> dict | None:
                 pass
         en = re.split(r"[（(]", name)[0].strip()
         kana = (re.search(r"[（(]([^）)]+)[）)]", name) or [None, ""])[1]
-        horses[norm(en)] = horses[norm(kana)] = {"finish": pos, "lengths": cum, "odds": odds}
+        x = {"finish": pos, "lengths": cum, "odds": odds}
+        for key in {norm(en), norm(kana)} - {""}:
+            horses[key] = x
     return {"date": date, "prize": prize, "horses": horses}
 
 
