@@ -1,0 +1,586 @@
+{
+ "note": "10番人気以下の3着以内。評価は10番人気以下の馬だけ。回収率は確定の複勝",
+ "years": {
+  "2024": {
+   "horses": 16014,
+   "top3": 700,
+   "base_rate": 0.0437,
+   "roi_all": 0.642,
+   "rounds": {
+    "6〜": 157,
+    "10〜": 109,
+    "10〜強め": 120
+   },
+   "models": {
+    "市場": {
+     "logloss": 0.16773,
+     "auc": 0.7168,
+     "mean_pred": 0.0471,
+     "best_per_race": {
+      "bets": 2979,
+      "hit_rate": 0.0769,
+      "roi": 0.701
+     },
+     "top5%": {
+      "bets": 801,
+      "hit_rate": 0.1323,
+      "roi": 0.8228
+     },
+     "top10%": {
+      "bets": 1602,
+      "hit_rate": 0.1155,
+      "roi": 0.8096
+     },
+     "top20%": {
+      "bets": 3203,
+      "hit_rate": 0.0968,
+      "roi": 0.7775
+     }
+    },
+    "6〜": {
+     "logloss": 0.16596,
+     "auc": 0.7252,
+     "mean_pred": 0.0429,
+     "best_per_race": {
+      "bets": 2979,
+      "hit_rate": 0.0782,
+      "roi": 0.7118
+     },
+     "top5%": {
+      "bets": 801,
+      "hit_rate": 0.1323,
+      "roi": 0.8618
+     },
+     "top10%": {
+      "bets": 1602,
+      "hit_rate": 0.1211,
+      "roi": 0.8936
+     },
+     "top20%": {
+      "bets": 3203,
+      "hit_rate": 0.103,
+      "roi": 0.8693
+     },
+     "ratio≥1.2": {
+      "bets": 1372,
+      "hit_rate": 0.0714,
+      "roi": 0.8526,
+      "roi_market_matched": 0.6954,
+      "roi_95": [
+       0.679,
+       1.034
+      ]
+     },
+     "ratio≥1.5": {
+      "bets": 86,
+      "hit_rate": 0.0349,
+      "roi": 0.5058,
+      "roi_market_matched": 0.6587,
+      "roi_95": [
+       0.0,
+       1.273
+      ]
+     },
+     "ratio≥2.0": {
+      "bets": 0
+     }
+    },
+    "10〜": {
+     "logloss": 0.16612,
+     "auc": 0.725,
+     "mean_pred": 0.0418,
+     "best_per_race": {
+      "bets": 2979,
+      "hit_rate": 0.0772,
+      "roi": 0.723
+     },
+     "top5%": {
+      "bets": 801,
+      "hit_rate": 0.1261,
+      "roi": 0.863
+     },
+     "top10%": {
+      "bets": 1602,
+      "hit_rate": 0.123,
+      "roi": 0.9443
+     },
+     "top20%": {
+      "bets": 3203,
+      "hit_rate": 0.1033,
+      "roi": 0.8915
+     },
+     "ratio≥1.2": {
+      "bets": 1566,
+      "hit_rate": 0.0696,
+      "roi": 0.8729,
+      "roi_market_matched": 0.6873,
+      "roi_95": [
+       0.696,
+       1.064
+      ]
+     },
+     "ratio≥1.5": {
+      "bets": 259,
+      "hit_rate": 0.0888,
+      "roi": 1.2436,
+      "roi_market_matched": 0.6763,
+      "roi_95": [
+       0.741,
+       1.809
+      ]
+     },
+     "ratio≥2.0": {
+      "bets": 8,
+      "hit_rate": 0.25,
+      "roi": 2.05,
+      "roi_market_matched": 0.6067,
+      "roi_95": [
+       0.0,
+       4.92
+      ]
+     }
+    },
+    "10〜強め": {
+     "logloss": 0.16605,
+     "auc": 0.7258,
+     "mean_pred": 0.0422,
+     "best_per_race": {
+      "bets": 2979,
+      "hit_rate": 0.0843,
+      "roi": 0.7767
+     },
+     "top5%": {
+      "bets": 801,
+      "hit_rate": 0.1298,
+      "roi": 0.8556
+     },
+     "top10%": {
+      "bets": 1602,
+      "hit_rate": 0.1186,
+      "roi": 0.8571
+     },
+     "top20%": {
+      "bets": 3203,
+      "hit_rate": 0.1024,
+      "roi": 0.8596
+     },
+     "ratio≥1.2": {
+      "bets": 1308,
+      "hit_rate": 0.0734,
+      "roi": 0.9605,
+      "roi_market_matched": 0.6721,
+      "roi_95": [
+       0.761,
+       1.169
+      ]
+     },
+     "ratio≥1.5": {
+      "bets": 108,
+      "hit_rate": 0.0741,
+      "roi": 0.8231,
+      "roi_market_matched": 0.6212,
+      "roi_95": [
+       0.273,
+       1.432
+      ]
+     },
+     "ratio≥2.0": {
+      "bets": 2,
+      "hit_rate": 0.0,
+      "roi": 0.0,
+      "roi_market_matched": 0.3213,
+      "roi_95": [
+       0.0,
+       0.0
+      ]
+     }
+    }
+   }
+  },
+  "2025": {
+   "horses": 16716,
+   "top3": 741,
+   "base_rate": 0.0443,
+   "roi_all": 0.582,
+   "rounds": {
+    "6〜": 215,
+    "10〜": 143,
+    "10〜強め": 135
+   },
+   "models": {
+    "市場": {
+     "logloss": 0.16758,
+     "auc": 0.7393,
+     "mean_pred": 0.0487,
+     "best_per_race": {
+      "bets": 2989,
+      "hit_rate": 0.082,
+      "roi": 0.6607
+     },
+     "top5%": {
+      "bets": 836,
+      "hit_rate": 0.1459,
+      "roi": 0.9249
+     },
+     "top10%": {
+      "bets": 1672,
+      "hit_rate": 0.1226,
+      "roi": 0.8378
+     },
+     "top20%": {
+      "bets": 3344,
+      "hit_rate": 0.1047,
+      "roi": 0.824
+     }
+    },
+    "6〜": {
+     "logloss": 0.16538,
+     "auc": 0.7414,
+     "mean_pred": 0.0438,
+     "best_per_race": {
+      "bets": 2989,
+      "hit_rate": 0.0833,
+      "roi": 0.7128
+     },
+     "top5%": {
+      "bets": 836,
+      "hit_rate": 0.1471,
+      "roi": 0.9447
+     },
+     "top10%": {
+      "bets": 1672,
+      "hit_rate": 0.1274,
+      "roi": 0.9076
+     },
+     "top20%": {
+      "bets": 3344,
+      "hit_rate": 0.1047,
+      "roi": 0.8509
+     },
+     "ratio≥1.2": {
+      "bets": 1527,
+      "hit_rate": 0.0786,
+      "roi": 0.8477,
+      "roi_market_matched": 0.6713,
+      "roi_95": [
+       0.69,
+       1.015
+      ]
+     },
+     "ratio≥1.5": {
+      "bets": 132,
+      "hit_rate": 0.0682,
+      "roi": 0.9561,
+      "roi_market_matched": 0.6603,
+      "roi_95": [
+       0.369,
+       1.589
+      ]
+     },
+     "ratio≥2.0": {
+      "bets": 0
+     }
+    },
+    "10〜": {
+     "logloss": 0.16569,
+     "auc": 0.7395,
+     "mean_pred": 0.0431,
+     "best_per_race": {
+      "bets": 2989,
+      "hit_rate": 0.081,
+      "roi": 0.703
+     },
+     "top5%": {
+      "bets": 836,
+      "hit_rate": 0.1352,
+      "roi": 0.9232
+     },
+     "top10%": {
+      "bets": 1672,
+      "hit_rate": 0.128,
+      "roi": 0.9319
+     },
+     "top20%": {
+      "bets": 3344,
+      "hit_rate": 0.1056,
+      "roi": 0.8758
+     },
+     "ratio≥1.2": {
+      "bets": 1800,
+      "hit_rate": 0.0739,
+      "roi": 0.8287,
+      "roi_market_matched": 0.6661,
+      "roi_95": [
+       0.682,
+       0.985
+      ]
+     },
+     "ratio≥1.5": {
+      "bets": 244,
+      "hit_rate": 0.0943,
+      "roi": 1.2418,
+      "roi_market_matched": 0.6585,
+      "roi_95": [
+       0.726,
+       1.896
+      ]
+     },
+     "ratio≥2.0": {
+      "bets": 7,
+      "hit_rate": 0.0,
+      "roi": 0.0,
+      "roi_market_matched": 0.6327,
+      "roi_95": [
+       0.0,
+       0.0
+      ]
+     }
+    },
+    "10〜強め": {
+     "logloss": 0.16573,
+     "auc": 0.7404,
+     "mean_pred": 0.0435,
+     "best_per_race": {
+      "bets": 2989,
+      "hit_rate": 0.081,
+      "roi": 0.6894
+     },
+     "top5%": {
+      "bets": 836,
+      "hit_rate": 0.1495,
+      "roi": 0.9711
+     },
+     "top10%": {
+      "bets": 1672,
+      "hit_rate": 0.1298,
+      "roi": 0.92
+     },
+     "top20%": {
+      "bets": 3344,
+      "hit_rate": 0.1056,
+      "roi": 0.8618
+     },
+     "ratio≥1.2": {
+      "bets": 1388,
+      "hit_rate": 0.0742,
+      "roi": 0.8986,
+      "roi_market_matched": 0.6643,
+      "roi_95": [
+       0.717,
+       1.11
+      ]
+     },
+     "ratio≥1.5": {
+      "bets": 63,
+      "hit_rate": 0.0794,
+      "roi": 1.1651,
+      "roi_market_matched": 0.6142,
+      "roi_95": [
+       0.298,
+       2.296
+      ]
+     },
+     "ratio≥2.0": {
+      "bets": 1,
+      "hit_rate": 0.0,
+      "roi": 0.0,
+      "roi_market_matched": 0.3231,
+      "roi_95": [
+       0.0,
+       0.0
+      ]
+     }
+    }
+   }
+  },
+  "2026": {
+   "horses": 14695,
+   "top3": 626,
+   "base_rate": 0.0426,
+   "roi_all": 0.5993,
+   "rounds": {
+    "6〜": 168,
+    "10〜": 159,
+    "10〜強め": 195
+   },
+   "models": {
+    "市場": {
+     "logloss": 0.16398,
+     "auc": 0.7259,
+     "mean_pred": 0.0494,
+     "best_per_race": {
+      "bets": 2706,
+      "hit_rate": 0.0721,
+      "roi": 0.5985
+     },
+     "top5%": {
+      "bets": 735,
+      "hit_rate": 0.1592,
+      "roi": 1.0131
+     },
+     "top10%": {
+      "bets": 1470,
+      "hit_rate": 0.1259,
+      "roi": 0.8862
+     },
+     "top20%": {
+      "bets": 2939,
+      "hit_rate": 0.0994,
+      "roi": 0.7862
+     }
+    },
+    "6〜": {
+     "logloss": 0.16092,
+     "auc": 0.7375,
+     "mean_pred": 0.0449,
+     "best_per_race": {
+      "bets": 2706,
+      "hit_rate": 0.0776,
+      "roi": 0.6656
+     },
+     "top5%": {
+      "bets": 735,
+      "hit_rate": 0.1456,
+      "roi": 0.9386
+     },
+     "top10%": {
+      "bets": 1470,
+      "hit_rate": 0.1211,
+      "roi": 0.85
+     },
+     "top20%": {
+      "bets": 2939,
+      "hit_rate": 0.1017,
+      "roi": 0.8252
+     },
+     "ratio≥1.2": {
+      "bets": 1159,
+      "hit_rate": 0.0923,
+      "roi": 0.9512,
+      "roi_market_matched": 0.676,
+      "roi_95": [
+       0.771,
+       1.143
+      ]
+     },
+     "ratio≥1.5": {
+      "bets": 41,
+      "hit_rate": 0.1463,
+      "roi": 1.8268,
+      "roi_market_matched": 0.6638,
+      "roi_95": [
+       0.502,
+       3.516
+      ]
+     },
+     "ratio≥2.0": {
+      "bets": 0
+     }
+    },
+    "10〜": {
+     "logloss": 0.16133,
+     "auc": 0.7336,
+     "mean_pred": 0.0437,
+     "best_per_race": {
+      "bets": 2706,
+      "hit_rate": 0.0798,
+      "roi": 0.6907
+     },
+     "top5%": {
+      "bets": 735,
+      "hit_rate": 0.1469,
+      "roi": 0.9803
+     },
+     "top10%": {
+      "bets": 1470,
+      "hit_rate": 0.115,
+      "roi": 0.8186
+     },
+     "top20%": {
+      "bets": 2939,
+      "hit_rate": 0.1014,
+      "roi": 0.8528
+     },
+     "ratio≥1.2": {
+      "bets": 1376,
+      "hit_rate": 0.0821,
+      "roi": 0.8852,
+      "roi_market_matched": 0.6716,
+      "roi_95": [
+       0.717,
+       1.057
+      ]
+     },
+     "ratio≥1.5": {
+      "bets": 177,
+      "hit_rate": 0.0791,
+      "roi": 0.9102,
+      "roi_market_matched": 0.6643,
+      "roi_95": [
+       0.447,
+       1.411
+      ]
+     },
+     "ratio≥2.0": {
+      "bets": 3,
+      "hit_rate": 0.0,
+      "roi": 0.0,
+      "roi_market_matched": 0.6069,
+      "roi_95": [
+       0.0,
+       0.0
+      ]
+     }
+    },
+    "10〜強め": {
+     "logloss": 0.16116,
+     "auc": 0.7353,
+     "mean_pred": 0.044,
+     "best_per_race": {
+      "bets": 2706,
+      "hit_rate": 0.0795,
+      "roi": 0.6879
+     },
+     "top5%": {
+      "bets": 735,
+      "hit_rate": 0.151,
+      "roi": 0.9819
+     },
+     "top10%": {
+      "bets": 1470,
+      "hit_rate": 0.1238,
+      "roi": 0.8831
+     },
+     "top20%": {
+      "bets": 2939,
+      "hit_rate": 0.1,
+      "roi": 0.8116
+     },
+     "ratio≥1.2": {
+      "bets": 1236,
+      "hit_rate": 0.0793,
+      "roi": 0.9013,
+      "roi_market_matched": 0.667,
+      "roi_95": [
+       0.725,
+       1.094
+      ]
+     },
+     "ratio≥1.5": {
+      "bets": 75,
+      "hit_rate": 0.0933,
+      "roi": 1.324,
+      "roi_market_matched": 0.6504,
+      "roi_95": [
+       0.482,
+       2.418
+      ]
+     },
+     "ratio≥2.0": {
+      "bets": 0
+     }
+    }
+   }
+  }
+ }
+}
