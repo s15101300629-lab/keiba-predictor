@@ -726,3 +726,21 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 700; }
 .bottom-nav-item svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 .bottom-nav-item.active { color: var(--accent-strong); }
+
+/* AI印タブの買い目 */
+.mark-bets { margin: 16px 0; }
+.mark-bets h3 { margin: 0 0 6px; font-size: 15px; color: var(--accent-strong); }
+.mark-bet-card { margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.mark-bet-card summary { display: flex; align-items: center; gap: 10px; padding: 11px 12px; cursor: pointer; list-style: none; font-size: 13px; }
+.mark-bet-card summary::-webkit-details-marker { display: none; }
+.mark-bet-card summary > span { color: var(--muted); font-size: 12px; }
+.mark-bet-card .mark-bet-hit { margin-left: auto; }
+.mark-bet-card .mark-bet-hit b { color: var(--accent-strong); font-size: 14px; }
+.mark-bet-card ul { margin: 0; padding: 0 12px 4px; list-style: none; }
+.mark-bet-card li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.mark-bet-combo { flex: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mark-bet-combo small { margin-right: 1px; color: var(--accent); font-size: 11px; }
+.mark-bet-combo i { margin: 0 4px; color: var(--muted); font-style: normal; }
+.mark-bet-prob { width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.mark-bet-odds { width: 84px; text-align: right; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.mark-bet-card > .bet-note { padding: 0 12px 10px; margin: 0; }

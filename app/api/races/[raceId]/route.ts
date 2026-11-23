@@ -605,7 +605,7 @@ type HeavyAdjustment = {
 };
 let mlAssets: Promise<{
   model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
-  winModel: Model | null; top2Model: Model | null; valueModel: unknown; marksEvidence: unknown; longshotFeatures: string[] | null;
+  winModel: Model | null; top2Model: Model | null; valueModel: unknown; marksEvidence: unknown; betsEvidence: unknown; longshotFeatures: string[] | null;
 } | null> | null = null;
 function loadMlAssets() {
   mlAssets ??= (async () => {
@@ -626,12 +626,19 @@ function loadMlAssets() {
         const json = JSON.parse(text) as { years: Record<string, Record<string, unknown>> };
         return Object.fromEntries(Object.entries(json.years).map(([y, v]) => [y, { marks: v.triangle_B, popLe3: v.pop_le3 }]));
       }).catch(() => null);
+      // AI印から作る買い目の過去の成績（scripts/ml/backtest_mark_bets.py の「合わせた勝率｜確率上位 N点」。券種ごとの点数は app/lib/markBets.ts）
+      const betsEvidence = await readFile(path.join(dir, "mark_bets_backtest.json"), "utf8").then((text) => {
+        const json = JSON.parse(text) as { years: Record<string, { rules: Record<string, Record<string, unknown>> }> };
+        const points: Record<string, number> = { ワイド: 3, 馬連: 3, 馬単: 3, "3連複": 5, "3連単": 6 };
+        return Object.fromEntries(Object.entries(json.years).map(([y, v]) => [y, Object.fromEntries(Object.entries(points)
+          .map(([t, n]) => [t, v.rules[`合わせた勝率｜確率上位 ${n}点`]?.[t] ?? null]))]));
+      }).catch(() => null);
       const [winModel, top2Model] = await Promise.all(["model_win.json", "model_top2.json"].map((name) =>
         readFile(path.join(dir, name), "utf8").then((text) => JSON.parse(text) as Model).catch(() => null)));
       // 人気薄専用の2段目（AI印の☆。scripts/ml/train_longshot.py）。入力の並びだけ見る（推論は /api/longshot）
       const longshotFeatures = await readFile(path.join(dir, "model_longshot.json"), "utf8")
         .then((text) => (JSON.parse(text) as { features: string[] }).features).catch(() => null);
-      return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence, longshotFeatures };
+      return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence, betsEvidence, longshotFeatures };
     } catch {
       mlAssets = null; // 次のリクエストで再試行
       return null;
@@ -1078,7 +1085,7 @@ export async function GET(
       });
       const f0 = rows[activeIdx[0]]?.features;
       mlSummary = {
-        status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource, valueModel: ml.valueModel, marksEvidence: ml.marksEvidence,
+        status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource, valueModel: ml.valueModel, marksEvidence: ml.marksEvidence, betsEvidence: ml.betsEvidence,
         longshotReady, featureCount: ml.model.features.length,
         bodyWeightAssumed: activeIdx.some((i) => rows[i].bodyWeightAssumed),
         // このレースの結果がすでに学習データに入っている（答えを見て学習した状態）

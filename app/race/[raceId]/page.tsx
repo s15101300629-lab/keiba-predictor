@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { type BetType } from "@/app/lib/bets";
 import { AI_MARK_ORDER, assignAiMarks, type AiMark } from "@/app/lib/marks";
+import { combinedWin, MARK_BET_POINTS, markBetPlans, type MarkBetType } from "@/app/lib/markBets";
 import { useParams } from "next/navigation";
 import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
 import { featureLabel, HIDDEN_GROUPS, SHAP_GROUPS } from "@/app/lib/ml/shapGroups";
@@ -92,7 +93,9 @@ type MlSummary = {
   valueModel?: ValueModel | null;
   longshotReady?: boolean;
   marksEvidence?: Record<string, { marks: Record<string, MarkStats>; popLe3: MarkStats }> | null;
+  betsEvidence?: BetsEvidence | null;
 };
+type BetsEvidence = Record<string, Record<string, { points_per_race: number; hit_rate: number; roi: number } | null>>;
 type MarkStats = { n: number; win_rate?: number; top3_rate?: number; win_roi?: number; place_roi?: number; place_roi_market_matched?: number };
 type Horse = {
   horseId: string; name: string; status: string; raceEntry: Entry | null;
@@ -730,11 +733,12 @@ const MARK_MEANING: Record<AiMark, string> = {
   "◎": "本命", "○": "対抗", "▲": "単穴", "☆": "穴", "△": "連下", "消": "消し",
 };
 
-function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horseOdds, winCoef, evidence }: {
+function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horseOdds, winCoef, evidence, betsEvidence }: {
   horses: Horse[]; inTraining: boolean; odds: OddsData | null; oddsBar: ReactNode; values: Map<number, ValueResult> | null;
   longshot: Map<number, number> | null;
   horseOdds: Map<string, HorseOdds>; winCoef: { ai: number; market: number } | null;
   evidence: Record<string, { marks: Record<string, MarkStats>; popLe3: MarkStats }> | null;
+  betsEvidence: BetsEvidence | null;
 }) {
   const marks = useMemo(() => {
     const rows = horses.filter((h) => h.prediction && h.prediction.baseWinProbability != null && h.raceEntry?.horseNumber != null);
@@ -752,6 +756,24 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
   };
   const pct = (x: number | null) => (x == null ? "-" : Math.round(x * 100) + "%");
   const marked = AI_MARK_ORDER.flatMap((m) => horses.filter((h) => marks.get(h.horseId)?.mark === m));
+  // 印から作る買い目（app/lib/markBets.ts）。勝率は AI と市場を合わせたもの（オッズがなければ AI の勝率）
+  const betPlans = useMemo(() => {
+    const rows = horses.filter((h) => h.prediction?.baseWinProbability != null && h.raceEntry?.horseNumber != null);
+    const hs = rows.map((h) => ({ id: h.horseId, num: h.raceEntry!.horseNumber!, mark: marks.get(h.horseId)?.mark ?? null,
+      aiWin: h.prediction!.baseWinProbability!, odds: horseOdds.get(h.horseId)?.win ?? null }));
+    const { p, usedOdds } = combinedWin(hs, odds ? winCoef : null);
+    return { plans: markBetPlans(hs, p), usedOdds };
+  }, [horses, marks, horseOdds, odds, winCoef]);
+  const betOdds = (t: MarkBetType, key: string): string | null => {
+    const field = ({ ワイド: "wide", 馬連: "umaren", 馬単: null, "3連複": "trio", "3連単": "trifecta" } as const)[t];
+    const o = field && odds ? (odds[field] as OddsMap)[key] : undefined;
+    return o ? o.min.toFixed(1) + (o.max ? "〜" + o.max.toFixed(1) : "") + "倍" : null;
+  };
+  const betYears = betsEvidence ? Object.keys(betsEvidence).sort() : [];
+  const betAvg = (t: MarkBetType, k: "hit_rate" | "roi") => {
+    const xs = betYears.map((y) => betsEvidence![y][t]?.[k]).filter((x): x is number => typeof x === "number");
+    return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+  };
   const scores = useMemo(() => scoreDeviations(horses), [horses]);
 
   return <section className="bets-panel">
@@ -772,6 +794,23 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
           </li>;
         })}
       </ul>
+      {betPlans.plans.length > 0 && <div className="mark-bets">
+        <h3>印から作る買い目</h3>
+        <p className="bet-note">印の付いた馬（消を除く）の組み合わせから、当たる確率の高い順。1点100円。
+          {betPlans.usedOdds ? "確率は AI と単勝オッズを合わせた勝率から計算。" : <b className="bet-warn">オッズがないので、AI の勝率だけで計算（当たる確率は低めに出る傾向）。</b>}</p>
+        {betPlans.plans.map((plan) => <details key={plan.type} className="mark-bet-card" open={plan.type === "ワイド" || plan.type === "3連複"}>
+          <summary><b>{plan.type}</b><span>{plan.tickets.length}点</span><span className="mark-bet-hit">どれか当たる確率 <b>{pct(plan.hitProb)}</b></span></summary>
+          <ul>{plan.tickets.map((tk) => <li key={tk.key + tk.nums.join(">")}>
+            <span className="mark-bet-combo">{tk.nums.map((n, i) => <span key={i}>{i > 0 && <i>{plan.type === "馬単" || plan.type === "3連単" ? "→" : "-"}</i>}
+              <small>{tk.marks[i] ?? ""}</small>{n}</span>)}</span>
+            <span className="mark-bet-prob">{(tk.prob * 100).toFixed(1)}%</span>
+            <span className="mark-bet-odds">{betOdds(plan.type, tk.key) ?? (plan.type === "馬単" ? "オッズなし" : "-")}</span>
+          </li>)}</ul>
+          {betAvg(plan.type, "hit_rate") != null && <p className="bet-note">過去（{betYears.join("・")}年の平均、{MARK_BET_POINTS[plan.type]}点）：
+            的中したレース {pct(betAvg(plan.type, "hit_rate"))}・回収率 {pct(betAvg(plan.type, "roi"))}</p>}
+        </details>)}
+        <p className="bet-note">当たる確率を優先した買い目で、<b className="bet-warn">回収率は過去どの券種も 70〜80% 台（100% は超えていない）</b>。馬単のオッズは取得していない。確率はハービルの式（勝率から2着・3着を順に決める）による見込み。</p>
+      </div>}
       {evidence && <details className="model-note" open>
         <summary>印の意味と過去の成績</summary>
         <div className="mark-table-wrap">
@@ -1011,7 +1050,7 @@ export default function RaceDetailPage() {
         </section>
       </div>}
       {activeTab === "marks" && <div role="tabpanel"><MarksPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar}
-        values={values} longshot={longshot} horseOdds={horseOdds} winCoef={data.ml?.valueModel?.win ?? null} evidence={data.ml?.marksEvidence ?? null} /></div>}
+        values={values} longshot={longshot} horseOdds={horseOdds} winCoef={data.ml?.valueModel?.win ?? null} evidence={data.ml?.marksEvidence ?? null} betsEvidence={data.ml?.betsEvidence ?? null} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         {data.ml?.status === "available" ? <>
           <div className="ai-conditions">
