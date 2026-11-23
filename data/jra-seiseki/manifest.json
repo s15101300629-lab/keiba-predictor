@@ -28497,6 +28497,15 @@
   "warnings": [],
   "unknown_glyphs": {}
  },
+ "2026-5kyoto6": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2026/2026-5kyoto6.pdf",
+  "date": "2026-11-22",
+  "sha256": "92923cd158e0a28dce51aaae0a934e33cc8ca69d0788150badf3bbfeee6aa477",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
  "2026-5tokyo1": {
   "url": "https://www.jra.go.jp/datafile/seiseki/report/2026/2026-5tokyo1.pdf",
   "date": "2026-11-07",
@@ -28528,6 +28537,15 @@
   "url": "https://www.jra.go.jp/datafile/seiseki/report/2026/2026-5tokyo4.pdf",
   "date": "2026-11-15",
   "sha256": "2c01a15a8676bb1dd55abfb0480e32badd8a5b27714384a8f0be1b6057c1e1c8",
+  "races": 12,
+  "parser_version": "3",
+  "warnings": [],
+  "unknown_glyphs": {}
+ },
+ "2026-5tokyo5": {
+  "url": "https://www.jra.go.jp/datafile/seiseki/report/2026/2026-5tokyo5.pdf",
+  "date": "2026-11-22",
+  "sha256": "5d34871a68c37161054b6063bd80ec5670e4e5d94db6324188887d9650436d84",
   "races": 12,
   "parser_version": "3",
   "warnings": [],
