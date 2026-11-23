@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SiteFooter from "./components/SiteFooter";
 import SiteHeader from "./components/SiteHeader";
+import BottomNav from "./components/BottomNav";
 
 export const metadata: Metadata = {
   title: "Racehorse Insight Analytics",
@@ -12,8 +13,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#0b0a08",
 };
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ja"><body><SiteHeader />{children}<SiteFooter /></body></html>;
+  return <html lang="ja"><body><SiteHeader />{children}<SiteFooter /><BottomNav /></body></html>;
 }

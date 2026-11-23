@@ -717,3 +717,12 @@ footer span { letter-spacing:0; }
 .ai-ranks .rank-bar b.pts.plus { color: #e0473c; }
 .ai-ranks .rank-bar b.pts.minus { color: #6a9cf0; }
 .points-total { margin: 4px 0 8px; font-size: 13px; opacity: 0.85; }
+
+/* 画面下の切り替えタブ（レース予想・AI成績） */
+body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+.bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; justify-content: center; gap: 0;
+  padding-bottom: env(safe-area-inset-bottom); background: rgba(11, 10, 8, .96); border-top: 1px solid var(--line); backdrop-filter: blur(8px); }
+.bottom-nav-item { flex: 1; max-width: 450px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 700; }
+.bottom-nav-item svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.bottom-nav-item.active { color: var(--accent-strong); }
