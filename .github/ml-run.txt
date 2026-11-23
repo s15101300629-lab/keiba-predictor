@@ -1,3 +1,3 @@
 # 1行1コマンド。上から順に実行し、data/ml（と data/jra-results）の変化をコマンドごとに commit する
-# 2026-11-23：AI印から作る買い目（ワイド・馬連・馬単・3連複・3連単）の過去の成績
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python backtest_mark_bets.py
+# 2026-11-23：racedb.com の中身を確かめる（数ページだけ）
+python scripts/probe/racedb_probe.py
