@@ -876,6 +876,14 @@ export default function RaceDetailPage() {
     } else void load(false, false);
   }, [raceId, load]);
 
+  // レースを開いたら、出馬表が出たあとにオッズを1回自動で取る（取り直しはボタン）
+  const autoOddsRef = useRef(false);
+  useEffect(() => {
+    if (!data || autoOddsRef.current) return;
+    autoOddsRef.current = true;
+    void loadOdds();
+  }, [data, loadOdds]);
+
   const conditions = data?.raceConditions;
   const horses = data?.results ?? [];
   const factorScores = useMemo(() => buildFactorScores(horses), [horses]);

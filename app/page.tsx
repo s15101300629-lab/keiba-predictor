@@ -55,6 +55,16 @@ function saveRaceListCache(data: RaceListResponse) {
   catch { /* 保存できない環境でも通常の取得・表示は継続する */ }
 }
 
+// トップで選んだ日・競馬場のタブとスクロール位置（レースを開いて戻ったときに元の画面に戻すため。タブを閉じると消える）
+const HOME_VIEW_KEY = "keiba-home-view-v1";
+type HomeView = { date?: string; venue?: string; scrollY?: number };
+function readHomeView(): HomeView {
+  try { return JSON.parse(window.sessionStorage.getItem(HOME_VIEW_KEY) ?? "{}") as HomeView; } catch { return {}; }
+}
+function saveHomeView(patch: HomeView) {
+  try { window.sessionStorage.setItem(HOME_VIEW_KEY, JSON.stringify({ ...readHomeView(), ...patch })); } catch { /* 保存できなくても表示は続ける */ }
+}
+
 function formatTabDate(date: string) {
   if (!/^\d{8}$/.test(date)) return date;
   const value = new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(4, 6)) - 1, Number(date.slice(6, 8))));
@@ -70,9 +80,27 @@ export default function Home() {
   const [venue, setVenue] = useState("注目"); // 「注目」＝全場の重賞・メイン、競馬場名＝その場の全レース
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [restored, setRestored] = useState(false);
+  const [viewReady, setViewReady] = useState(false); // 前の競馬場のタブを読み終えたか（読む前に「重賞・メイン」で上書きしないため）
+
+  // 前に選んでいた競馬場のタブを戻す
+  useEffect(() => {
+    if (viewReady) return;
+    const saved = readHomeView();
+    if (saved.venue) setVenue(saved.venue);
+    setViewReady(true);
+  }, [viewReady]);
+  useEffect(() => { if (viewReady && selectedDate) saveHomeView({ date: selectedDate }); }, [viewReady, selectedDate]);
+  useEffect(() => { if (viewReady) saveHomeView({ venue }); }, [viewReady, venue]);
 
   useEffect(() => {
     let active = true;
+    const pickDate = (dates: string[], current: string) => {
+      const saved = readHomeView().date;
+      if (current && dates.includes(current)) return current;
+      if (saved && dates.includes(saved)) return saved;
+      return dates[0] ?? "";
+    };
     const today = getJstToday();
     const cached = readRaceListCache();
     const cacheMatchesMonth = cached?.data.year === today.year && cached?.data.month === today.month;
@@ -83,7 +111,7 @@ export default function Home() {
       setRaces(cached.data.races ?? []);
       setRaceDates(dates);
       setMonth(cached.data.month ?? "");
-      setSelectedDate((current) => dates.includes(current) ? current : dates[0] ?? "");
+      setSelectedDate((current) => pickDate(dates, current));
       setLoading(false);
     }
     const cacheIsFresh = Boolean(cached && cacheMatchesMonth && cacheHasToday &&
@@ -101,7 +129,7 @@ export default function Home() {
           setRaces(data.races ?? []);
           setRaceDates(dates);
           setMonth(data.month ?? "");
-          setSelectedDate((current) => dates.includes(current) ? current : dates[0] ?? "");
+          setSelectedDate((current) => pickDate(dates, current));
           saveRaceListCache(data);
         }
       } catch (err) {
@@ -124,6 +152,21 @@ export default function Home() {
     }
     return day.filter((r) => r.venue === venue).sort((a, b) => a.raceNumber - b.raceNumber);
   }, [races, selectedDate, venue, venues]);
+
+  // スクロール位置を覚えて、一覧が出たら1回だけ戻す
+  useEffect(() => {
+    if (restored || !viewReady || loading || dayRaces.length === 0) return;
+    const y = readHomeView().scrollY;
+    if (y) window.requestAnimationFrame(() => window.scrollTo(0, y));
+    setRestored(true);
+  }, [restored, viewReady, loading, dayRaces.length]);
+  useEffect(() => {
+    if (!restored) return;
+    let timer = 0;
+    const onScroll = () => { window.clearTimeout(timer); timer = window.setTimeout(() => saveHomeView({ scrollY: window.scrollY }), 150); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("scroll", onScroll); window.clearTimeout(timer); };
+  }, [restored]);
 
   return (
     <main className="shell">
@@ -155,7 +198,7 @@ export default function Home() {
             {raceDates.map((date) => (
               <button key={date} type="button" role="tab" aria-selected={selectedDate === date}
                 className={selectedDate === date ? "date-tab active" : "date-tab"}
-                onClick={() => setSelectedDate(date)}>
+                onClick={() => { setSelectedDate(date); saveHomeView({ scrollY: 0 }); }}>
                 {formatTabDate(date)}
               </button>
             ))}
@@ -164,7 +207,7 @@ export default function Home() {
             {["注目", ...venues].map((v) => (
               <button key={v} type="button" role="tab" aria-selected={venue === v || (v === "注目" && !venues.includes(venue))}
                 className={venue === v || (v === "注目" && !venues.includes(venue)) ? "venue-tab active" : "venue-tab"}
-                onClick={() => setVenue(v)}>
+                onClick={() => { setVenue(v); saveHomeView({ scrollY: 0 }); }}>
                 {v === "注目" ? "重賞・メイン" : v}
               </button>
             ))}
