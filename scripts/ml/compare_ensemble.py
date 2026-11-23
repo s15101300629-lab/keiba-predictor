@@ -2,7 +2,7 @@
 
     cd scripts/ml && python compare_ensemble.py   # → data/ml/ensemble_comparison.json
 
-前年までで学習して 2024〜2026年を予測（tune_params.evaluate と同じ作り。木の本数は前の年を検証にして決める）
+前年までで学習して 2022〜2026年を予測（tune_params.evaluate と同じ作り。木の本数は前の年を検証にして決める）
 - 今：seed 42 の1本
 - 平均5本：seed 42〜46 の5本（木の本数は今と同じ）の確率の平均
 - 時間の重み d：学習の行の重み = d^(試す年 − 1 − その行の年)（試す年の前の年が 1）。d = 0.9・0.8・0.7。木の本数も同じ重みで決め直す
@@ -25,7 +25,7 @@ import features  # noqa: E402
 from train import DATA, OUT, PARAMS, TRAIN_FROM  # noqa: E402
 from tune_params import normalize_sum, race_top3_hit  # noqa: E402
 
-TEST_YEARS = ["2024", "2025", "2026"]
+TEST_YEARS = ["2022", "2023", "2024", "2025", "2026"]  # 2022・2023年は、これまでの特徴量の採否に使っていない
 SEEDS = [42, 43, 44, 45, 46]
 DECAYS = [0.9, 0.8, 0.7]
 
