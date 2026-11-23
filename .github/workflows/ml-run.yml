@@ -42,7 +42,7 @@ jobs:
             echo "::group::$cmd"
             bash -c "$cmd"
             echo "::endgroup::"
-            git add data/ml data/jra-results 2>/dev/null || git add data/ml
+            git add data/ml data/jra-results data/overseas 2>/dev/null || git add data/ml
             if ! git diff --cached --quiet; then
               git commit -q -m "ml: $cmd"
               for i in 1 2 3 4; do
