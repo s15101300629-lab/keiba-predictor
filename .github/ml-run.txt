@@ -1,3 +1,4 @@
 # 1行1コマンド。上から順に実行し、data/ml・data/overseas の変化をコマンドごとに commit する
-# 2026-11-23：3連系の確率の補正（Benter）の比較
+# 2026-11-23：3連系の確率の補正（Benter）の比較、クッション値・含水率・使用コースの比較
 npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python benter_exotic.py
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python compare_baba.py
