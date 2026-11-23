@@ -562,17 +562,16 @@ const scoreBar = (score: number) => Math.max(0, Math.min(100, (score - 20) / 60 
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
 const signedPoints = (x: number) => (round1(x) >= 0 ? "+" : "−") + Math.abs(round1(x)).toFixed(1) + "点";
-const POINTS_FULL = 10; // バーの端＝±10点
 
-/** 観点の点のバー：真ん中（0点）から、プラスは右・マイナスは左に伸ばす。端は ±10点 */
+/** 観点のスコア＝50＋その観点の点（AIスコアと同じ目盛り。全観点の（スコア−50）を足すと AIスコア−50）。バーも AIスコアと同じ 20〜80 */
 function PointsBar({ points, label }: { points: number; label: string }) {
-  const w = Math.min(50, Math.abs(points) / POINTS_FULL * 50);
-  return <span className="rank-bar" role="img" aria-label={`${label} ${signedPoints(points)}`}>
-    <b className={"pts " + (round1(points) > 0 ? "plus" : round1(points) < 0 ? "minus" : "")}>{(round1(points) >= 0 ? "+" : "−") + Math.abs(round1(points)).toFixed(1)}</b>
+  const v = 50 + points;
+  return <span className="rank-bar" role="img" aria-label={`${label} ${v.toFixed(1)}（${signedPoints(points)}）`}>
+    <b>{v.toFixed(1)}</b>
     <span className="rank-track">
-      <span className={"pts-fill " + (points >= 0 ? "plus" : "minus")} style={{ left: (points >= 0 ? 50 : 50 - w) + "%", width: w + "%" }} />
-      {[25, 75].map((v) => <span key={v} className="rank-grid" style={{ left: v + "%" }} />)}
-      <span className="rank-avg" style={{ left: "50%" }} />
+      <span className="rank-fill" style={{ width: scoreBar(v) + "%" }} />
+      {[30, 40, 60, 70].map((g) => <span key={g} className="rank-grid" style={{ left: scoreBar(g) + "%" }} />)}
+      <span className="rank-avg" style={{ left: scoreBar(50) + "%" }} />
     </span>
   </span>;
 }
@@ -643,12 +642,12 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
         ⚠ 道悪（重・不良）未経験・血統は道悪{heavy.label}（血統の道悪倍率 {heavy.ratio.toFixed(2)}倍）。血統の道悪適性は、AIスコアにすでに含めて計算している。
       </p>}
       <section className="ai-ranks">
-        <h4>各観点の点（AIスコアの内訳）</h4>
+        <h4>各観点のスコア（AIスコアの内訳）</h4>
         {score !== null && (() => {
           const shown = categories.filter((c) => !missing.includes(c.label) && c.points != null);
           const total = round1(score - 50);
           const sum = shown.reduce((a, c) => a + round1(c.points!), 0);
-          return <p className="points-total">AIスコア {round1(score).toFixed(1)} ＝ 50 {total >= 0 ? "＋" : "−"} {Math.abs(total).toFixed(1)}（下の観点の点と「その他」の合計。その他 {signedPoints(total - sum)}）</p>;
+          return <p className="points-total">AIスコア {round1(score).toFixed(1)} ＝ 50 {total >= 0 ? "＋" : "−"} {Math.abs(total).toFixed(1)}。各観点のスコアの「50との差」を全部（その他 {signedPoints(total - sum)} も）足すと、この {total >= 0 ? "＋" : "−"}{Math.abs(total).toFixed(1)} になる</p>;
         })()}
         {categories.filter((c) => !missing.includes(c.label)).map((c) => {
           const top = c.rank !== null && c.rank <= 3 && c.total >= 4;
@@ -668,7 +667,7 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
           </details>;
         })()}
         {missing.length > 0 && <p className="missing-note">データなし：{missing.join("・")}</p>}
-        <p className="ai-ranks-note">観点の点＝AIの項目を観点ごとにまとめ、その観点が AIスコアを何点上げたか・下げたか（SHAP を、出走馬1頭ずつとの確率の差に分けて偏差値の点に直したもの）。50 に全部の点を足すと AIスコアになる。順位は点の高い順。押すと主な項目（同じ点）が出る。</p>
+        <p className="ai-ranks-note">観点のスコア＝50＋その観点が AIスコアを上げた・下げた点（SHAP を、出走馬1頭ずつとの確率の差に分けて AIスコアの点に直したもの）。AIスコアと同じ目盛りで、全部の観点の「50との差」を足すと AIスコアの「50との差」になる。順位は高い順。押すと主な項目（点）が出る。</p>
       </section>
     </div>
   </details>;
@@ -698,7 +697,7 @@ function FactorView({ horses, categoryRanks, factor, onFactor }: {
         </details>
       </li>)}
     </ul>
-    <p className="ai-ranks-note">観点の点＝その観点が AIスコアを何点上げたか・下げたか（全部の観点を足すと AIスコア − 50）。点の高い順。押すと中身が出る。
+    <p className="ai-ranks-note">観点のスコア＝50＋その観点が AIスコアを上げた・下げた点（AIスコアと同じ目盛り。全部の観点の「50との差」を足すと AIスコアの「50との差」）。高い順。押すと中身が出る。
       上がり・ラップタイプの中身には、近5走の本物の上がり3F（netkeiba）から見た終いの加速の度合いを出す。</p>
   </section>;
 }
