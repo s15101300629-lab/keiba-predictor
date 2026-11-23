@@ -60,6 +60,7 @@ def clean(s: str) -> str:
 
 
 def norm_name(s: str) -> str:
+    s = s.split("\u3000")[0]
     s = re.sub(r"\(.*?\)|（.*?）", "", s).replace("*", "").replace("＊", "")
     return re.sub(r"[\s'’.\-・]", "", s).lower()
 
@@ -77,6 +78,13 @@ def main() -> None:
     data = json.loads(OUT.read_text(encoding="utf-8")) if OUT.exists() else {"index": {}, "horses": {}, "races": {}}
     save = lambda: OUT.write_text(json.dumps(data, ensure_ascii=False) + "\n", encoding="utf-8")  # noqa: E731
     # 1. 名前の一覧
+    # 一覧の読み直し（名前の後ろの「　牡（2021）」を除く形に、保存済みの一覧からそろえ直す）
+    if data["index"] and not data.get("index_v2"):
+        flat = [x for v in data["index"].values() for x in v]
+        data["index"] = {}
+        for href, name in flat:
+            data["index"].setdefault(norm_name(name), []).append([href, name])
+        data["index_v2"] = True
     if not data["index"]:
         for l in LETTERS:
             page = get(f"{BASE}/name/{l}.html")
@@ -93,14 +101,15 @@ def main() -> None:
         # 着差（馬身）→ 秒の換算を成績表で決めるため、JRA の走も1つ（JRA の重賞で、racedb にあれば）
         jra_dates = sorted({r["日付"].replace("/", ".") for r in v["rows"] if any(x in r.get("開催", "") for x in JRA)
                             and re.search(r"\(G[123I]+\)", r.get("レース名", "")) and r["日付"] >= "2017"})
-        if not dates or hid in data["horses"]:
+        if not dates or (hid in data["horses"] and data["horses"][hid].get("page")):
             continue
-        title = v.get("title", "")
-        jp = title.split("(")[0].split(" ")[0].strip()
-        en = (re.search(r"\(([^)]+)\)", title) or [None, ""])[1]
-        cands = data["index"].get(norm_name(en), []) if en else []
-        if not cands:
-            cands = data["index"].get(norm_name(jp), [])
+        title = v.get("title", "").split("の競走成績")[0]
+        outer = title.split("(")[0].strip()
+        inner = (re.search(r"\(([^)]+)\)", title) or [None, ""])[1]
+        cands = []
+        for nm in (outer, inner):  # 外国馬は「英語名 (カナ)」、日本馬は「カナ (英語名)」
+            if nm and not cands:
+                cands = data["index"].get(norm_name(nm), [])
         entry = {"title": title, "candidates": cands, "page": None, "races": []}
         for href, _ in cands[:3]:  # 同名の馬がいるときは、海外の走の日付が一番多く重なるページ
             page = get(BASE + href)
@@ -118,12 +127,13 @@ def main() -> None:
                 entry.update({"page": href, "races": hit, "jra_races": jra})
         data["horses"][hid] = entry
         for k in entry["races"] + entry.get("jra_races", []):
-            if k in data["races"]:
+            if k in data["races"] and data["races"][k].get("text"):
                 continue
             page = get(BASE + k)
             if page:
                 head = clean(re.sub(r"<table.*?</table>", " ", re.sub(r"<(script|style).*?</\1>", "", page, flags=re.S), flags=re.S))[:1500]
-                data["races"][k] = {"head": head, "tables": tables(page)}
+                text = clean(re.sub(r"<(script|style).*?</\1>", "", page, flags=re.S))[:4000]
+                data["races"][k] = {"head": head, "text": text, "tables": tables(page)}
         n += 1
         if n % 10 == 0:
             save()
