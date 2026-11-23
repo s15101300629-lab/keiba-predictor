@@ -13,7 +13,7 @@ const ORDERED: Record<MarkBetType, boolean> = { ワイド: false, 馬連: false,
 const USE: AiMark[] = ["◎", "○", "▲", "☆", "△"];
 
 export type MarkBetHorse = { id: string; num: number; mark: AiMark | null; aiWin: number; odds: number | null };
-export type MarkBetTicket = { nums: number[]; marks: (AiMark | null)[]; prob: number; key: string };
+export type MarkBetTicket = { nums: number[]; marks: (AiMark | null)[]; prob: number; key: string; idx: number[] };
 export type MarkBetPlan = { type: MarkBetType; tickets: MarkBetTicket[]; hitProb: number };
 
 /** 合わせた勝率（合計1）。オッズが全頭そろっていて係数があれば合わせ、なければ AI の勝率. */
@@ -63,19 +63,46 @@ function wideHitProb(p: number[], picks: number[][]): number {
   return s;
 }
 
-export function markBetPlans(hs: MarkBetHorse[], p: number[]): MarkBetPlan[] {
+/** 券種ごとに、印の付いた馬（消を除く）の組み合わせを全部、確率の高い順に. */
+export function markBetCandidates(hs: MarkBetHorse[], p: number[]): Record<MarkBetType, MarkBetTicket[]> | null {
   const use = hs.map((h, i) => (h.mark && USE.includes(h.mark) ? i : -1)).filter((i) => i >= 0);
-  if (use.length < 3 || hs.length < 3) return [];
+  if (use.length < 3 || hs.length < 3) return null;
+  return Object.fromEntries(MARK_BET_TYPES.map((t) => [t, candidates(p, t, use, hs.length).sort((a, b) => b.prob - a.prob).map((c) => {
+    const nums = c.idx.map((i) => hs[i].num);
+    const keyNums = ORDERED[t] ? nums : [...nums].sort((x, y) => x - y);
+    const idx = ORDERED[t] ? c.idx : [...c.idx].sort((x, y) => hs[x].num - hs[y].num);
+    return { nums: keyNums, marks: idx.map((i) => hs[i].mark), prob: c.prob, key: keyNums.join("-"), idx };
+  })])) as Record<MarkBetType, MarkBetTicket[]>;
+}
+
+/** 選んだ買い目のどれかが当たる確率。馬連・馬単・3連複・3連単は当たる組が1つなので確率の合計、ワイドは3着以内の3頭の組を数える. */
+export function hitProbOf(t: MarkBetType, p: number[], tickets: MarkBetTicket[]): number {
+  return t === "ワイド" ? wideHitProb(p, tickets.map((c) => c.idx)) : tickets.reduce((s, c) => s + c.prob, 0);
+}
+
+export function markBetPlans(hs: MarkBetHorse[], p: number[]): MarkBetPlan[] {
+  const all = markBetCandidates(hs, p);
+  if (!all) return [];
   return MARK_BET_TYPES.map((t) => {
-    const picks = candidates(p, t, use, hs.length).sort((a, b) => b.prob - a.prob).slice(0, MARK_BET_POINTS[t]);
-    const tickets = picks.map((c) => {
-      const nums = c.idx.map((i) => hs[i].num);
-      const keyNums = ORDERED[t] ? nums : [...nums].sort((x, y) => x - y);
-      return { nums: ORDERED[t] ? nums : keyNums, marks: (ORDERED[t] ? c.idx : [...c.idx].sort((x, y) => hs[x].num - hs[y].num)).map((i) => hs[i].mark),
-        prob: c.prob, key: keyNums.join("-") };
-    });
-    // 馬連・馬単・3連複・3連単は1レースで当たる組が1つなので、確率の合計がどれか当たる確率
-    const hitProb = t === "ワイド" ? wideHitProb(p, picks.map((c) => c.idx)) : picks.reduce((s, c) => s + c.prob, 0);
-    return { type: t, tickets, hitProb };
+    const tickets = all[t].slice(0, MARK_BET_POINTS[t]);
+    return { type: t, tickets, hitProb: hitProbOf(t, p, tickets) };
   });
+}
+
+/**
+ * 期待値の順（2026-11-23、依頼者の案）：期待値＝当たる確率 × オッズ（ワイドは下限のオッズ）。オッズのある買い目だけ。
+ * 確率がとても低い組（見積もりの誤差が大きく、オッズも大きいので期待値が上がりやすい）を避けるため、
+ * 確率順で選んだ最後の買い目の確率の 1/3 以上の組から選ぶ。点数は確率順と同じ。過去の成績は確かめられない（全部の組の過去のオッズがない）
+ */
+export function evPlan(t: MarkBetType, p: number[], all: MarkBetTicket[], oddsOf: (key: string) => number | null):
+  { tickets: (MarkBetTicket & { odds: number; ev: number })[]; hitProb: number } {
+  const n = MARK_BET_POINTS[t];
+  const floor = (all[Math.min(n, all.length) - 1]?.prob ?? 0) / 3;
+  const tickets = all.filter((c) => c.prob >= floor)
+    .map((c) => ({ ...c, odds: oddsOf(c.key) ?? NaN }))
+    .filter((c) => Number.isFinite(c.odds))
+    .map((c) => ({ ...c, ev: c.prob * c.odds }))
+    .sort((a, b) => b.ev - a.ev)
+    .slice(0, n);
+  return { tickets, hitProb: hitProbOf(t, p, tickets) };
 }

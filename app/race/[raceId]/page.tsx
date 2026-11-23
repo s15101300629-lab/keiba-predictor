@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { type BetType } from "@/app/lib/bets";
 import { AI_MARK_ORDER, assignAiMarks, type AiMark } from "@/app/lib/marks";
-import { combinedWin, MARK_BET_POINTS, markBetPlans, type MarkBetType } from "@/app/lib/markBets";
+import { combinedWin, evPlan, hitProbOf, MARK_BET_POINTS, MARK_BET_TYPES, markBetCandidates, type MarkBetTicket, type MarkBetType } from "@/app/lib/markBets";
 import { useParams } from "next/navigation";
 import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
 import { featureLabel, HIDDEN_GROUPS, SHAP_GROUPS } from "@/app/lib/ml/shapGroups";
@@ -762,13 +762,34 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
     const hs = rows.map((h) => ({ id: h.horseId, num: h.raceEntry!.horseNumber!, mark: marks.get(h.horseId)?.mark ?? null,
       aiWin: h.prediction!.baseWinProbability!, odds: horseOdds.get(h.horseId)?.win ?? null }));
     const { p, usedOdds } = combinedWin(hs, odds ? winCoef : null);
-    return { plans: markBetPlans(hs, p), usedOdds };
+    return { all: markBetCandidates(hs, p), p, usedOdds };
   }, [horses, marks, horseOdds, odds, winCoef]);
-  const betOdds = (t: MarkBetType, key: string): string | null => {
+  const [betMode, setBetMode] = useState<"prob" | "ev">("prob");
+  const oddsEntry = (t: MarkBetType, key: string) => {
     const field = ({ ワイド: "wide", 馬連: "umaren", 馬単: null, "3連複": "trio", "3連単": "trifecta" } as const)[t];
-    const o = field && odds ? (odds[field] as OddsMap)[key] : undefined;
+    return field && odds ? (odds[field] as OddsMap)[key] : undefined;
+  };
+  const betOdds = (t: MarkBetType, key: string): string | null => {
+    const o = oddsEntry(t, key);
     return o ? o.min.toFixed(1) + (o.max ? "〜" + o.max.toFixed(1) : "") + "倍" : null;
   };
+  // 券種ごとの買い目。確率順＝当たる確率の高い順、期待値順＝確率×オッズ（ワイドは下限）の高い順（app/lib/markBets.ts の evPlan）
+  const betLists = useMemo(() => {
+    const all = betPlans.all;
+    if (!all) return [];
+    return MARK_BET_TYPES.map((t) => {
+      if (betMode === "prob") {
+        const tickets: (MarkBetTicket & { ev?: number })[] = all[t].slice(0, MARK_BET_POINTS[t]).map((c) => {
+          const o = oddsEntry(t, c.key);
+          return { ...c, ev: o ? c.prob * o.min : undefined };
+        });
+        return { type: t, tickets, hitProb: hitProbOf(t, betPlans.p, tickets) };
+      }
+      const r = evPlan(t, betPlans.p, all[t], (key) => oddsEntry(t, key)?.min ?? null);
+      return { type: t, tickets: r.tickets as (MarkBetTicket & { ev?: number })[], hitProb: r.hitProb };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [betPlans, betMode, odds]);
   const betYears = betsEvidence ? Object.keys(betsEvidence).sort() : [];
   const betAvg = (t: MarkBetType, k: "hit_rate" | "roi") => {
     const xs = betYears.map((y) => betsEvidence![y][t]?.[k]).filter((x): x is number => typeof x === "number");
@@ -794,22 +815,30 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
           </li>;
         })}
       </ul>
-      {betPlans.plans.length > 0 && <div className="mark-bets">
+      {betLists.length > 0 && <div className="mark-bets">
         <h3>印から作る買い目</h3>
-        <p className="bet-note">印の付いた馬（消を除く）の組み合わせから、当たる確率の高い順。1点100円。
+        <div className="sort-toggle mark-bet-mode" role="group" aria-label="買い目の選び方">
+          <button type="button" className={betMode === "prob" ? "active" : ""} onClick={() => setBetMode("prob")}>確率順</button>
+          <button type="button" className={betMode === "ev" ? "active" : ""} onClick={() => setBetMode("ev")} disabled={!odds}>期待値順</button>
+        </div>
+        <p className="bet-note">印の付いた馬（消を除く）の組み合わせから、{betMode === "prob" ? "当たる確率の高い順" : "期待値（当たる確率×オッズ。ワイドは下限のオッズ）の高い順。確率がとても低い組は除く（確率順の最後の買い目の 1/3 未満）"}。1点100円。
           {betPlans.usedOdds ? "確率は AI と単勝オッズを合わせた勝率から計算。" : <b className="bet-warn">オッズがないので、AI の勝率だけで計算（当たる確率は低めに出る傾向）。</b>}</p>
-        {betPlans.plans.map((plan) => <details key={plan.type} className="mark-bet-card" open={plan.type === "ワイド" || plan.type === "3連複"}>
-          <summary><b>{plan.type}</b><span>{plan.tickets.length}点</span><span className="mark-bet-hit">どれか当たる確率 <b>{pct(plan.hitProb)}</b></span></summary>
+        {betLists.map((plan) => <details key={plan.type} className="mark-bet-card" open={plan.type === "ワイド" || plan.type === "3連複"}>
+          <summary><b>{plan.type}</b><span>{plan.tickets.length}点</span><span className="mark-bet-hit">どれか当たる確率 <b>{plan.tickets.length ? pct(plan.hitProb) : "-"}</b></span></summary>
+          {plan.tickets.length === 0 ? <p className="bet-note">{plan.type === "馬単" ? "馬単はオッズを取っていないので、期待値の順は出せない。" : "オッズのある買い目がない。"}</p> :
           <ul>{plan.tickets.map((tk) => <li key={tk.key + tk.nums.join(">")}>
             <span className="mark-bet-combo">{tk.nums.map((n, i) => <span key={i}>{i > 0 && <i>{plan.type === "馬単" || plan.type === "3連単" ? "→" : "-"}</i>}
               <small>{tk.marks[i] ?? ""}</small>{n}</span>)}</span>
             <span className="mark-bet-prob">{(tk.prob * 100).toFixed(1)}%</span>
-            <span className="mark-bet-odds">{betOdds(plan.type, tk.key) ?? (plan.type === "馬単" ? "オッズなし" : "-")}</span>
-          </li>)}</ul>
-          {betAvg(plan.type, "hit_rate") != null && <p className="bet-note">過去（{betYears.join("・")}年の平均、{MARK_BET_POINTS[plan.type]}点）：
+            <span className="mark-bet-odds">{betOdds(plan.type, tk.key) ?? (plan.type === "馬単" ? "オッズなし" : "-")}
+              {tk.ev != null && <small className={tk.ev >= 1 ? "ev-hi" : ""}>期待値 {tk.ev.toFixed(2)}</small>}</span>
+          </li>)}</ul>}
+          {betMode === "prob" && betAvg(plan.type, "hit_rate") != null && <p className="bet-note">過去（{betYears.join("・")}年の平均、{MARK_BET_POINTS[plan.type]}点）：
             的中したレース {pct(betAvg(plan.type, "hit_rate"))}・回収率 {pct(betAvg(plan.type, "roi"))}</p>}
         </details>)}
-        <p className="bet-note">当たる確率を優先した買い目で、<b className="bet-warn">回収率は過去どの券種も 70〜80% 台（100% は超えていない）</b>。馬単のオッズは取得していない。確率はハービルの式（勝率から2着・3着を順に決める）による見込み。</p>
+        <p className="bet-note">{betMode === "prob" ? <>当たる確率を優先した買い目で、<b className="bet-warn">回収率は過去どの券種も 70〜80% 台（100% は超えていない）</b>。</>
+          : <><b className="bet-warn">期待値順は過去の成績を確かめていない</b>（全部の組の過去のオッズを持っていないため）。期待値が1を超えていても、確率の見込みのずれでそう見えているだけのことが多い。</>}
+          馬単のオッズは取得していない。確率はハービルの式（勝率から2着・3着を順に決める）による見込み。期待値＝確率×オッズ（1を超えると、見込みどおりなら買うほど得）。</p>
       </div>}
       {evidence && <details className="model-note" open>
         <summary>印の意味と過去の成績</summary>
