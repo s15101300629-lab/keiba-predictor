@@ -459,8 +459,8 @@ def add_relative(rows: list[dict], key: str, with_fstd: bool) -> None:
             r[f"{key}_fstd"] = sd
 
 
-# 成績表を読む最初の年（過去走・基準タイムなどの元）。2017・2018年を足すかは compare_years.py で決める（2026-11-22）
-HISTORY_FROM = "2019"
+# 成績表を読む最初の年（過去走・基準タイムなどの元）。2017年から（compare_years.py、2026-11-23）
+HISTORY_FROM = "2017"
 
 
 def load_races(data_root: Path) -> list[dict]:

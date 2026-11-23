@@ -27,7 +27,7 @@ from features import FEATURES, build_dataset  # noqa: E402
 REPO = Path(__file__).resolve().parents[2]
 DATA = REPO / "data" / "jra-seiseki"
 OUT = REPO / "data" / "ml"
-TRAIN_FROM = "2020-01-01"  # 2019年は過去走の蓄積期間として使い、学習行には入れない（range_comparison.json の D）
+TRAIN_FROM = "2018-01-01"  # 2017年は過去走の蓄積期間。2018年から学習（years_comparison.json：3年とも logloss 改善）
 STORE_DAYS = 550  # この日数以内に走った馬は全部の過去走を store に入れる
 STORE_DAYS_LONG = 1100  # 最後の走がそれより前でもこの日数以内なら、近20走だけ入れる（長く休んだ馬が、アプリで初出走扱いにならないように）
 STORE_LONG_RUNS = 20

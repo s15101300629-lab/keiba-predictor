@@ -1,3 +1,5 @@
 # 1行1コマンド。上から順に実行し、data/ml（と data/jra-results）の変化をコマンドごとに commit する
-# 2026-11-23：成績表に 2017・2018年を足す比較（過去走だけ／学習も）。前年までで学習して 2024〜2026年を予測
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python compare_years.py
+# 2026-11-23：成績表 2017〜・学習 2018〜 で再学習 → 一致テスト → 年ごとの検証
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python train.py
+npm run ml:parity
+cd scripts/ml && python backtest_years.py
