@@ -80,9 +80,10 @@ function runDay(date: string) {
       hit: pay(l.type, t.key) > 0, pay: pay(l.type, t.key),
     }))]));
     const stars = starTickets(plan, marks, horseOdds, odds).map((t) => ({ kind: t.kind, key: t.key, hit: pay(t.type, t.key) > 0, pay: pay(t.type, t.key) }));
+    // 新馬：JRA の結果ページでは「メイクデビュー○○」という名前（2026-11-25 に直した。前は「新馬」だけ見ていて、新馬を除くが効いていなかった）
     return {
       race_id: r.race_id, venue: r.venue, race_no: r.race_no, race_name: r.race_name, course: r.course,
-      shinba: r.race_name.includes("新馬"), payouts_ok: Object.keys(r.payouts).length > 0, odds_ok: !!odds,
+      shinba: /新馬|メイクデビュー/.test(r.race_name), payouts_ok: Object.keys(r.payouts).length > 0, odds_ok: !!odds,
       marks: hs.map((h) => ({ n: h.n, horse: h.horse, mark: marks.get(String(h.n))?.mark ?? null, finish: h.finish,
         pop: horseOdds.get(String(h.n))?.popularity ?? null, win_pay: pay("単勝", String(h.n)), place_pay: pay("複勝", String(h.n)) }))
         .filter((m) => m.mark).sort((a, b) => "◎○▲☆△消".indexOf(a.mark!) - "◎○▲☆△消".indexOf(b.mark!)),
