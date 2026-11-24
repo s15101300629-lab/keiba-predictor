@@ -429,6 +429,21 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
   - 過去走だけ増やす（2017〜・学習 2020〜）：0.41615（改善は1年）・50.97%
   - **学習も増やす（2017〜・学習 2018〜）：0.41587（3年とも改善）・51.00%・1位の勝率 30.3%→30.8%。採用**（`features.HISTORY_FROM`="2017"、`train.TRAIN_FROM`="2018-01-01"）。全馬の血統は 2019年〜のレースの分だけなので、2018年の学習行は血統が欠損
 
+## 2026-11-23〜24 の追加（作業ブランチ。216項目で再学習中）
+
+- 海外の走の見積もり（`overseas_eval.py` → `data/ml/overseas_eval.json`。2021〜2026年、年ごとに前の年までで学習。学習は海外の走なし、予測のときだけ足す）
+  - 戦績は netkeiba（`collect_overseas.py` → `data/overseas/histories.json`、215頭）、レース結果は racedb.com（世界の競馬。`collect_racedb.py` → `data/overseas/racedb.json`。このセッションからは接続できないので Actions で取る。着差（馬身）・単勝倍率・1着賞金）
+  - 見積もり：1着賞金は racedb の値を円に（5億円で頭打ち）、なければ格で決めた値で主要国以外は格を1つ下げる（依頼者の指示）。タイム差＝着差×0.173秒（racedb の JRA の重賞と成績表 1,153頭で決めた）。能力指数・タイム指数は成績表の JRA の走で、芝ダごとに log 1着賞金・タイム差・log 頭数で当てた式
+  - 結果（logloss・3着以内に来た馬の AI の順位の平均）：外国馬 33走 なし 0.403・17.7位／今 0.319・13.3位／見積もり 0.284・8.7位。遠征帰りの日本馬 831走 0.518・4.38位／0.512・4.31位／0.505・3.80位（確率の平均 24.5%→26.8%、実際 27.2%）。採用
+  - アプリ（`route.ts` の `overseasRuns`）と答え合わせ（`check_jra_day.py`、`overseas.py`）が `data/overseas/impute.json`（式）・`runs.json`（racedb で分かった馬ごとの値）を読む
+  - ジャパンカップ（202605050812、11/24 朝・209項目のモデル）：オンブズマン 7位→6位、カランダガン 12位→10位、テアオ（ペルー・チリの G1 を勝っている）6位→5位、マスカレードボール（キングジョージ 7着 2.5秒差）2位→3位
+- 3連系の確率の補正（Benter）：上の「AI印タブ」に記載。`markBets.ts` に入れた
+- クッション値・含水率・使用コース（`compare_baba.py` → `data/ml/feature_comparison_baba.json`）：全部で 3年とも logloss 改善（0.41579→0.41558）。採用（`BABA_FEATURES`）
+  - 過去の値は JRA の馬場情報の過去の PDF（https://www.jra.go.jp/keiba/baba/archive/{年}.html。2020〜2026年、`parse_baba.py` → `data/baba/baba.csv`。PDF は git に入れない）。クッション値は 2020年秋から。使用コースは成績表の「(芝Ｃコース)」（2017年〜）
+  - 直近の分は馬場情報のページの部品（`_data_cushion.html`・`_data_moist.html`。競馬場ごと・測定の日時つき）を `collect_baba_live.py` が足す（ml-train・day-check の前）。アプリは同じ部品と、競馬場ごとのページ（index.html・index2.html・index3.html）の「使用コース」を読む（`jraBaba.ts` の `fetchJraBabaDetail`）。その日の一番早い測定、まだなければその前の一番新しい測定
+- 乗り替わりの向き（`compare_jockey_dir.py`）：前走の騎手の前年の3着内率と、今回の騎手との差（前年・今年）。3年とも改善（0.41579→0.41551）。採用（`JOCKEY_DIR_FEATURES`）
+- seed を変えた5本の平均・時間の重み：依頼者の判断でやめた（`compare_ensemble.py` は動かしていない）
+
 ## 人気薄の検証（2026-11-22、`longshot_eval.py` → `data/ml/longshot_eval.json`。182項目、年ごとに前年までで学習、確定オッズ）
 
 - 人気の帯ごと（2024〜2026年）：AI は人気薄を高く・人気馬を低く見すぎる（6〜9番人気 AI 16.7〜17.3%・実際 15.0〜15.4%、10番人気〜 6.5〜7.3%・4.3〜4.4%、1〜3番人気 46.6〜48.3%・53.0〜53.6%）。オッズを入力に使っていないため
