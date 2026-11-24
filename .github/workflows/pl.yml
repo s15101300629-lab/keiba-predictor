@@ -1,6 +1,7 @@
 name: 着順を1つのモデルで学ぶ比較（作業ブランチ用）
 
 # 2026-11-24：compare_pl.py（依頼者の案 1）を、今のモデルと Plackett-Luce に分けて同時に回す（1つのジョブの時間の上限 6時間に収めるため）。
+# round4.yml の1回目は commit の不具合で結果のファイルが残らなかったので、調整し直し以外の項目もここで回し直す（調整し直しは round4.yml で動いているため）
 # このファイルか .github/round4.txt を変えて push すると起動する。結果（data/ml/round4_*.json など）を作業ブランチに commit する
 on:
   push:
@@ -25,6 +26,9 @@ jobs:
         task:
           - "python compare_pl.py base"
           - "python compare_pl.py pl"
+          - "python drift.py build && python compare_round4.py venue"
+          - "python compare_round4.py missing"
+          - "python compare_round4.py rounds && python compare_round4.py seeds"
     steps:
       - uses: actions/checkout@v4
       - run: git pull -q --rebase origin "${GITHUB_REF_NAME}"
@@ -50,7 +54,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/ml/round4_*.json data/ml/feature_stats.json data/ml/pl_*.json 2>/dev/null || true
+          # 1つでも無いファイルがあると git add 全体が失敗するので、あるものだけ足す（2026-11-24 に直した）
+          for f in data/ml/round4_*.json data/ml/feature_stats.json data/ml/pl_*.json; do [ -e "$f" ] && git add "$f"; done
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git commit -q -m "pl: ${{ matrix.task }}"
           for i in 1 2 3 4 5 6; do git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break; sleep $((i * 15)); done
