@@ -85,6 +85,11 @@ def main() -> None:
             r["course"] = course[venue]
     rows = list(csv.DictReader(OUT.open(encoding="utf-8"))) if OUT.exists() else []
     have = {(r["date"], r["venue"]) for r in rows}
+    # すでにある行でも、使用コースが空なら入れる（2026-11-25 に直した。前は新しい行にしか入らず、答え合わせの日に欠けていた）
+    for r in rows:
+        g = got.get((r["date"], r["venue"]))
+        if g and g.get("course") and not r.get("course"):
+            r["course"] = g["course"]
     added = 0
     for (d, venue), r in sorted(got.items()):
         if (d, venue) in have or not venue:

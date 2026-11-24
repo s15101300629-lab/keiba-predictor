@@ -490,6 +490,25 @@ def odds_backfill() -> None:
             print(date, len(EXOTIC_ODDS), "races（オッズ）", file=sys.stderr, flush=True)
 
 
+def fill_course_letter(days: list[dict], date: str) -> None:
+    """芝の使用コース（A〜D）：結果ページにないので、その日の成績表（後から予測し直すとき。使用コースはレース前に分かる情報）から入れる.
+    成績表がまだない当日は、features.load_baba が data/baba/baba.csv の使用コース（collect_baba_live.py が馬場情報のページから足す）を使う"""
+    pat = re.compile(r"[（(]芝([A-DＡ-Ｄ])コース[）)]")
+    letters = {}
+    for fp in (DATA / "json" / date[:4]).glob("*.json"):
+        d = json.loads(fp.read_text(encoding="utf-8"))
+        if d.get("date") == date or any(r.get("date") == date for r in d.get("races", [])):
+            m = pat.search(json.dumps(d, ensure_ascii=False))
+            if m:
+                letters[str(d.get("venue_code"))] = m.group(1)
+    n = 0
+    for d in days:
+        if not pat.search(json.dumps(d, ensure_ascii=False)) and str(d.get("venue_code")) in letters:
+            d["course_note"] = f"(芝{letters[str(d['venue_code'])]}コース)"
+            n += 1
+    print(f"使用コースを成績表から入れた: {n} / {len(days)} 競馬場", file=sys.stderr)
+
+
 def main() -> None:
     if "--backfill" in sys.argv:
         backfill()
@@ -518,6 +537,7 @@ def main() -> None:
     repair_results(days)
     if not os.environ.get("NO_OWNER_FILL"):  # NO_OWNER_FILL=1：直す前（2026-11-22 より前）の動きを再現する（入力の見張りの確かめ用）
         fill_owner_breeder(days, date)
+    fill_course_letter(days, date)
     features.EXTRA_RUNS = overseas_runs_for(days, date)
     flat = [r for d in days for r in d["races"] if r["surface"] in ("芝", "ダート")]
     print(f"{date}: {len(flat)} races", file=sys.stderr, flush=True)
