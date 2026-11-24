@@ -457,6 +457,25 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
 - 不採用：4 勝負レース（1〜2番人気に消。全券種 89.7%・61.4%・46.9%、それ以外 79.7・74.0・75.6%）、6 点数をレースごとに（77.8→80.4%・75.8→73.2%・74.3→74.1%、点数約1.3倍）、7 Benter（上）
 - T を入れたので `backtest_value.py`（value_combine.json）・`backtest_marks.py`（marks_backtest.json）を ml-run で作り直す
 
+## 買い方の成績（2026-11-24、作業ブランチ）
+
+- AI成績の画面に、画面と同じ計算の AI印・印から作る買い目（確率順・期待値順）・☆の買い目の的中率・回収率と、印ごとの成績を出す（日ごと・累計、新馬を除く切り替え）
+- 計算：印と買い目は `app/lib/raceBets.ts`（レース詳細の画面と `scripts/ml/day_bets.ts` の両方が使う）。答え合わせ（`check_jra_day.py`）が、払戻（結果ページの「払戻金」）と、各馬のモデルの生の確率・本体の入力を `data/ml/day_check/inputs/日付.json.gz` に保存し、`day_bets.ts` が `data/ml/day_bets/日付.json` を書く
+- 印・買い目は確定オッズで決める（画面は取ったときのオッズ）ので、レース前に見たものと違うことがある
+- 過去の日（9/26〜11/23）は、2025年までのデータだけのモデル一式（`prev_models.py` → `data/ml/prev`。T・オッズと合わせる係数は 2025年の予測で当てはめ）で計算する（答えを見ていない予想）。day_bets.ts は入力の model_dir の係数を読む
+
+## 依頼者の7項目（2026-11-24 開始、作業ブランチ。main は結果を見て依頼者が判断）
+
+- 共通：前年までで学習して 2024・2025・2026年を予測。**2026-11-21 以降のレースは使わない**（最後の確かめ用。`compare_round4.py`・`compare_pl.py`・`tune_params.py` の HOLDOUT）
+- 1 着順を1つのモデルで学ぶ（Plackett-Luce）：`compare_pl.py base|pl` → `data/ml/pl_base.json`・`pl_model.json`（`pl.yml`）。各馬の強さ f、w=exp(f)。1〜3着を順に「残りの馬の w に比例」で選ぶ起こりやすさの −log を、LightGBM の自作の目的関数（勾配 Σ_k p_ik−[3着以内]、ヘッセ Σ_k p_ik(1−p_ik)）で小さくする。勝率は w の割合、連対・3着以内・組み合わせはハービル。勾配は数値微分と 1e-9 で一致を確認
+- 2 欠けた入力の学習：馬体重・枠順を 0/5/10/20% の行で欠けにして学習（`compare_round4.py missing`）
+- 3 競馬場・性別を種類として：0/1 の列・LightGBM のカテゴリ機能（`compare_round4.py venue`）。番号を数値で入れているのは venue・sex。going・course_letter は順序に意味がある
+- 4 本番の入力の見張り：`drift.py build` → `data/ml/feature_stats.json`（学習データの直近1年。しきい値は欠け 10ポイント・平均 0.5標準偏差、日ごとに大きく動く項目は過去の開催日の 99.5% 点）。`check_jra_day.py` が day_check の `drift` とワークフローの結果に出し、AI成績の画面に出す。馬主の不具合の再現は `NO_OWNER_FILL=1`
+- 5 全レースの一致テスト：`parity_day.ts 日付`（`parity_core.ts` を parity.ts と共通にした）→ `data/ml/day_check/parity/日付.json`。day-check.yml に入れた（main に入れるまで動かない）。前日までの項目を Python で保存する案は、3〜4日の手間の見込みで、全レースの一致テストを 2〜3週回してから決める提案
+- 6 調整し直し：`TUNE_TIMEOUT=10800 python tune_params.py tune 60` → `compare_round4.py tuned`。木の本数を学習データの量の比で増やす比較は `compare_round4.py rounds`
+- 7 予測の確かさ：seed を変えた5本（`compare_round4.py seeds` → `round4_seeds.json`）。ばらつき（logit の標準偏差）の種類ごとの平均、期待値の順の買い目を（確率−ばらつき）×オッズで選ぶ比較（全部の組み合わせの確定オッズがある日だけ。候補は AI の上位6頭の組の簡略版）
+- 2〜7 は `round4.yml`（項目ごとに別のジョブで同時に回す）
+
 ## 人気薄の検証（2026-11-22、`longshot_eval.py` → `data/ml/longshot_eval.json`。182項目、年ごとに前年までで学習、確定オッズ）
 
 - 人気の帯ごと（2024〜2026年）：AI は人気薄を高く・人気馬を低く見すぎる（6〜9番人気 AI 16.7〜17.3%・実際 15.0〜15.4%、10番人気〜 6.5〜7.3%・4.3〜4.4%、1〜3番人気 46.6〜48.3%・53.0〜53.6%）。オッズを入力に使っていないため
