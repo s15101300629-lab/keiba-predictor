@@ -79,8 +79,23 @@ function isOverseasVenue(venue: string): boolean {
   return !JRA_VENUES.some((v) => venue.includes(v)) && !NAR_VENUES.some((v) => venue.includes(v));
 }
 
-/** netkeiba の戦績のうち海外のレースを、store.horses と同じ形の過去走にする. */
-function overseasRuns(performances: { values: Record<string, string> }[]): Store["horses"][string] {
+// 海外の走の見積もり（scripts/ml/overseas.py。2026-11-24 採用：外国馬・遠征帰りの日本馬で logloss が一番良かった）
+// racedb.com で分かった馬ごとの1着賞金（万円）・タイム差（data/overseas/runs.json）と、主要国以外は格を1つ下げる決まり・能力指数の式（impute.json）
+type OverseasImpute = { coef: Record<string, { ab: number[]; tidx: number[] }>; major_venues: string[]; grade_prize: [string, number][]; lower: Record<string, number> };
+type OverseasData = { imp: OverseasImpute | null; runs: Record<string, Record<string, { prize?: number; time_diff?: number }>> };
+let overseasData: Promise<OverseasData> | null = null;
+function loadOverseas(): Promise<OverseasData> {
+  overseasData ??= (async () => {
+    const dir = path.join(process.cwd(), "data", "overseas");
+    const read = (n: string) => readFile(path.join(dir, n), "utf8").then((t) => JSON.parse(t)).catch(() => null);
+    const [imp, runs] = await Promise.all([read("impute.json"), read("runs.json")]);
+    return { imp, runs: runs ?? {} };
+  })();
+  return overseasData;
+}
+
+/** netkeiba の戦績のうち海外のレースを、store.horses と同じ形の過去走にする（見積もりのデータがあれば overseas.py と同じ見積もり）. */
+function overseasRuns(performances: { values: Record<string, string> }[], horseId = "", od: OverseasData | null = null): Store["horses"][string] {
   const runs: Store["horses"][string] = [];
   for (const p of performances) {
     const v = p.values;
@@ -92,12 +107,32 @@ function overseasRuns(performances: { values: Record<string, string> }[]): Store
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !course || !(field > 1)) continue;
     const ok = Number.isInteger(finish) && finish > 0;
     const name = v["レース名"] ?? "";
-    const prize = OVERSEAS_PRIZE.find(([re]) => re.test(name))?.[1] ?? OVERSEAS_PRIZE_DEFAULT;
+    let prize = OVERSEAS_PRIZE.find(([re]) => re.test(name))?.[1] ?? OVERSEAS_PRIZE_DEFAULT;
     const weight = Number(v["斤量"]);
+    let timeDiff = ok ? TIME_DIFF_BY_FINISH[Math.min(finish, TIME_DIFF_BY_FINISH.length - 1)] : -1;
+    let tidx: number | null = null;
+    let ab: number | null = null;
+    const imp = od?.imp;
+    if (imp) {
+      const x = od.runs[horseId]?.[date];
+      if (x?.prize != null) prize = x.prize;
+      else if (!imp.major_venues.some((m) => (v["開催"] ?? "").includes(m))) {
+        const g = imp.grade_prize.find(([pat]) => new RegExp(pat).test(name));
+        if (g) prize = imp.lower[String(g[1])] ?? g[1];
+      }
+      if (x?.time_diff != null && ok) timeDiff = x.time_diff;
+      if (ok && timeDiff >= 0) {
+        const c = imp.coef[course[1] === "芝" ? "0" : "1"];
+        const z = [1, Math.log(Math.max(prize, 100)), Math.min(timeDiff, 3), Math.log(field)];
+        const dot = (w: number[]) => Math.round(w.reduce((acc, a, i) => acc + a * z[i], 0) * 1e4) / 1e4;
+        ab = dot(c.ab);
+        tidx = dot(c.tidx);
+      }
+    }
     runs.push([
       date, 0, course[1] === "芝" ? 0 : 1, Number(course[2]), OVERSEAS_GOING[(v["馬場"] ?? "").slice(0, 1)] ?? -1, field,
-      ok ? finish : -1, ok ? TIME_DIFF_BY_FINISH[Math.min(finish, TIME_DIFF_BY_FINISH.length - 1)] : -1,
-      -1, -1, -1, prize, Number.isFinite(weight) && weight > 0 ? weight : null, -1, -1, null, 0,
+      ok ? finish : -1, timeDiff,
+      -1, -1, -1, prize, Number.isFinite(weight) && weight > 0 ? weight : null, -1, -1, tidx, 0, ab,
     ]);
   }
   return runs;
@@ -988,13 +1023,14 @@ export async function GET(
         fieldSize: activeIdx.length,
         prize1stMan: extractFirstPrize(race.html),
       };
+      const overseasInfo = await loadOverseas();
       const rows = horses.map((horse, index) => {
         const entry = entryByHorseId.get(horse.horseId) ?? null;
         const sexAge = entry?.sexAge?.match(/^([牡牝セ])(\d+)$/);
         // 馬体重は当日の発表。学習データには欠けがないので、発表前は前走の馬体重・増減0 で計算する
         // （前走の馬体重がない馬は、学習データの初出走馬の性別ごとの中央値。scripts/ml/eval_body_weight.py で検証）
         const performances = (results[index] as { performances?: { values: Record<string, string> }[] }).performances ?? [];
-        const overseas = overseasRuns(performances);
+        const overseas = overseasRuns(performances, horse.horseId, overseasInfo);
         const assumedBodyWeight = entry?.bodyWeight == null
           ? previousBodyWeight(performances, raceConditions.date!) ?? DEBUT_BODY_WEIGHT[sexAge?.[1] ?? ""] ?? DEBUT_BODY_WEIGHT["牡"]
           : null;

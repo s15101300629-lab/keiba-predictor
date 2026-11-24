@@ -31,6 +31,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import features  # noqa: E402
+import overseas  # noqa: E402
 from features import build_dataset  # noqa: E402
 from train import DATA, OUT  # noqa: E402
 from tune_params import normalize_sum  # noqa: E402
@@ -311,6 +312,7 @@ def overseas_runs(perf: list[dict]) -> list[dict]:
             "pace": None, "pos_first": None, "pos_last": None, "prize": prize, "weight": weight if weight and weight > 0 else None,
             "jockey": None, "tidx": None, "trainer": None, "victim": 0, "ab": None, **{k: None for k in features.AGARI_KEYS},
             "turn": None, "sband": None, "race_id": None, "c_straight": None, "c_elev": None, "form_at": None, "tm5_at": None,
+            "ov_venue": v.get("開催", ""), "ov_name": name,  # 見積もり（overseas.improve）で使う
         })
     return out
 
@@ -332,7 +334,9 @@ def overseas_runs_for(days: list[dict], date: str) -> dict[str, list[dict]]:
             for h in r["results"]:
                 if not h.get("horse_id") or not (graded or (h["horse"] not in known and not debut)):
                     continue
-                runs = overseas_runs(netkeiba_performances(h["horse_id"]))
+                perf = netkeiba_performances(h["horse_id"])
+                # 見積もり（overseas.py。racedb の1着賞金・着差、主要国以外は格を1つ下げる、能力指数・タイム指数の式）
+                runs = [overseas.improve(r, r["ov_venue"], r["ov_name"], h["horse_id"]) for r in overseas_runs(perf)]
                 if runs:
                     out[h["horse"]] = runs
     print(f"海外の走を足した馬: {len(out)} 頭（{sum(len(v) for v in out.values())} 走）", file=sys.stderr, flush=True)

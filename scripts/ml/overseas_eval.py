@@ -206,7 +206,8 @@ def main() -> None:
 
     def improved_runs(hid: str) -> list[dict]:
         out = []
-        for run, v in zip(overseas_runs(perf[hid]), [v for v in perf[hid] if is_overseas_venue(v.get("開催", ""))]):
+        for run in overseas_runs(perf[hid]):
+            v = {"開催": run["ov_venue"], "レース名": run["ov_name"]}
             x = racedb_for_run(hid, hist[hid].get("title", ""), run["date"], rdb, races)
             prize = run["prize"]
             if x and x.get("prize"):
