@@ -305,86 +305,86 @@
   "result": {
    "期待値（今）": {
     "ワイド": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 1467,
+     "hit_races": 120,
+     "races": 489,
+     "ret": 131000,
+     "roi": 0.893,
+     "hit_rate": 0.2454
     },
     "馬連": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 1467,
+     "hit_races": 59,
+     "races": 489,
+     "ret": 148310,
+     "roi": 1.011,
+     "hit_rate": 0.1207
     },
     "馬単": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 1467,
+     "hit_races": 33,
+     "races": 489,
+     "ret": 169880,
+     "roi": 1.158,
+     "hit_rate": 0.0675
     },
     "3連複": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 2445,
+     "hit_races": 44,
+     "races": 489,
+     "ret": 181340,
+     "roi": 0.7417,
+     "hit_rate": 0.09
     },
     "3連単": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 2934,
+     "hit_races": 21,
+     "races": 489,
+     "ret": 330890,
+     "roi": 1.1278,
+     "hit_rate": 0.0429
     }
    },
    "期待値−ばらつき": {
     "ワイド": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 1467,
+     "hit_races": 121,
+     "races": 489,
+     "ret": 126690,
+     "roi": 0.8636,
+     "hit_rate": 0.2474
     },
     "馬連": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 1467,
+     "hit_races": 61,
+     "races": 489,
+     "ret": 149460,
+     "roi": 1.0188,
+     "hit_rate": 0.1247
     },
     "馬単": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 1467,
+     "hit_races": 32,
+     "races": 489,
+     "ret": 169540,
+     "roi": 1.1557,
+     "hit_rate": 0.0654
     },
     "3連複": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 2445,
+     "hit_races": 42,
+     "races": 489,
+     "ret": 170980,
+     "roi": 0.6993,
+     "hit_rate": 0.0859
     },
     "3連単": {
-     "points": 0,
-     "hit_races": 0,
-     "races": 0,
-     "ret": 0,
-     "roi": null,
-     "hit_rate": null
+     "points": 2934,
+     "hit_races": 20,
+     "races": 489,
+     "ret": 313560,
+     "roi": 1.0687,
+     "hit_rate": 0.0409
     }
    }
   }
