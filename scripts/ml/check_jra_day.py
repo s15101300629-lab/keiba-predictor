@@ -614,14 +614,6 @@ def main() -> None:
                             for h in sorted((h for h in info["results"] if h["finish"] and h["finish"] <= 3), key=lambda h: h["finish"])],
             "ai_hits": len(top & set(ai3)), "pop_hits": len(top & set(pop3)),
         })
-    n = len(races_out)
-    out = {"date": date, "races": n, "runners": len(rows), "training": "--training" in sys.argv,
-           "train_rank_coverage": round(float(np.mean([r.get("train_rank") is not None and not (isinstance(r.get("train_rank"), float) and math.isnan(r["train_rank"])) for r in rows])), 3),
-           "ped_coverage": round(float(np.mean([not math.isnan(r.get("ped_top3", float("nan")) or float("nan")) for r in rows])), 3),
-           "logloss": round(float(log_loss(y, p)), 4), "auc": round(float(roc_auc_score(y, p)), 4),
-           "ai_top3_hit": round(ai_hits / n3, 4), "pop_top3_hit": round(pop_hits / n3, 4),
-           "ai_top1_win": round(top1["win"] / n, 4), "ai_top1_top3": round(top1["top3"] / n, 4), "drift": drift_flags, "detail": races_out}
-    save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath)
     # 本番の入力の見張り（依頼者の案 4）：学習データの直近1年と比べて、欠けの割合・平均のずれが大きい項目
     drift_flags = None
     if (OUT / "feature_stats.json").exists():
@@ -633,6 +625,14 @@ def main() -> None:
                 fh.write(f"### {date} 入力の見張り：ずれが大きい項目 {len(drift_flags)}\n\n")
                 for x in drift_flags[:30]:
                     fh.write(f"- {x['feature']}（{'・'.join(x['flags'])}）欠け {x['missing_day']:.0%}（学習 {x['missing_train']:.0%}）平均のずれ {x['mean_z']}\n")
+    n = len(races_out)
+    out = {"date": date, "races": n, "runners": len(rows), "training": "--training" in sys.argv,
+           "train_rank_coverage": round(float(np.mean([r.get("train_rank") is not None and not (isinstance(r.get("train_rank"), float) and math.isnan(r["train_rank"])) for r in rows])), 3),
+           "ped_coverage": round(float(np.mean([not math.isnan(r.get("ped_top3", float("nan")) or float("nan")) for r in rows])), 3),
+           "logloss": round(float(log_loss(y, p)), 4), "auc": round(float(roc_auc_score(y, p)), 4),
+           "ai_top3_hit": round(ai_hits / n3, 4), "pop_top3_hit": round(pop_hits / n3, 4),
+           "ai_top1_win": round(top1["win"] / n, 4), "ai_top1_top3": round(top1["top3"] / n, 4), "drift": drift_flags, "detail": races_out}
+    save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath)
     if "--inputs-only" in sys.argv:  # 買い方の成績の入力だけ作る（過去の日を別のモデルで。AI成績の day_check/日付.json は変えない）
         return
     path = OUT / "day_check" / f"{date}.json"
