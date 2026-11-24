@@ -220,7 +220,21 @@ async function fetchHtml(
 
 
 
+// レースのクラス（買い目の見送りの判断。scripts/ml/backtest_bets2.py の race_class と同じ分け方）
+function raceClassOf(name: string, text: string): string {
+  const all = name + " " + text;
+  if (/[（(](?:Ｇ|G)[ⅠⅡⅢ123I]+[）)]|GI|GII|GIII|Ｇ[ⅠⅡⅢ]/.test(name)) return "重賞";
+  if (/[（(](?:Ｌ|L)[）)]|リステッド/.test(all)) return "L";
+  if (/新馬/.test(all)) return "新馬";
+  if (/未勝利/.test(name) || /^[^除]*未勝利(?!馬)/.test(text)) return "未勝利";
+  if (/1勝クラス|１勝クラス|500万/.test(all)) return "1勝";
+  if (/2勝クラス|２勝クラス|1000万/.test(all)) return "2勝";
+  if (/3勝クラス|３勝クラス|1600万/.test(all)) return "3勝";
+  return "OP";
+}
+
 type RaceConditions = {
+  raceClass?: string | null;
   raceName: string | null;
   date: string | null;
   venue: string | null;
@@ -304,7 +318,9 @@ function extractRaceConditions(html: string, raceId: string): RaceConditions {
   const weather = weatherMatch?.[1] ?? null;
   const going = goingMatch?.[1] ?? null;
 
+  const raceData2 = cleanText(html.match(/<div\b(?=[^>]*\bclass=["'][^"']*\bRaceData02\b)[^>]*>([\s\S]*?)<\/div>/i)?.[1] ?? "");
   return {
+    raceClass: raceClassOf(headingText + " " + titleText, raceData2),
     raceName: raceNameMatch?.[1]?.trim() ?? null,
     date,
     venue,
@@ -641,6 +657,8 @@ type HeavyAdjustment = {
 let mlAssets: Promise<{
   model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
   winModel: Model | null; top2Model: Model | null; valueModel: unknown; marksEvidence: unknown; betsEvidence: unknown; longshotFeatures: string[] | null;
+  calibration: { top3: number; top2: number; win: number } | null;
+  betsSkipClasses: string[] | null; betsExtras: unknown;
 } | null> | null = null;
 function loadMlAssets() {
   mlAssets ??= (async () => {
@@ -662,7 +680,18 @@ function loadMlAssets() {
         return Object.fromEntries(Object.entries(json.years).map(([y, v]) => [y, { marks: v.triangle_B, popLe3: v.pop_le3 }]));
       }).catch(() => null);
       // AI印から作る買い目の過去の成績（scripts/ml/backtest_mark_bets.py の「合わせた勝率｜確率上位 N点」。券種ごとの点数は app/lib/markBets.ts）
-      const betsEvidence = await readFile(path.join(dir, "mark_bets_backtest.json"), "utf8").then((text) => {
+      // 2026-11-24 から：backtest_bets2.py の「案1＋6」（強さの逆算・点数をレースごとに）。見送りのクラス（案3）・☆の買い目（案5）も
+      const bets2 = await readFile(path.join(dir, "bets2_backtest.json"), "utf8").then((text) => JSON.parse(text) as {
+        years: Record<string, Record<string, unknown>> }).catch(() => null);
+      const bets2Ready = !!bets2 && Object.values(bets2.years).every((v) => v["案1＋6（点数をレースごとに）"]);
+      const betsSkipClasses = bets2Ready ? (() => {
+        const ys = Object.keys(bets2!.years).sort();
+        return ((bets2!.years[ys[ys.length - 1]]["案3・見送り（前の年に全体より回収率が低かったクラス）"] as { classes?: string[] })?.classes ?? ["新馬"]);
+      })() : null;
+      const betsExtras = bets2Ready ? Object.fromEntries(Object.entries(bets2!.years).map(([y, v]) => [y, v["案5"]])) : null;
+      const betsEvidence = bets2Ready
+        ? Object.fromEntries(Object.entries(bets2!.years).map(([y, v]) => [y, v["案1＋6（点数をレースごとに）"]]))
+        : await readFile(path.join(dir, "mark_bets_backtest.json"), "utf8").then((text) => {
         const json = JSON.parse(text) as { years: Record<string, { rules: Record<string, Record<string, unknown>> }> };
         const points: Record<string, number> = { ワイド: 3, 馬連: 3, 馬単: 3, "3連複": 5, "3連単": 6 };
         return Object.fromEntries(Object.entries(json.years).map(([y, v]) => [y, Object.fromEntries(Object.entries(points)
@@ -671,9 +700,12 @@ function loadMlAssets() {
       const [winModel, top2Model] = await Promise.all(["model_win.json", "model_top2.json"].map((name) =>
         readFile(path.join(dir, name), "utf8").then((text) => JSON.parse(text) as Model).catch(() => null)));
       // 人気薄専用の2段目（AI印の☆。scripts/ml/train_longshot.py）。入力の並びだけ見る（推論は /api/longshot）
+      // メリハリの補正の T（案 10。scripts/ml/backtest_value.py の prepare が一番新しい年で決めて calibration.json に書く）。なければ 1
+      const calibration = await readFile(path.join(dir, "calibration.json"), "utf8")
+        .then((text) => JSON.parse(text) as { top3: number; top2: number; win: number }).catch(() => null);
       const longshotFeatures = await readFile(path.join(dir, "model_longshot.json"), "utf8")
         .then((text) => (JSON.parse(text) as { features: string[] }).features).catch(() => null);
-      return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence, betsEvidence, longshotFeatures };
+      return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence, betsEvidence, betsSkipClasses, betsExtras, longshotFeatures, calibration };
     } catch {
       mlAssets = null; // 次のリクエストで再試行
       return null;
@@ -1057,7 +1089,13 @@ export async function GET(
       addFieldFeatures(activeIdx.map((i) => rows[i].features));
       addOpponentFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
       addSimilarCondFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
-      const baseProbs = rows.map((row) => predictProbability(ml.model, row.features));
+      // メリハリの補正（案 10）：モデルの log-odds に T を掛ける。この後、合計を 3・2・1 にそろえる
+      const temper = (p: number, T: number | undefined) => {
+        if (!T || T === 1) return p;
+        const q = Math.min(Math.max(p, 1e-9), 1 - 1e-9);
+        return 1 / (1 + Math.exp(-T * Math.log(q / (1 - q))));
+      };
+      const baseProbs = rows.map((row) => temper(predictProbability(ml.model, row.features), ml.calibration?.top3));
       const useStack = !!ml.stack?.adopted;
       const isHeavy = raceConditions.going === "重" || raceConditions.going === "不良";
       const stacked = baseProbs.map((p, i) => (useStack ? stackProbability(ml.stack!, stackFeatures(p, aptitudes[i], isHeavy)) : p));
@@ -1080,9 +1118,21 @@ export async function GET(
       const normalized = normalizeSum(activeIdx.map((i) => stacked[i]), 3);
       activeIdx.forEach((i, k) => { probs[i] = normalized[k]; });
       // 勝率・連対率。3着以内確率を超えないようにそろえる
-      const top2Probs = rows.map((row, i) => ml.top2Model ? Math.min(predictProbability(ml.top2Model, row.features), probs[i]) : null);
-      const baseWinProbs = rows.map((row) => ml.winModel ? predictProbability(ml.winModel, row.features) : null); // AI印の◎・▲（そろえる前の勝率）
-      const winProbs = rows.map((_, i) => baseWinProbs[i] != null ? Math.min(baseWinProbs[i]!, top2Probs[i] ?? probs[i]) : null);
+      // 連対率・勝率も T を掛けて、出走馬の合計を 2・1 にそろえる（案 10）
+      const rawTop2 = rows.map((row) => ml.top2Model ? temper(predictProbability(ml.top2Model, row.features), ml.calibration?.top2) : null);
+      const baseWinProbs = rows.map((row) => ml.winModel ? temper(predictProbability(ml.winModel, row.features), ml.calibration?.win) : null); // AI印の◎・▲（そろえる前の勝率）
+      const normIn = (vals: (number | null)[], target: number) => {
+        const out = [...vals];
+        if (activeIdx.every((i) => vals[i] != null)) {
+          const z = normalizeSum(activeIdx.map((i) => vals[i]!), target);
+          activeIdx.forEach((i, k) => { out[i] = z[k]; });
+        }
+        return out;
+      };
+      const top2N = normIn(rawTop2, 2);
+      const winN = normIn(baseWinProbs, 1);
+      const top2Probs = rows.map((_, i) => top2N[i] != null ? Math.min(top2N[i]!, probs[i]) : null);
+      const winProbs = rows.map((_, i) => winN[i] != null ? Math.min(winN[i]!, top2Probs[i] ?? probs[i]) : null);
       const order = activeIdx.map((i) => ({ p: probs[i], i })).sort((a, b) => b.p - a.p);
       // 各観点：SHAP の寄与を AIスコアの点に直す（内訳の合計 ＝ AIスコア − 50。app/lib/ml/shapGroups.ts の scorePoints）
       const phis = activeIdx.map((i) => treeShap(ml.model, rows[i].features));
@@ -1126,6 +1176,7 @@ export async function GET(
       const f0 = rows[activeIdx[0]]?.features;
       mlSummary = {
         status: "available", dataUntil: ml.store.lastDate, goingAssumed, goingSource, valueModel: ml.valueModel, marksEvidence: ml.marksEvidence, betsEvidence: ml.betsEvidence,
+          betsSkipClasses: ml.betsSkipClasses, betsExtras: ml.betsExtras,
         longshotReady, featureCount: ml.model.features.length,
         bodyWeightAssumed: activeIdx.some((i) => rows[i].bodyWeightAssumed),
         // このレースの結果がすでに学習データに入っている（答えを見て学習した状態）

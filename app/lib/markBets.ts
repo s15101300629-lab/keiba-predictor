@@ -131,3 +131,81 @@ export function evPlan(t: MarkBetType, p: number[], all: MarkBetTicket[], oddsOf
     .slice(0, n);
   return { tickets, hitProb: hitProbOf(t, p, tickets) };
 }
+
+// ===== 2026-11-24 の改善（依頼者の案 1・2・6。検証は scripts/ml/backtest_bets2.py → data/ml/bets2_backtest.json） =====
+
+/** 各馬が3着以内に入る確率（1着は s に比例、2着・3着は s^λ に比例）. */
+export function top3FromStrength(s: number[]): number[] {
+  const n = s.length;
+  const out = s.slice();
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    if (i === j) continue;
+    const pij = exacta(s, i, j);
+    out[j] += pij;
+    for (let k = 0; k < n; k++) if (k !== i && k !== j) out[k] += tri(s, i, j, k);
+  }
+  return out;
+}
+
+/**
+ * 案1：3着以内の確率 t（合計 min(3,頭数)。AI と市場を合わせた確率）に合う各馬の強さ（合計1）を、比を掛ける繰り返しで逆算する。
+ * 組み合わせの確率はこの強さから出す（今までは勝率の合わせ方から作っていて、AI の重みがほぼ0＝中身がほぼ市場だった）
+ */
+export function strengthsFromTop3(t: number[], iters = 60): number[] {
+  const sum = t.reduce((a, b) => a + b, 0);
+  let s = t.map((x) => Math.max(x, 1e-4) / sum);
+  for (let it = 0; it < iters; it++) {
+    const cur = top3FromStrength(s);
+    s = s.map((x, i) => x * Math.pow(Math.max(t[i], 1e-6) / Math.max(cur[i], 1e-9), 0.8));
+    const z = s.reduce((a, b) => a + b, 0);
+    s = s.map((x) => x / z);
+  }
+  return s;
+}
+
+/**
+ * 案6：点数をレースごとに変える。「どれか当たる確率」が目標に届くまで、確率の高い順に足す（上限は決まった点数の2倍）。
+ * 目標は backtest_bets2.py が「前の年に、決まった点数と同じくらいの的中率」になるように決めた値（直近の年）
+ */
+export const MARK_BET_TARGETS: Record<MarkBetType, number> = { ワイド: 0.6, 馬連: 0.4, 馬単: 0.3, "3連複": 0.3, "3連単": 0.15 };
+export function variablePlan(t: MarkBetType, p: number[], all: MarkBetTicket[]): { tickets: MarkBetTicket[]; hitProb: number } {
+  const max = Math.min(all.length, 2 * MARK_BET_POINTS[t]);
+  const tickets: MarkBetTicket[] = [];
+  let hit = 0;
+  for (let k = 0; k < max; k++) {
+    tickets.push(all[k]);
+    hit = hitProbOf(t, p, tickets);
+    if (hit >= MARK_BET_TARGETS[t]) break;
+  }
+  return { tickets, hitProb: hit };
+}
+
+/**
+ * 案2（未検証）：馬連・3連複のオッズが取れているとき、市場の組み合わせの確率をそのオッズの逆数（合計1）にし、
+ * AI だけの強さから出した組み合わせの確率と、3着以内の合わせ方と同じ重み（value_combine の combined の ai・market）で
+ * 掛け合わせて（対数で足して）合計1にそろえる。全部の組の過去のオッズがまだないので確かめていない（data/jra-odds がたまったら確かめる）
+ */
+export function poolWithComboOdds(t: "馬連" | "3連複", sAi: number[], nums: number[], odds: Record<string, { min: number }>,
+  coef: { ai: number; market: number }): Map<string, number> | null {
+  const n = sAi.length;
+  const combos: { key: string; ai: number; mkt: number }[] = [];
+  if (t === "馬連") {
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const key = [nums[i], nums[j]].sort((a, b) => a - b).join("-");
+      const o = odds[key]?.min;
+      if (!o) return null;
+      combos.push({ key, ai: exacta(sAi, i, j) + exacta(sAi, j, i), mkt: 1 / o });
+    }
+  } else {
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) for (let k = j + 1; k < n; k++) {
+      const key = [nums[i], nums[j], nums[k]].sort((a, b) => a - b).join("-");
+      const o = odds[key]?.min;
+      if (!o) return null;
+      combos.push({ key, ai: trioProb(sAi, i, j, k), mkt: 1 / o });
+    }
+  }
+  const mSum = combos.reduce((a, c) => a + c.mkt, 0);
+  const w = combos.map((c) => Math.exp(coef.ai * Math.log(Math.max(c.ai, 1e-12)) + coef.market * Math.log(c.mkt / mSum)));
+  const wSum = w.reduce((a, b) => a + b, 0);
+  return new Map(combos.map((c, i) => [c.key, w[i] / wSum]));
+}

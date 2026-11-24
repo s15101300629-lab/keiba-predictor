@@ -507,10 +507,10 @@ footer span { letter-spacing:0; }
 .ai-conditions { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 4px; color: var(--muted); font-size: 12px; }
 .ai-conditions b { color: var(--text); margin-left: 4px; }
 .ai-conditions select { margin-left: 4px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; }
-.ai-row-head { display: grid; grid-template-columns: 1fr 52px 92px 56px; gap: 6px; padding: 6px 10px 4px 44px; color: var(--muted); font-size: 10px; }
+.ai-row-head { display: grid; grid-template-columns: 1fr 52px 100px 56px; gap: 6px; padding: 6px 10px 4px 44px; color: var(--muted); font-size: 10px; }
 .ai-row-head span:nth-child(n+2) { text-align: center; }
 .ai-row-head i { display: inline-block; width: 10px; height: 2px; margin: 0 3px 2px 6px; background: #3fae5a; vertical-align: middle; }
-.prediction-horse-summary.ai-row { display: grid; grid-template-columns: 26px 1fr 52px 92px 56px; align-items: center; gap: 6px; min-height: 52px; padding: 8px 10px; }
+.prediction-horse-summary.ai-row { display: grid; grid-template-columns: 26px 1fr 52px 100px 56px; align-items: center; gap: 6px; min-height: 52px; padding: 8px 10px; }
 .ai-row .horse-main b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .ai-row .horse-main small { margin-top: 2px; }
 .ai-odds { display: flex; flex-direction: column; align-items: center; line-height: 1.15; font-variant-numeric: tabular-nums; }
@@ -755,3 +755,16 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .site-header { position: sticky; top: 0; z-index: 40; padding-top: env(safe-area-inset-top); }
 .race-tabs, .date-tabs { top: var(--header-h); }
 .horse-number-badge.pending { background: var(--panel-2); color: var(--muted); }
+
+.bet-skip, .bet-shobu { margin: 6px 0; padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 700; }
+.bet-skip { background: #3a1c1a; color: #f0a49c; border: 1px solid #6b2a24; }
+.bet-shobu { background: #3a2e10; color: var(--accent-strong); border: 1px solid var(--accent); }
+.star-bets { padding: 8px 12px; }
+.star-bets ul { padding: 0; }
+.star-ev { display: block; width: 100%; color: var(--muted); font-size: 11px; }
+
+/* AIスコアの横に3着以内確率（案11） */
+.ai-score-num { flex: 0 0 30px; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.05; }
+.ai-score-num strong { font-size: 14px; font-variant-numeric: tabular-nums; }
+.ai-score-num small { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tier-top .ai-score-num strong { color: #ff6b5e; }

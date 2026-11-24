@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { type BetType } from "@/app/lib/bets";
 import { AI_MARK_ORDER, assignAiMarks, type AiMark } from "@/app/lib/marks";
-import { combinedWin, evPlan, hitProbOf, MARK_BET_POINTS, MARK_BET_TYPES, markBetCandidates, type MarkBetTicket, type MarkBetType } from "@/app/lib/markBets";
+import { evPlan, MARK_BET_TARGETS, MARK_BET_TYPES, markBetCandidates, poolWithComboOdds, strengthsFromTop3, variablePlan, type MarkBetTicket, type MarkBetType } from "@/app/lib/markBets";
+import { normalizeSum } from "@/app/lib/ml/model";
 import { useParams } from "next/navigation";
 import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
 import { featureLabel, HIDDEN_GROUPS, SHAP_GROUPS } from "@/app/lib/ml/shapGroups";
@@ -12,6 +13,7 @@ type Conditions = {
   raceNumber: number | null; startTime: string | null; surface: string | null;
   distanceMeters: number | null; direction: string | null; courseLayout: string | null;
   courseLetter: string | null; weather: string | null; weatherForecast?: boolean; conditionSource?: string; going: string | null;
+  raceClass?: string | null;
 };
 type Entry = {
   frameNumber: number | null; horseNumber: number | null; sexAge: string | null;
@@ -94,6 +96,8 @@ type MlSummary = {
   longshotReady?: boolean;
   marksEvidence?: Record<string, { marks: Record<string, MarkStats>; popLe3: MarkStats }> | null;
   betsEvidence?: BetsEvidence | null;
+  betsSkipClasses?: string[] | null;
+  betsExtras?: Record<string, Record<string, { points: number; hit_rate: number; roi: number }>> | null;
 };
 type BetsEvidence = Record<string, Record<string, { points_per_race: number; hit_rate: number; roi: number } | null>>;
 type MarkStats = { n: number; win_rate?: number; top3_rate?: number; win_roi?: number; place_roi?: number; place_roi_market_matched?: number };
@@ -614,7 +618,8 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
         {odds?.win != null ? <><b className={odds.popularity != null && odds.popularity <= 3 ? "fav" : ""}>{odds.win.toFixed(1)}</b><small>{odds.popularity}番人気</small></> : <small>-</small>}
       </span>
       <span className="ai-score" role="img" aria-label={horse.name + " AIスコア（出走馬の中の偏差値） " + (score === null ? "算出不可" : score.toFixed(1)) + "、3着以内確率 " + probabilityText}>
-        <strong>{score === null ? "-" : Math.round(score)}</strong>
+        <span className="ai-score-num"><strong>{score === null ? "-" : Math.round(score)}</strong>
+          <small>{probability === null ? "-" : (probability < 10 ? probability.toFixed(1) : Math.round(probability)) + "%"}</small></span>
         <span className="ai-score-track">
           <span className="ai-score-fill" style={{ width: (score === null ? 0 : scoreBar(score)) + "%" }} />
           <span className="ai-score-avg" style={{ left: scoreBar(50) + "%" }} />
@@ -710,7 +715,9 @@ function FactorView({ horses, categoryRanks, factor, onFactor }: {
 const ODDS_FIELD: Record<BetType, keyof OddsData> = { 単勝: "win", 複勝: "place", ワイド: "wide", 馬連: "umaren", "3連複": "trio" };
 const BET_TYPES: BetType[] = ["単勝", "複勝", "ワイド", "馬連", "3連複"];
 
-function OddsBar({ odds, state, error, onLoad, compact = false, weightNote = "" }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; onLoad: () => void; compact?: boolean; weightNote?: string }) {
+function OddsBar({ odds, state, error, onLoad, compact = false, weightNote = "", startAt = null }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; onLoad: () => void; compact?: boolean; weightNote?: string; startAt?: Date | null }) {
+  // 案9：取ったのが発走10分前より早いときは、取り直しをすすめる（過去の検証は確定オッズ）
+  const early = !!odds && !!startAt && odds.status !== "result" && new Date(odds.fetchedAt).getTime() < startAt.getTime() - 10 * 60 * 1000;
   const missing = odds ? BET_TYPES.filter((t) => !Object.keys((odds[ODDS_FIELD[t]] as OddsMap) ?? {}).length) : [];
   return <div className="odds-bar">
     <div className="bet-controls">
@@ -726,6 +733,7 @@ function OddsBar({ odds, state, error, onLoad, compact = false, weightNote = "" 
       {!compact && missing.length > 0 && <><br />まだ出ていない券種：{missing.join("・")}</>}
       {state === "error" && <><br /><b className="bet-warn">オッズを取得できなかった：{error}</b></>}
       {weightNote && <><br /><b>{weightNote}</b></>}
+      {early && <><br /><b className="bet-warn">発走10分前以降に取り直すと、過去の検証（確定オッズ）と同じ条件に近くなります</b></>}
     </p>
   </div>;
 }
@@ -734,12 +742,15 @@ const MARK_MEANING: Record<AiMark, string> = {
   "◎": "本命", "○": "対抗", "▲": "単穴", "☆": "穴", "△": "連下", "消": "消し",
 };
 
-function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horseOdds, winCoef, evidence, betsEvidence }: {
+function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horseOdds, winCoef, evidence, betsEvidence, valueCoef, raceClass, skipClasses, extras }: {
   horses: Horse[]; inTraining: boolean; odds: OddsData | null; oddsBar: ReactNode; values: Map<number, ValueResult> | null;
   longshot: Map<number, number> | null;
   horseOdds: Map<string, HorseOdds>; winCoef: { ai: number; market: number } | null;
   evidence: Record<string, { marks: Record<string, MarkStats>; popLe3: MarkStats }> | null;
   betsEvidence: BetsEvidence | null;
+  valueCoef: { ai: number; market: number } | null; // 3着以内の合わせ方（value_combine の combined）。案2で組み合わせの確率を合わせる重み
+  raceClass: string | null; skipClasses: string[]; // 案3：買い目の見送りを勧めるクラス（backtest_bets2.py）
+  extras: Record<string, Record<string, { points: number; hit_rate: number; roi: number }>> | null; // 案5の過去の成績
 }) {
   const marks = useMemo(() => {
     const rows = horses.filter((h) => h.prediction && h.prediction.baseWinProbability != null && h.raceEntry?.horseNumber != null);
@@ -757,14 +768,32 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
   };
   const pct = (x: number | null) => (x == null ? "-" : Math.round(x * 100) + "%");
   const marked = AI_MARK_ORDER.flatMap((m) => horses.filter((h) => marks.get(h.horseId)?.mark === m));
-  // 印から作る買い目（app/lib/markBets.ts）。勝率は AI と市場を合わせたもの（オッズがなければ AI の勝率）
+  // 印から作る買い目（app/lib/markBets.ts）。案1：3着以内の合わせた確率（オッズがなければ AI の3着以内確率）に合う各馬の強さを逆算し、
+  // その強さから組み合わせの確率を出す（2着・3着は Benter の補正）。案2（未検証）：馬連・3連複のオッズがあれば、その組み合わせのオッズと合わせる
   const betPlans = useMemo(() => {
-    const rows = horses.filter((h) => h.prediction?.baseWinProbability != null && h.raceEntry?.horseNumber != null);
+    const rows = horses.filter((h) => h.prediction?.probability != null && h.raceEntry?.horseNumber != null);
+    if (rows.length < 3) return { all: null, p: [] as number[], usedCombined: false, pooled: [] as MarkBetType[] };
     const hs = rows.map((h) => ({ id: h.horseId, num: h.raceEntry!.horseNumber!, mark: marks.get(h.horseId)?.mark ?? null,
-      aiWin: h.prediction!.baseWinProbability!, odds: horseOdds.get(h.horseId)?.win ?? null }));
-    const { p, usedOdds } = combinedWin(hs, odds ? winCoef : null);
-    return { all: markBetCandidates(hs, p), p, usedOdds };
-  }, [horses, marks, horseOdds, odds, winCoef]);
+      aiWin: h.prediction!.baseWinProbability ?? h.prediction!.probability, odds: horseOdds.get(h.horseId)?.win ?? null }));
+    const aiT3 = rows.map((h) => h.prediction!.probability);
+    const comb = values && rows.every((h) => values.get(h.raceEntry!.horseNumber!)?.combined != null)
+      ? normalizeSum(rows.map((h) => values.get(h.raceEntry!.horseNumber!)!.combined), 3) : null;
+    const s = strengthsFromTop3(comb ?? aiT3);
+    const all = markBetCandidates(hs, s);
+    const pooled: MarkBetType[] = [];
+    if (all && odds && valueCoef) {
+      const sAi = comb ? strengthsFromTop3(aiT3) : s;
+      for (const t of ["馬連", "3連複"] as const) {
+        const table = (odds[t === "馬連" ? "umaren" : "trio"] as OddsMap) ?? {};
+        if (!Object.keys(table).length) continue;
+        const pm = poolWithComboOdds(t, sAi, hs.map((h) => h.num), table, valueCoef);
+        if (!pm) continue;
+        all[t] = all[t].map((c) => ({ ...c, prob: pm.get(c.key) ?? c.prob })).sort((a, b) => b.prob - a.prob);
+        pooled.push(t);
+      }
+    }
+    return { all, p: s, usedCombined: !!comb, pooled };
+  }, [horses, marks, horseOdds, odds, values, valueCoef]);
   const [betMode, setBetMode] = useState<"prob" | "ev">("prob");
   const oddsEntry = (t: MarkBetType, key: string) => {
     const field = ({ ワイド: "wide", 馬連: "umaren", 馬単: null, "3連複": "trio", "3連単": "trifecta" } as const)[t];
@@ -780,11 +809,13 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
     if (!all) return [];
     return MARK_BET_TYPES.map((t) => {
       if (betMode === "prob") {
-        const tickets: (MarkBetTicket & { ev?: number })[] = all[t].slice(0, MARK_BET_POINTS[t]).map((c) => {
+        // 案6：「どれか当たる確率」が目標に届くまで足す（上限は決まった点数の2倍）
+        const plan = variablePlan(t, betPlans.p, all[t]);
+        const tickets: (MarkBetTicket & { ev?: number })[] = plan.tickets.map((c) => {
           const o = oddsEntry(t, c.key);
           return { ...c, ev: o ? c.prob * o.min : undefined };
         });
-        return { type: t, tickets, hitProb: hitProbOf(t, betPlans.p, tickets) };
+        return { type: t, tickets, hitProb: betPlans.pooled.includes(t) ? tickets.reduce((a, c) => a + c.prob, 0) : plan.hitProb };
       }
       const r = evPlan(t, betPlans.p, all[t], (key) => oddsEntry(t, key)?.min ?? null);
       return { type: t, tickets: r.tickets as (MarkBetTicket & { ev?: number })[], hitProb: r.hitProb };
@@ -792,11 +823,34 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [betPlans, betMode, odds]);
   const betYears = betsEvidence ? Object.keys(betsEvidence).sort() : [];
-  const betAvg = (t: MarkBetType, k: "hit_rate" | "roi") => {
+  const betAvg = (t: MarkBetType, k: "hit_rate" | "roi" | "points_per_race") => {
     const xs = betYears.map((y) => betsEvidence![y][t]?.[k]).filter((x): x is number => typeof x === "number");
     return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
   };
   const scores = useMemo(() => scoreDeviations(horses), [horses]);
+  // 案4：1〜2番人気に「消」
+  const shobu = horses.map((h) => horseOdds.get(h.horseId)?.popularity).find((pp, i) => pp != null && pp <= 2 && marks.get(horses[i].horseId)?.mark === "消") ?? null;
+  // 案5：☆の馬の複勝と、ワイド ◎-☆・○-☆
+  const numOf = (m: AiMark) => horses.find((h) => marks.get(h.horseId)?.mark === m)?.raceEntry?.horseNumber ?? null;
+  const stars = horses.filter((h) => marks.get(h.horseId)?.mark === "☆" && h.raceEntry?.horseNumber != null).flatMap((h) => {
+    const n = h.raceEntry!.horseNumber!;
+    const pl = horseOdds.get(h.horseId)?.place;
+    const out: { label: string; odds: string | null; kind: string }[] = [
+      { label: `複勝 ☆${n}`, odds: pl ? pl.min.toFixed(1) + (pl.max ? "〜" + pl.max.toFixed(1) : "") + "倍" : null, kind: "複勝☆" }];
+    for (const top of ["◎", "○"] as AiMark[]) {
+      const m = numOf(top);
+      if (m == null) continue;
+      const k = [m, n].sort((a, b) => a - b).join("-");
+      out.push({ label: `ワイド ${top}${m}-☆${n}`, odds: betOdds("ワイド", k), kind: `ワイド${top}-☆` });
+    }
+    return out;
+  });
+  const extraAvg = (kind: string) => {
+    const xs = extras ? Object.values(extras).map((y) => y[kind]).filter(Boolean) : [];
+    if (!xs.length) return null;
+    const hit = xs.reduce((a, x) => a + x.hit_rate, 0) / xs.length, roi = xs.reduce((a, x) => a + x.roi, 0) / xs.length;
+    return `${Math.round(hit * 100)}%・回収率 ${Math.round(roi * 100)}%`;
+  };
 
   return <section className="bets-panel">
     {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。印は参考として見ること。</p>}
@@ -818,12 +872,17 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
       </ul>
       {betLists.length > 0 && <div className="mark-bets">
         <h3>印から作る買い目</h3>
+        {/* 案3：AI が弱いクラスは見送りを勧める。案4：1〜2番人気に「消」が付いたレースは勝負レース */}
+        {raceClass && skipClasses.includes(raceClass) && <p className="bet-skip">見送り推奨：{raceClass}のレースは、過去の買い目の回収率が全体より低い（AI が弱い）</p>}
+        {shobu && <p className="bet-shobu">勝負レース：{shobu}番人気に「消」が付いている</p>}
         <div className="sort-toggle mark-bet-mode" role="group" aria-label="買い目の選び方">
           <button type="button" className={betMode === "prob" ? "active" : ""} onClick={() => setBetMode("prob")}>確率順</button>
           <button type="button" className={betMode === "ev" ? "active" : ""} onClick={() => setBetMode("ev")} disabled={!odds}>期待値順</button>
         </div>
         <p className="bet-note">印の付いた馬（消を除く）の組み合わせから、{betMode === "prob" ? "当たる確率の高い順" : "期待値（当たる確率×オッズ。ワイドは下限のオッズ）の高い順。確率がとても低い組は除く（確率順の最後の買い目の 1/3 未満）"}。1点100円。
-          {betPlans.usedOdds ? "確率は AI と単勝オッズを合わせた勝率から計算。" : <b className="bet-warn">オッズがないので、AI の勝率だけで計算（当たる確率は低めに出る傾向）。</b>}</p>
+          点数は「どれか当たる確率」が目標（{MARK_BET_TYPES.map((t) => `${t} ${Math.round(MARK_BET_TARGETS[t] * 100)}%`).join("・")}）に届くまで（上限は今までの点数の2倍）。
+          {betPlans.usedCombined ? "確率は AI と市場を合わせた3着以内確率から計算。" : <b className="bet-warn">オッズがないので、AI の3着以内確率だけで計算。</b>}
+          {betPlans.pooled.length > 0 && <b className="bet-warn">{betPlans.pooled.join("・")}は、その券種のオッズとも合わせた確率（未検証）。</b>}</p>
         {betLists.map((plan) => <details key={plan.type} className="mark-bet-card" open={plan.type === "ワイド" || plan.type === "3連複"}>
           <summary><b>{plan.type}</b><span>{plan.tickets.length}点</span><span className="mark-bet-hit">どれか当たる確率 <b>{plan.tickets.length ? pct(plan.hitProb) : "-"}</b></span></summary>
           {plan.tickets.length === 0 ? <p className="bet-note">{plan.type === "馬単" ? "馬単はオッズを取っていないので、期待値の順は出せない。" : "オッズのある買い目がない。"}</p> :
@@ -834,9 +893,15 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
             <span className="mark-bet-odds">{betOdds(plan.type, tk.key) ?? (plan.type === "馬単" ? "オッズなし" : "-")}
               {tk.ev != null && <small className={tk.ev >= 1 ? "ev-hi" : ""}>期待値 {tk.ev.toFixed(2)}</small>}</span>
           </li>)}</ul>}
-          {betMode === "prob" && betAvg(plan.type, "hit_rate") != null && <p className="bet-note">過去（{betYears.join("・")}年の平均、{MARK_BET_POINTS[plan.type]}点）：
+          {betMode === "prob" && betAvg(plan.type, "hit_rate") != null && <p className="bet-note">過去（{betYears.join("・")}年の平均、1レース平均 {betAvg(plan.type, "points_per_race")?.toFixed(1)}点）：
             的中したレース {pct(betAvg(plan.type, "hit_rate"))}・回収率 {pct(betAvg(plan.type, "roi"))}</p>}
         </details>)}
+        {stars.length > 0 && <div className="mark-bet-card star-bets">
+          <p className="bet-note"><b>☆の馬の買い目</b>（☆は人気の割に来やすい穴。払戻率の高い複勝とワイドで買う）</p>
+          <ul>{stars.map((st) => <li key={st.label}><span className="mark-bet-combo">{st.label}</span>
+            <span className="mark-bet-odds">{st.odds ?? "-"}</span>
+            {extraAvg(st.kind) && <small className="star-ev">過去 的中 {extraAvg(st.kind)}</small>}</li>)}</ul>
+        </div>}
         <p className="bet-note">{betMode === "prob" ? <>当たる確率を優先した買い目で、<b className="bet-warn">回収率は過去どの券種も 70〜80% 台（100% は超えていない）</b>。</>
           : <><b className="bet-warn">期待値順は過去の成績を確かめていない</b>（全部の組の過去のオッズを持っていないため）。期待値が1を超えていても、確率の見込みのずれでそう見えているだけのことが多い。</>}
           馬単のオッズは取得していない。確率は勝率から1着・2着・3着を順に決める見込み（2着・3着は勝率を少し平らにして計算する Benter の補正）。期待値＝確率×オッズ（1を超えると、見込みどおりなら買うほど得）。</p>
@@ -999,7 +1064,9 @@ export default function RaceDetailPage() {
     }
     return out;
   }, [odds, horses]);
-  const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} weightNote={weightNote} />;
+  // 発走時刻（日本時間）。オッズの取り直しのすすめ（案9）に使う
+  const startAt = conditions?.date && conditions.startTime ? new Date(`${conditions.date}T${conditions.startTime.padStart(5, "0")}:00+09:00`) : null;
+  const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} weightNote={weightNote} startAt={startAt} />;
   // AI予想タブの目安（妙味あり・妥当・割高）。AI の確率（合計をそろえる前）と単勝オッズから（app/lib/market.ts の valueLabels）
   const values = useMemo(() => {
     const model = data?.ml?.valueModel;
@@ -1080,7 +1147,8 @@ export default function RaceDetailPage() {
         </section>
       </div>}
       {activeTab === "marks" && <div role="tabpanel"><MarksPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar}
-        values={values} longshot={longshot} horseOdds={horseOdds} winCoef={data.ml?.valueModel?.win ?? null} evidence={data.ml?.marksEvidence ?? null} betsEvidence={data.ml?.betsEvidence ?? null} /></div>}
+        values={values} longshot={longshot} horseOdds={horseOdds} winCoef={data.ml?.valueModel?.win ?? null} evidence={data.ml?.marksEvidence ?? null} betsEvidence={data.ml?.betsEvidence ?? null}
+        valueCoef={data.ml?.valueModel?.combined ?? null} raceClass={data.raceConditions?.raceClass ?? null} skipClasses={data.ml?.betsSkipClasses ?? ["新馬"]} extras={data.ml?.betsExtras ?? null} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
         {data.ml?.status === "available" ? <>
           <div className="ai-conditions">
@@ -1099,7 +1167,7 @@ export default function RaceDetailPage() {
           {data.ml.raceInTraining && <p className="heavy-note" role="note">
             ⚠ このレースの結果は、すでにAIの学習データに入っている（〜{data.ml.dataUntil}）。答えを見て学習した状態なので、参考として見ること。
           </p>}
-          <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} weightNote={weightNote} compact />
+          <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} weightNote={weightNote} startAt={startAt} compact />
           <section className="horse-results-section">
             <div className="results-toolbar">
               <div className="sort-toggle" role="group" aria-label="見方">
