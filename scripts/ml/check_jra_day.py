@@ -32,6 +32,9 @@ import requests
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import features  # noqa: E402
 import overseas  # noqa: E402
+import jra_odds  # noqa: E402
+
+EXOTIC_ODDS: dict[str, dict] = {}  # race_id → 券種 → 組み合わせ → 確定オッズ（fetch_day が埋める）
 from features import build_dataset  # noqa: E402
 from train import DATA, OUT  # noqa: E402
 from tune_params import normalize_sum  # noqa: E402
@@ -182,6 +185,16 @@ def fetch_day(date: str) -> list[dict]:
                 if h["umaban"] in odds:
                     h["odds"], h["place_odds"] = odds[h["umaban"]]
             time.sleep(1)
+            # 馬連・ワイド・馬単・3連複・3連単の全部の組み合わせの確定オッズ（jra_odds.py。依頼者の案 8）。data/jra-odds/日付.json に保存する
+            key = r["odds_cname"][7:].split("Z")[0]
+            exotic = {}
+            for kind, cn in jra_odds.links(page, key).items():
+                try:
+                    exotic[kind] = jra_odds.parse(kind, post("/JRADB/accessO.html", cn))
+                except SystemExit:
+                    pass
+                time.sleep(1)
+            EXOTIC_ODDS[r["race_id"]] = exotic
         code, (slug, vname) = cname[1], VENUES[cname[1]]
         days.append({"file": f"jra-html-{date}-{slug}", "year": int(date[:4]), "kai": races[0]["kai"], "venue": slug,
                      "venue_code": code, "venue_name": vname, "day": races[0]["day"], "date": date, "races": races})
@@ -382,6 +395,14 @@ def save_raw(date: str, days: list[dict]) -> None:
     keep = [{**d, "races": [{k: v for k, v in r.items() if k != "odds_cname"} for r in d["races"]]} for d in days]
     (RAW / f"{date}.json").write_text(json.dumps({"date": date, "source": "https://www.jra.go.jp/JRADB/accessS.html", "days": keep},
                                                  ensure_ascii=False) + "\n", encoding="utf-8")
+    mine = {r["race_id"]: EXOTIC_ODDS[r["race_id"]] for d in days for r in d["races"] if EXOTIC_ODDS.get(r["race_id"])}
+    if mine:
+        od = DATA.parent / "jra-odds"
+        od.mkdir(parents=True, exist_ok=True)
+        import gzip  # 1日 約1.4MB（3連単が多い）なので gzip で保存する（約0.3MB）
+        with gzip.open(od / f"{date}.json.gz", "wt", encoding="utf-8") as fh:
+            fh.write(json.dumps({"date": date, "note": "確定オッズ（jra_odds.py）。ワイドは [下限, 上限]", "races": mine},
+                                ensure_ascii=False, separators=(",", ":")) + "\n")
 
 
 def backfill() -> None:
@@ -399,9 +420,28 @@ def backfill() -> None:
             print(date, sum(len(d["races"]) for d in days), "races", file=sys.stderr, flush=True)
 
 
+def odds_backfill() -> None:
+    """結果ページで見られる過去の開催日のうち、全部の組み合わせの確定オッズ（data/jra-odds）がまだない日を取る（依頼者の案 8・2 の検証用）."""
+    top = post("/JRADB/accessS.html", "pw01sli00/AF")
+    dates = sorted({f"{m[:4]}-{m[4:6]}-{m[6:]}" for m in re.findall(r"'pw01srl\d{12}(\d{8})/", top)})
+    from datetime import datetime, timedelta, timezone
+    today = datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+    for date in dates:
+        if date >= today or (DATA.parent / "jra-odds" / f"{date}.json.gz").exists():
+            continue
+        EXOTIC_ODDS.clear()
+        days = fetch_day(date)
+        if days:
+            save_raw(date, days)
+            print(date, len(EXOTIC_ODDS), "races（オッズ）", file=sys.stderr, flush=True)
+
+
 def main() -> None:
     if "--backfill" in sys.argv:
         backfill()
+        return
+    if "--odds-backfill" in sys.argv:
+        odds_backfill()
         return
     from datetime import datetime, timedelta, timezone
     args = [a for a in sys.argv[1:] if not a.startswith("--")]

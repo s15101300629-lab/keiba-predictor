@@ -1,3 +1,4 @@
-# 1行1コマンド。上から順に実行し、data/ml・data/overseas の変化をコマンドごとに commit する
-# 2026-11-24：海外の走の比較をやり直す（主要国かどうかの判定で、競馬場と走の並びがずれていた 15頭分を直した）
+# 1行1コマンド。上から順に実行し、data/ml・data/overseas・data/jra-odds などの変化をコマンドごとに commit する
+# 2026-11-24：海外の走の比較のやり直し（競馬場と走の並びのずれを直した）、全部の組み合わせの確定オッズを過去の開催日の分も取る（案 8）
 npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python overseas_eval.py
+cd scripts/ml && python check_jra_day.py --odds-backfill

@@ -56,6 +56,7 @@ jobs:
       - name: Commit
         run: |
           git add data/ml/day_check data/jra-results data/baba
+          git add data/jra-odds 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no changes"
             exit 0
