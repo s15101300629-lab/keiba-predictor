@@ -1,0 +1,147 @@
+{
+ "note": "依頼者の案 4 の確かめ（2026-11-25）：2026-11-15 の答え合わせの入力を、馬主・生産牧場を前の走から補わない形（2026-11-22 より前の不具合。NO_OWNER_FILL=1）と今の形で作り、入力の見張り（drift.check、feature_stats.json）が引っかける項目を比べた。本番のモデル（216項目）",
+ "date": "2026-11-15",
+ "bug_owner_not_filled": [
+  {
+   "feature": "breeder_top3_py",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 0.959,
+   "missing_train": 0.01856,
+   "mean_z": -0.04,
+   "th_missing": 0.1,
+   "th_mean_z": 0.5
+  },
+  {
+   "feature": "owner_top3_py",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 0.963,
+   "missing_train": 0.0252,
+   "mean_z": 0.03,
+   "th_missing": 0.1,
+   "th_mean_z": 0.5
+  },
+  {
+   "feature": "course_letter",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 1.0,
+   "missing_train": 0.49857,
+   "mean_z": null,
+   "th_missing": 0.1476,
+   "th_mean_z": 2.0573
+  },
+  {
+   "feature": "owner_n_py",
+   "flags": [
+    "平均"
+   ],
+   "missing_day": 0.0,
+   "missing_train": 0.0,
+   "mean_z": -0.78,
+   "th_missing": 0.1,
+   "th_mean_z": 0.5
+  },
+  {
+   "feature": "breeder_top3_y",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 0.959,
+   "missing_train": 0.03131,
+   "mean_z": 0.15,
+   "th_missing": 0.6204,
+   "th_mean_z": 0.5
+  },
+  {
+   "feature": "owner_top3_y",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 0.959,
+   "missing_train": 0.03686,
+   "mean_z": 0.05,
+   "th_missing": 0.6681,
+   "th_mean_z": 0.5
+  },
+  {
+   "feature": "breeder_n_py",
+   "flags": [
+    "平均"
+   ],
+   "missing_day": 0.0,
+   "missing_train": 0.0,
+   "mean_z": -0.56,
+   "th_missing": 0.1,
+   "th_mean_z": 0.5
+  }
+ ],
+ "fixed_before_course_fix": [
+  {
+   "feature": "course_letter",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 1.0,
+   "missing_train": 0.49857,
+   "mean_z": null,
+   "th_missing": 0.1476,
+   "th_mean_z": 2.0573
+  },
+  {
+   "feature": "breeder_top3_py",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 0.172,
+   "missing_train": 0.01856,
+   "mean_z": 0.11,
+   "th_missing": 0.1,
+   "th_mean_z": 0.5
+  },
+  {
+   "feature": "owner_top3_py",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 0.153,
+   "missing_train": 0.0252,
+   "mean_z": 0.04,
+   "th_missing": 0.1,
+   "th_mean_z": 0.5
+  }
+ ],
+ "fixed": [
+  {
+   "feature": "breeder_top3_py",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 0.172,
+   "missing_train": 0.01856,
+   "mean_z": 0.11,
+   "th_missing": 0.1,
+   "th_mean_z": 0.5
+  },
+  {
+   "feature": "owner_top3_py",
+   "flags": [
+    "欠け"
+   ],
+   "missing_day": 0.153,
+   "missing_train": 0.0252,
+   "mean_z": 0.04,
+   "th_missing": 0.1,
+   "th_mean_z": 0.5
+  }
+ ],
+ "findings": [
+  "不具合の再現では馬主・生産牧場の6項目が引っかかった（前年の3着内率の欠け 96%、学習 2〜3%）",
+  "今の形でも芝の使用コース course_letter が全部欠けていた（結果ページにない・馬場情報のページの値が既存の行に入らない）。見張りで見つかり、直した（check_jra_day.py の fill_course_letter、collect_baba_live.py）",
+  "残り：馬主・生産牧場の前年の3着内率の欠け 15〜17%（学習 2%）。前の走がない馬（初出走など）は結果ページに2着以下の馬主・生産牧場がなく補えないため"
+ ]
+}

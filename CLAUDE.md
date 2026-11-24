@@ -462,6 +462,7 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
 - AI成績の画面に、画面と同じ計算の AI印・印から作る買い目（確率順・期待値順）・☆の買い目の的中率・回収率と、印ごとの成績を出す（日ごと・累計、新馬を除く切り替え）
 - 計算：印と買い目は `app/lib/raceBets.ts`（レース詳細の画面と `scripts/ml/day_bets.ts` の両方が使う）。答え合わせ（`check_jra_day.py`）が、払戻（結果ページの「払戻金」）と、各馬のモデルの生の確率・本体の入力を `data/ml/day_check/inputs/日付.json.gz` に保存し、`day_bets.ts` が `data/ml/day_bets/日付.json` を書く
 - 印・買い目は確定オッズで決める（画面は取ったときのオッズ）ので、レース前に見たものと違うことがある
+- 過去分は `day-bets-backfill.yml`（日付を10組に分けて同時に。1日の予測し直しに約30分かかり、ml-run で順に回すと6時間で終わらなかった）
 - 過去の日（9/26〜11/23）は、2025年までのデータだけのモデル一式（`prev_models.py` → `data/ml/prev`。T・オッズと合わせる係数は 2025年の予測で当てはめ）で計算する（答えを見ていない予想）。day_bets.ts は入力の model_dir の係数を読む
 
 ## 依頼者の7項目（2026-11-24 開始、作業ブランチ。main は結果を見て依頼者が判断）
@@ -471,6 +472,8 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
 - 2 欠けた入力の学習：馬体重・枠順を 0/5/10/20% の行で欠けにして学習（`compare_round4.py missing`）
 - 3 競馬場・性別を種類として：0/1 の列・LightGBM のカテゴリ機能（`compare_round4.py venue`）。番号を数値で入れているのは venue・sex。going・course_letter は順序に意味がある
 - 4 本番の入力の見張り：`drift.py build` → `data/ml/feature_stats.json`（学習データの直近1年。しきい値は欠け 10ポイント・平均 0.5標準偏差、日ごとに大きく動く項目は過去の開催日の 99.5% 点）。`check_jra_day.py` が day_check の `drift` とワークフローの結果に出し、AI成績の画面に出す。馬主の不具合の再現は `NO_OWNER_FILL=1`
+  - 確かめ（`round4_drift_check.json`、11/15）：馬主の不具合の再現では馬主・生産牧場の6項目が引っかかる（前年の3着内率の欠け 96%、学習 2〜3%）。今の形でも芝の使用コースが全部欠けていたのが見つかり、直した（`check_jra_day.py` の `fill_course_letter`＝後から予測し直す日はその日の成績表から。`collect_baba_live.py` は既存の行にも使用コースを入れる）。残りは馬主・生産牧場の前年の3着内率の欠け 15〜17%（前の走がない馬は補えない）
+  - `check_jra_day.py` は見張りの結果を作る前に使っていて毎回落ちていた（2026-11-25 に直した。作業ブランチだけの不具合）
 - 5 全レースの一致テスト：`parity_day.ts 日付`（`parity_core.ts` を parity.ts と共通にした）→ `data/ml/day_check/parity/日付.json`。day-check.yml に入れた（main に入れるまで動かない）。前日までの項目を Python で保存する案（3〜4日の手間）は、依頼者の判断で見送り（2026-11-24）。全レースの一致テストを 2〜3週回して、ずれが何度も見つかるようなら考え直す
 - 6 調整し直し：`TUNE_TIMEOUT=10800 python tune_params.py tune 60` → `compare_round4.py tuned`。木の本数を学習データの量の比で増やす比較は `compare_round4.py rounds`
 - 7 予測の確かさ：seed を変えた5本（`compare_round4.py seeds` → `round4_seeds.json`）。ばらつき（logit の標準偏差）の種類ごとの平均、期待値の順の買い目を（確率−ばらつき）×オッズで選ぶ比較（全部の組み合わせの確定オッズがある日だけ。候補は AI の上位6頭の組の簡略版）
