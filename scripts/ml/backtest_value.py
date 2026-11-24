@@ -93,6 +93,37 @@ def predict_years(X, year, labels: dict[str, np.ndarray], params) -> dict[str, n
     return out
 
 
+TEMPS: dict[str, dict[str, float]] = {}  # 券種（top3・top2・win）→ 年 → その年に使う T（前の年で決めた値）
+TEMPS_LATEST: dict[str, float] = {}  # 一番新しい年で決めた T（アプリが使う。data/ml/calibration.json）
+
+
+def apply_temperature(p, T: float):
+    p = np.clip(p, 1e-9, 1 - 1e-9)
+    return 1 / (1 + np.exp(-T * np.log(p / (1 - p))))
+
+
+def fit_temperature(p, y, race_id, target: float) -> float:
+    """合計を target にそろえた後の logloss が一番小さい T（0.8〜1.8 を黄金分割で探す）."""
+    from tune_params import normalize_sum  # noqa: PLC0415
+    def loss(T):
+        q = np.clip(normalize_sum(race_id, apply_temperature(p, T), target), 1e-9, 1 - 1e-9)
+        return float(log_loss(y, q, labels=[0, 1]))
+    a, b = 0.8, 1.8
+    g = (5 ** 0.5 - 1) / 2
+    c, d = b - g * (b - a), a + g * (b - a)
+    fc, fd = loss(c), loss(d)
+    for _ in range(18):
+        if fc < fd:
+            b, d, fd = d, c, fc
+            c = b - g * (b - a)
+            fc = loss(c)
+        else:
+            a, c, fc = c, d, fd
+            d = a + g * (b - a)
+            fd = loss(d)
+    return round((a + b) / 2, 4)
+
+
 def groups(race_id):
     order = np.argsort(race_id, kind="stable")
     return np.split(order, np.flatnonzero(race_id[order][1:] != race_id[order][:-1]) + 1)
@@ -162,19 +193,38 @@ def prepare() -> dict:
     cache = OUT / "cache" / "value_pred.npz"
     # 予測をためておく（同じ特徴量・同じ行数で、今の PRED_YEARS をすべて含むときだけ使う）
     c = np.load(cache) if cache.exists() else None
-    if (c is not None and list(c["features"]) == FEATURES and len(c["win"]) == len(rows)
+    if (c is not None and list(c["features"]) == FEATURES and len(c["win"]) == len(rows) and "top2" in c
             and "years" in c and set(PRED_YEARS) <= set(c["years"].tolist())):
-        pred = {k: c[k] for k in ("win", "top3")}
+        pred = {k: c[k] for k in ("win", "top2", "top3")}
     else:
-        pred = predict_years(X, year, {"win": (finish == 1).astype(float), "top3": (finish <= 3).astype(float)}, params)
+        pred = predict_years(X, year, {"win": (finish == 1).astype(float), "top2": (finish <= 2).astype(float),
+                                       "top3": (finish <= 3).astype(float)}, params)
         cache.parent.mkdir(parents=True, exist_ok=True)
         np.savez(cache, features=np.array(FEATURES), years=np.array(PRED_YEARS), **pred)
 
+    # メリハリの補正（依頼者の案 10、2026-11-24）：モデルの log-odds に T を掛けてから合計をそろえる。T は前の年で決める
+    race_all = np.array([r["race_id"] for r in rows])
+    for k, target, lab in (("top3", 3.0, finish <= 3), ("top2", 2.0, finish <= 2), ("win", 1.0, finish == 1)):
+        raw = pred[k].copy()
+        for y in PRED_YEARS:
+            prev = str(int(y) - 1)
+            T = TEMPS.setdefault(k, {}).get(y)
+            if T is None:
+                m = year == prev
+                T = fit_temperature(raw[m], lab[m].astype(float), race_all[m], target) if prev in PRED_YEARS and m.any() else 1.0
+                TEMPS[k][y] = T
+            m = year == y
+            pred[k][m] = apply_temperature(raw[m], T)
+        TEMPS_LATEST[k] = fit_temperature(raw[year == PRED_YEARS[-1]], lab[year == PRED_YEARS[-1]].astype(float), race_all[year == PRED_YEARS[-1]], target)
+    (OUT / "calibration.json").write_text(json.dumps({
+        "note": "AI の確率のメリハリの補正（案 10）：p ← σ(T × logit p) の後、合計を 3・2・1 にそろえる。T は一番新しい年の予測で決めた値（backtest_value.prepare）",
+        "fit_year": PRED_YEARS[-1], "top3": TEMPS_LATEST["top3"], "top2": TEMPS_LATEST["top2"], "win": TEMPS_LATEST["win"],
+        "by_year": TEMPS}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     # 評価する年（2023〜）の行だけにする
     keep = np.isin(year, PRED_YEARS)
     keep_idx = np.flatnonzero(keep)
     rows = [r for r, k in zip(rows, keep) if k]
-    year, finish, pwin, ptop3 = year[keep], finish[keep], pred["win"][keep], pred["top3"][keep]
+    year, finish, pwin, ptop3, ptop2 = year[keep], finish[keep], pred["win"][keep], pred["top3"][keep], pred["top2"][keep]
     race_id = np.array([r["race_id"] for r in rows])
     odds = np.full(len(rows), np.nan)
     win_ret = np.zeros(len(rows))
@@ -194,7 +244,7 @@ def prepare() -> dict:
         if np.isnan(odds[g]).any():
             ok[g] = False
     sel_rows = np.flatnonzero(ok)
-    race_id, year, finish, pwin, ptop3, odds, win_ret, place_ret = (a[sel_rows] for a in (race_id, year, finish, pwin, ptop3, odds, win_ret, place_ret))
+    race_id, year, finish, pwin, ptop3, ptop2, odds, win_ret, place_ret = (a[sel_rows] for a in (race_id, year, finish, pwin, ptop3, ptop2, odds, win_ret, place_ret))
     gs = groups(race_id)
     _, race_idx = np.unique(race_id, return_inverse=True)
     n = len(race_id)
@@ -213,7 +263,7 @@ def prepare() -> dict:
     logit = lambda p: np.log(p / (1 - p))  # noqa: E731
     return dict(X=X[keep_idx[sel_rows]], race_id=race_id, year=year, finish=finish, odds=odds, win_ret=win_ret, place_ret=place_ret, gs=gs, race_idx=race_idx, n=n,
                 ai_win=ai_win, mkt_win=mkt_win, ai_top3=ai_top3, mkt_top3=mkt_top3, la=la, lm=lm, is_win=is_win, is_top3=is_top3,
-                pwin_raw=pwin, ptop3_raw=ptop3, horse=np.array([rows[i]['horse'] for i in sel_rows]), umaban=np.array([rows[i].get('umaban') or 0 for i in sel_rows]))
+                pwin_raw=pwin, ptop3_raw=ptop3, ptop2_raw=ptop2, horse=np.array([rows[i]['horse'] for i in sel_rows]), umaban=np.array([rows[i].get('umaban') or 0 for i in sel_rows]))
 
 
 def main() -> None:
