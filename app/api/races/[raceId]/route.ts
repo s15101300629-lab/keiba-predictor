@@ -680,17 +680,15 @@ function loadMlAssets() {
         return Object.fromEntries(Object.entries(json.years).map(([y, v]) => [y, { marks: v.triangle_B, popLe3: v.pop_le3 }]));
       }).catch(() => null);
       // AI印から作る買い目の過去の成績（scripts/ml/backtest_mark_bets.py の「合わせた勝率｜確率上位 N点」。券種ごとの点数は app/lib/markBets.ts）
-      // 2026-11-24 から：backtest_bets2.py の「案1＋6」（強さの逆算・点数をレースごとに）。見送りのクラス（案3）・☆の買い目（案5）も
+      // 2026-11-24 から：backtest_bets2.py の「案1・ハービル（決まった点数）」（強さの逆算）。見送りは新馬だけ（案3）、☆の買い目（案5）も
       const bets2 = await readFile(path.join(dir, "bets2_backtest.json"), "utf8").then((text) => JSON.parse(text) as {
         years: Record<string, Record<string, unknown>> }).catch(() => null);
-      const bets2Ready = !!bets2 && Object.values(bets2.years).every((v) => v["案1＋6（点数をレースごとに）"]);
-      const betsSkipClasses = bets2Ready ? (() => {
-        const ys = Object.keys(bets2!.years).sort();
-        return ((bets2!.years[ys[ys.length - 1]]["案3・見送り（前の年に全体より回収率が低かったクラス）"] as { classes?: string[] })?.classes ?? ["新馬"]);
-      })() : null;
+      const bets2Ready = !!bets2 && Object.values(bets2.years).every((v) => v["案1・ハービル（決まった点数）"]);
+      // 前の年で決めたクラスを見送る形は3年中1年で悪化したので、新馬だけ（依頼者の判断）
+      const betsSkipClasses = ["新馬"];
       const betsExtras = bets2Ready ? Object.fromEntries(Object.entries(bets2!.years).map(([y, v]) => [y, v["案5"]])) : null;
       const betsEvidence = bets2Ready
-        ? Object.fromEntries(Object.entries(bets2!.years).map(([y, v]) => [y, v["案1＋6（点数をレースごとに）"]]))
+        ? Object.fromEntries(Object.entries(bets2!.years).map(([y, v]) => [y, v["案1・ハービル（決まった点数）"]]))
         : await readFile(path.join(dir, "mark_bets_backtest.json"), "utf8").then((text) => {
         const json = JSON.parse(text) as { years: Record<string, { rules: Record<string, Record<string, unknown>> }> };
         const points: Record<string, number> = { ワイド: 3, 馬連: 3, 馬単: 3, "3連複": 5, "3連単": 6 };

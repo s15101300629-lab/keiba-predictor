@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { type BetType } from "@/app/lib/bets";
 import { AI_MARK_ORDER, assignAiMarks, type AiMark } from "@/app/lib/marks";
-import { evPlan, MARK_BET_TARGETS, MARK_BET_TYPES, markBetCandidates, poolWithComboOdds, strengthsFromTop3, variablePlan, type MarkBetTicket, type MarkBetType } from "@/app/lib/markBets";
+import { evPlan, hitProbOf, MARK_BET_POINTS, MARK_BET_TYPES, markBetCandidates, poolWithComboOdds, strengthsFromTop3, type MarkBetTicket, type MarkBetType } from "@/app/lib/markBets";
 import { normalizeSum } from "@/app/lib/ml/model";
 import { useParams } from "next/navigation";
 import { valueLabels, type ValueModel, type ValueResult } from "@/app/lib/market";
@@ -809,13 +809,12 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
     if (!all) return [];
     return MARK_BET_TYPES.map((t) => {
       if (betMode === "prob") {
-        // 案6：「どれか当たる確率」が目標に届くまで足す（上限は決まった点数の2倍）
-        const plan = variablePlan(t, betPlans.p, all[t]);
-        const tickets: (MarkBetTicket & { ev?: number })[] = plan.tickets.map((c) => {
+        const picked = all[t].slice(0, MARK_BET_POINTS[t]);
+        const tickets: (MarkBetTicket & { ev?: number })[] = picked.map((c) => {
           const o = oddsEntry(t, c.key);
           return { ...c, ev: o ? c.prob * o.min : undefined };
         });
-        return { type: t, tickets, hitProb: betPlans.pooled.includes(t) ? tickets.reduce((a, c) => a + c.prob, 0) : plan.hitProb };
+        return { type: t, tickets, hitProb: betPlans.pooled.includes(t) ? tickets.reduce((a, c) => a + c.prob, 0) : hitProbOf(t, betPlans.p, picked) };
       }
       const r = evPlan(t, betPlans.p, all[t], (key) => oddsEntry(t, key)?.min ?? null);
       return { type: t, tickets: r.tickets as (MarkBetTicket & { ev?: number })[], hitProb: r.hitProb };
@@ -828,8 +827,6 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
     return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
   };
   const scores = useMemo(() => scoreDeviations(horses), [horses]);
-  // 案4：1〜2番人気に「消」
-  const shobu = horses.map((h) => horseOdds.get(h.horseId)?.popularity).find((pp, i) => pp != null && pp <= 2 && marks.get(horses[i].horseId)?.mark === "消") ?? null;
   // 案5：☆の馬の複勝と、ワイド ◎-☆・○-☆
   const numOf = (m: AiMark) => horses.find((h) => marks.get(h.horseId)?.mark === m)?.raceEntry?.horseNumber ?? null;
   const stars = horses.filter((h) => marks.get(h.horseId)?.mark === "☆" && h.raceEntry?.horseNumber != null).flatMap((h) => {
@@ -872,15 +869,13 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
       </ul>
       {betLists.length > 0 && <div className="mark-bets">
         <h3>印から作る買い目</h3>
-        {/* 案3：AI が弱いクラスは見送りを勧める。案4：1〜2番人気に「消」が付いたレースは勝負レース */}
+        {/* 案3：AI が弱いクラス（新馬）は見送りを勧める */}
         {raceClass && skipClasses.includes(raceClass) && <p className="bet-skip">見送り推奨：{raceClass}のレースは、過去の買い目の回収率が全体より低い（AI が弱い）</p>}
-        {shobu && <p className="bet-shobu">勝負レース：{shobu}番人気に「消」が付いている</p>}
         <div className="sort-toggle mark-bet-mode" role="group" aria-label="買い目の選び方">
           <button type="button" className={betMode === "prob" ? "active" : ""} onClick={() => setBetMode("prob")}>確率順</button>
           <button type="button" className={betMode === "ev" ? "active" : ""} onClick={() => setBetMode("ev")} disabled={!odds}>期待値順</button>
         </div>
         <p className="bet-note">印の付いた馬（消を除く）の組み合わせから、{betMode === "prob" ? "当たる確率の高い順" : "期待値（当たる確率×オッズ。ワイドは下限のオッズ）の高い順。確率がとても低い組は除く（確率順の最後の買い目の 1/3 未満）"}。1点100円。
-          点数は「どれか当たる確率」が目標（{MARK_BET_TYPES.map((t) => `${t} ${Math.round(MARK_BET_TARGETS[t] * 100)}%`).join("・")}）に届くまで（上限は今までの点数の2倍）。
           {betPlans.usedCombined ? "確率は AI と市場を合わせた3着以内確率から計算。" : <b className="bet-warn">オッズがないので、AI の3着以内確率だけで計算。</b>}
           {betPlans.pooled.length > 0 && <b className="bet-warn">{betPlans.pooled.join("・")}は、その券種のオッズとも合わせた確率（未検証）。</b>}</p>
         {betLists.map((plan) => <details key={plan.type} className="mark-bet-card" open={plan.type === "ワイド" || plan.type === "3連複"}>

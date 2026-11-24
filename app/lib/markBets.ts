@@ -29,17 +29,17 @@ export function combinedWin(hs: MarkBetHorse[], winCoef: { ai: number; market: n
   return { p: e.map((x) => x / s), usedOdds: true };
 }
 
-// Benter の補正（2026-11-24）：2着は残りの馬の p^λ2、3着は p^λ3 に比例させる（ハービルは λ=1）。ハービルは人気馬の2・3着を多めに、
-// 人気薄を少なめに見積もるため。λ は scripts/ml/benter_exotic.py が前の年の着順で決めた値（2024〜2026年で 0.80〜0.82・0.66〜0.70、
-// 3年とも実際の2着・3着・並び・組の対数尤度がハービルより良い）。ここは直近（2026年に使った 2025年の当てはめ）の値
-export const BENTER_L2 = 0.82;
-export const BENTER_L3 = 0.70;
+// Benter の補正：2着は残りの馬の p^λ2、3着は p^λ3 に比例させる（ハービルは λ=1）。
+// λ=0.82・0.70 は着順の対数尤度ではハービルより良かったが、買い目の回収率は 3年とも悪かった（backtest_bets2.py、2026-11-24）。
+// 依頼者の判断でハービル（λ=1）に戻した
+export const BENTER_L2 = 1;
+export const BENTER_L3 = 1;
 const cache = new WeakMap<number[], { w2: number[]; w3: number[]; s2: number; s3: number }>();
 function weights(p: number[]) {
   let c = cache.get(p);
   if (!c) {
-    const w2 = p.map((x) => Math.pow(x, BENTER_L2));
-    const w3 = p.map((x) => Math.pow(x, BENTER_L3));
+    const w2 = BENTER_L2 === 1 ? p : p.map((x) => Math.pow(x, BENTER_L2));
+    const w3 = BENTER_L3 === 1 ? p : p.map((x) => Math.pow(x, BENTER_L3));
     c = { w2, w3, s2: w2.reduce((a, b) => a + b, 0), s3: w3.reduce((a, b) => a + b, 0) };
     cache.set(p, c);
   }
@@ -164,7 +164,7 @@ export function strengthsFromTop3(t: number[], iters = 60): number[] {
 }
 
 /**
- * 案6：点数をレースごとに変える。「どれか当たる確率」が目標に届くまで、確率の高い順に足す（上限は決まった点数の2倍）。
+ * 案6（不採用。2026-11-24、回収率が3年中2年で下がった。画面では使っていない）：点数をレースごとに変える。「どれか当たる確率」が目標に届くまで、確率の高い順に足す（上限は決まった点数の2倍）。
  * 目標は backtest_bets2.py が「前の年に、決まった点数と同じくらいの的中率」になるように決めた値（直近の年）
  */
 export const MARK_BET_TARGETS: Record<MarkBetType, number> = { ワイド: 0.6, 馬連: 0.4, 馬単: 0.3, "3連複": 0.3, "3連単": 0.15 };
