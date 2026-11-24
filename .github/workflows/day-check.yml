@@ -53,6 +53,15 @@ jobs:
         working-directory: scripts/ml
         run: python check_jra_day.py ${{ github.event.inputs.date }} --training
 
+      # 一致テスト（その日の全レース・全項目。Python の入力とアプリと同じ TS の計算を比べる。依頼者の案 5）
+      - name: Parity (all races)
+        run: |
+          d=$(ls data/ml/day_check/inputs/*.json.gz 2>/dev/null | sort | tail -1 | xargs -r basename | cut -c1-10)
+          if [ -n "${{ github.event.inputs.date }}" ]; then d="${{ github.event.inputs.date }}"; fi
+          if [ -n "$d" ] && [ -f "data/ml/day_check/inputs/$d.json.gz" ]; then
+            node --experimental-strip-types scripts/ml/parity_day.ts "$d" | tee -a "$GITHUB_STEP_SUMMARY" || echo "::warning::一致テストでずれ（data/ml/day_check/parity/$d.json）"
+          fi
+
       # 買い方の成績（画面と同じ計算の AI印・印から作る買い目を、確定の払戻で数える。scripts/ml/day_bets.ts）
       - name: Bet results
         run: |

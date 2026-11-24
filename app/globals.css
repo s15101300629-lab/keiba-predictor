@@ -782,3 +782,6 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .check-marks span b { color: var(--accent); margin-right: 2px; }
 .check-marks span.in3 { color: var(--text); font-weight: 700; }
 .check-bet-line { margin-top: 4px; color: var(--muted); }
+.check-drift { margin: 8px 0; padding: 8px 10px; border: 1px solid #8a5a1a; border-radius: 10px; font-size: 12px; }
+.check-drift summary { color: var(--accent-strong); font-weight: 700; }
+.check-drift ul { margin: 6px 0 0 16px; }

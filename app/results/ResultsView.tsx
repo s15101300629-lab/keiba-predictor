@@ -6,7 +6,8 @@ export type RaceDetail = {
   race_id: string; venue: string; race_no: number; race_name: string; course: string; going: string | null;
   ai_top3: Pick[]; result_top3: Pick[]; ai_hits: number; pop_hits: number;
 };
-export type Day = { date: string; detail: RaceDetail[] };
+export type Drift = { feature: string; flags: string[]; missing_day: number; missing_train: number; mean_z: number | null };
+export type Day = { date: string; detail: RaceDetail[]; drift?: Drift[] | null };
 type BetTicket = { key: string; marks: string[]; prob: number; odds: number | null; hit: boolean; pay: number };
 export type BetRace = {
   race_id: string; venue: string; race_no: number; race_name: string; shinba: boolean; payouts_ok: boolean; odds_ok: boolean;
@@ -195,6 +196,12 @@ export default function ResultsView({ days, betDays = [] }: { days: Day[]; betDa
         {venues.map((x) => <button key={x} type="button" role="tab" aria-selected={x === v}
           className={x === v ? "venue-tab active" : "venue-tab"} onClick={() => setVenue(x)}>{x}</button>)}
       </div>
+      {day.drift && day.drift.length > 0 && <details className="check-drift">
+        <summary>入力の見張り：学習データとずれが大きい項目 {day.drift.length}</summary>
+        <p className="check-note">その日の全レースの入力を、学習データの直近1年と比べた（欠けの割合・平均）。不具合で入力がおかしくなっていないかの目安</p>
+        <ul>{day.drift.slice(0, 20).map((x) => <li key={x.feature}><b>{x.feature}</b>（{x.flags.join("・")}）欠け {pct(x.missing_day)}（学習 {pct(x.missing_train)}）
+          {x.mean_z != null ? `・平均のずれ ${x.mean_z}` : ""}</li>)}</ul>
+      </details>}
       <Summary races={races} label={`${fmtDate(day.date)} ${v}`} />
       {betRaces.length > 0 && <BetSummary races={betRaces} label={`${fmtDate(day.date)} ${v}`} />}
       <div className="check-races">{races.map((r) => <RaceCard key={r.race_id} race={r} bets={betById.get(r.race_id)} />)}</div>

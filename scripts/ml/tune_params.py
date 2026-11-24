@@ -32,10 +32,14 @@ TUNE_LR = 0.05
 VAL_YEARS = ["2023", "2024", "2025"]
 
 
+HOLDOUT = "2026-11-21"  # これ以降のレースは使わない（最後の確かめ用に残す。2026-11-24 から）
+
+
 def load():
     d = np.load(CACHE / "dataset.npz")
-    year = np.array([s[:4] for s in d["date"]])
-    return d["X"], d["label"].astype(float), year, d["race_id"], d["finish"]
+    keep = d["date"].astype(str) < HOLDOUT
+    year = np.array([s[:4] for s in d["date"][keep]])
+    return d["X"][keep], d["label"][keep].astype(float), year, d["race_id"][keep], d["finish"][keep]
 
 
 def race_top3_hit(race_id, y, p) -> float:
@@ -113,7 +117,8 @@ def tune(n_trials: int) -> None:
         study.enqueue_trial({k: PARAMS.get(k, 0.0) for k in ("num_leaves", "min_data_in_leaf", "feature_fraction", "bagging_fraction",
                                                               "lambda_l1", "lambda_l2", "min_gain_to_split", "min_sum_hessian_in_leaf")})
     done = len([t for t in study.trials if t.state.name == "COMPLETE"])
-    study.optimize(objective, n_trials=max(0, n_trials - done))
+    import os  # TUNE_TIMEOUT（秒）：Actions の時間の上限に収めるため
+    study.optimize(objective, n_trials=max(0, n_trials - done), timeout=float(os.environ["TUNE_TIMEOUT"]) if os.environ.get("TUNE_TIMEOUT") else None)
     print("best", study.best_value, study.best_params, file=sys.stderr)
 
 

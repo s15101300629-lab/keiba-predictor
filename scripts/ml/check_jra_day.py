@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import copy
+import os
 import html as htmlmod
 import json
 import math
@@ -442,8 +443,11 @@ def save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath) -> Non
                            "place": list(h["place_odds"]) if h.get("place_odds") else None,
                            "top3": float(raw3[i]), "top2": float(extra_raw["top2"][i]) if "top2" in extra_raw else None,
                            "win": float(extra_raw["win"][i]) if "win" in extra_raw else None,
-                           "x": [None if (v is None or (isinstance(v, float) and math.isnan(v))) else float(v) for v in x]})
-        races.append({"race_id": race_id, "venue": d["venue_name"], "race_no": info["race_no"], "race_name": info["race_name"],
+                           "x": [None if (v is None or (isinstance(v, float) and math.isnan(v))) else float(v) for v in x],
+                           # 一致テスト（parity_day.ts）用：アプリと同じ入力から TS で計算し直して、項目ごとに比べる
+                           "meta": {k: rows[i].get(k) for k in ("jockey", "trainer", "owner", "breeder")}})
+        r0 = rows[int(np.flatnonzero(rid == race_id)[0])]
+        races.append({"race_id": race_id, "date": date, "turn": r0.get("turn"), "sband": r0.get("sband"), "venue": d["venue_name"], "race_no": info["race_no"], "race_name": info["race_name"],
                       "course": f'{info["surface"]}{info["distance"]}', "payouts": info.get("payouts") or {}, "horses": horses})
     path = OUT / "day_check" / "inputs" / f"{date}.json.gz"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -512,7 +516,8 @@ def main() -> None:
         save_raw(date, days)
     days = copy.deepcopy(days)
     repair_results(days)
-    fill_owner_breeder(days, date)
+    if not os.environ.get("NO_OWNER_FILL"):  # NO_OWNER_FILL=1：直す前（2026-11-22 より前）の動きを再現する（入力の見張りの確かめ用）
+        fill_owner_breeder(days, date)
     features.EXTRA_RUNS = overseas_runs_for(days, date)
     flat = [r for d in days for r in d["races"] if r["surface"] in ("芝", "ダート")]
     print(f"{date}: {len(flat)} races", file=sys.stderr, flush=True)
@@ -615,8 +620,19 @@ def main() -> None:
            "ped_coverage": round(float(np.mean([not math.isnan(r.get("ped_top3", float("nan")) or float("nan")) for r in rows])), 3),
            "logloss": round(float(log_loss(y, p)), 4), "auc": round(float(roc_auc_score(y, p)), 4),
            "ai_top3_hit": round(ai_hits / n3, 4), "pop_top3_hit": round(pop_hits / n3, 4),
-           "ai_top1_win": round(top1["win"] / n, 4), "ai_top1_top3": round(top1["top3"] / n, 4), "detail": races_out}
+           "ai_top1_win": round(top1["win"] / n, 4), "ai_top1_top3": round(top1["top3"] / n, 4), "drift": drift_flags, "detail": races_out}
     save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath)
+    # 本番の入力の見張り（依頼者の案 4）：学習データの直近1年と比べて、欠けの割合・平均のずれが大きい項目
+    drift_flags = None
+    if (OUT / "feature_stats.json").exists():
+        import drift
+        drift_flags = drift.check(X, model["features"])
+        print("入力のずれ:", json.dumps(drift_flags[:20], ensure_ascii=False), file=sys.stderr)
+        if os.environ.get("GITHUB_STEP_SUMMARY"):
+            with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
+                fh.write(f"### {date} 入力の見張り：ずれが大きい項目 {len(drift_flags)}\n\n")
+                for x in drift_flags[:30]:
+                    fh.write(f"- {x['feature']}（{'・'.join(x['flags'])}）欠け {x['missing_day']:.0%}（学習 {x['missing_train']:.0%}）平均のずれ {x['mean_z']}\n")
     if "--inputs-only" in sys.argv:  # 買い方の成績の入力だけ作る（過去の日を別のモデルで。AI成績の day_check/日付.json は変えない）
         return
     path = OUT / "day_check" / f"{date}.json"

@@ -11,7 +11,7 @@ function loadDays(): Day[] {
   try { files = readdirSync(dir).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)); } catch { return []; }
   return files.sort().reverse().map((f) => {
     const d = JSON.parse(readFileSync(path.join(dir, f), "utf8")) as Day;
-    return { date: d.date, detail: d.detail };
+    return { date: d.date, detail: d.detail, drift: d.drift ?? null };
   });
 }
 
