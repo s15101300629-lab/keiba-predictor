@@ -55,7 +55,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # 1つでも無いファイルがあると git add 全体が失敗するので、あるものだけ足す（2026-11-24 に直した）
-          for f in data/ml/round4_*.json data/ml/feature_stats.json data/ml/pl_*.json; do [ -e "$f" ] && git add "$f"; done
+          for f in data/ml/round4_*.json data/ml/feature_stats.json data/ml/pl_*.json; do if [ -e "$f" ]; then git add "$f"; fi; done
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git commit -q -m "pl: ${{ matrix.task }}"
           for i in 1 2 3 4 5 6; do git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break; sleep $((i * 15)); done
