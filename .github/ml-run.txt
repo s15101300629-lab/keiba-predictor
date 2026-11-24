@@ -1,7 +1,3 @@
 # 1行1コマンド。上から順に実行し、data/ml・data/overseas の変化をコマンドごとに commit する
-# 2026-11-24：馬場の細かい値（クッション値・含水率・使用コース）と乗り替わりの向きを入れて再学習（216項目）→ 一致テスト → ☆の2段目 → 年ごとの検証
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python train.py
-npm run ml:parity
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python train_longshot.py
-npx tsx scripts/ml/parity_longshot.ts
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python backtest_years.py
+# 2026-11-24：海外の走の比較をやり直す（主要国かどうかの判定で、競馬場と走の並びがずれていた 15頭分を直した）
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python overseas_eval.py
