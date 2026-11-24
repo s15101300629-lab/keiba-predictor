@@ -455,7 +455,7 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
   - 9 発走10分前より早く取ったオッズには注意を出す。11 AIスコアの横に3着以内確率
   - 10 メリハリの補正 T（σ(T·logit p) のあと合計を 3・2・1 に。`calibration.json`、T≈1.04）。3着以内の logloss は3年とも少し良い（0.41746→0.41726・0.41585→0.41578・0.41302→0.41291）。勝率・連対率は 2025年だけ少し悪い。順位は変わらない
 - 不採用：4 勝負レース（1〜2番人気に消。全券種 89.7%・61.4%・46.9%、それ以外 79.7・74.0・75.6%）、6 点数をレースごとに（77.8→80.4%・75.8→73.2%・74.3→74.1%、点数約1.3倍）、7 Benter（上）
-- AI印の過去の成績（`marks_backtest.json`）は T を入れる前の値のまま
+- T を入れたので `backtest_value.py`（value_combine.json）・`backtest_marks.py`（marks_backtest.json）を ml-run で作り直す
 
 ## 人気薄の検証（2026-11-22、`longshot_eval.py` → `data/ml/longshot_eval.json`。182項目、年ごとに前年までで学習、確定オッズ）
 

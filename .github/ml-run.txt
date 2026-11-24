@@ -1,5 +1,4 @@
 # 1行1コマンド。上から順に実行し、data/ml・data/overseas・data/jra-odds などの変化をコマンドごとに commit する
-# 2026-11-24：海外の走の比較のやり直し、過去の開催日の全部の組み合わせの確定オッズ（案 8）、買い目の改善の比較（案 1・3・4・5・6・7・10）
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python overseas_eval.py
-cd scripts/ml && python check_jra_day.py --odds-backfill
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python backtest_bets2.py
+# 2026-11-24：メリハリの補正 T を入れたので、オッズと合わせる係数（value_combine.json）と AI印の過去の成績（marks_backtest.json）を作り直す
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python backtest_value.py
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python backtest_marks.py
