@@ -471,7 +471,7 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
 - 2 欠けた入力の学習：馬体重・枠順を 0/5/10/20% の行で欠けにして学習（`compare_round4.py missing`）
 - 3 競馬場・性別を種類として：0/1 の列・LightGBM のカテゴリ機能（`compare_round4.py venue`）。番号を数値で入れているのは venue・sex。going・course_letter は順序に意味がある
 - 4 本番の入力の見張り：`drift.py build` → `data/ml/feature_stats.json`（学習データの直近1年。しきい値は欠け 10ポイント・平均 0.5標準偏差、日ごとに大きく動く項目は過去の開催日の 99.5% 点）。`check_jra_day.py` が day_check の `drift` とワークフローの結果に出し、AI成績の画面に出す。馬主の不具合の再現は `NO_OWNER_FILL=1`
-- 5 全レースの一致テスト：`parity_day.ts 日付`（`parity_core.ts` を parity.ts と共通にした）→ `data/ml/day_check/parity/日付.json`。day-check.yml に入れた（main に入れるまで動かない）。前日までの項目を Python で保存する案は、3〜4日の手間の見込みで、全レースの一致テストを 2〜3週回してから決める提案
+- 5 全レースの一致テスト：`parity_day.ts 日付`（`parity_core.ts` を parity.ts と共通にした）→ `data/ml/day_check/parity/日付.json`。day-check.yml に入れた（main に入れるまで動かない）。前日までの項目を Python で保存する案（3〜4日の手間）は、依頼者の判断で見送り（2026-11-24）。全レースの一致テストを 2〜3週回して、ずれが何度も見つかるようなら考え直す
 - 6 調整し直し：`TUNE_TIMEOUT=10800 python tune_params.py tune 60` → `compare_round4.py tuned`。木の本数を学習データの量の比で増やす比較は `compare_round4.py rounds`
 - 7 予測の確かさ：seed を変えた5本（`compare_round4.py seeds` → `round4_seeds.json`）。ばらつき（logit の標準偏差）の種類ごとの平均、期待値の順の買い目を（確率−ばらつき）×オッズで選ぶ比較（全部の組み合わせの確定オッズがある日だけ。候補は AI の上位6頭の組の簡略版）
 - 2〜7 は `round4.yml`（項目ごとに別のジョブで同時に回す）
