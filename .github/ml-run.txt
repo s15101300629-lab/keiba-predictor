@@ -1,4 +1,6 @@
 # 1行1コマンド。上から順に実行し、data/ml・data/overseas・data/jra-odds などの変化をコマンドごとに commit する
-# 2026-11-24：メリハリの補正 T を入れたので、オッズと合わせる係数（value_combine.json）と AI印の過去の成績（marks_backtest.json）を作り直す
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python backtest_value.py
-npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python backtest_marks.py
+# 2026-11-24：買い方の成績の過去分。2025年までのデータだけのモデル一式（prev_models.py → data/ml/prev）を作り、
+# 結果ページで見られる過去の開催日を取り直して（払戻を入れる）、その一式で印・買い目を決めて数える（day_bets.ts）
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python prev_models.py
+npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && for f in ../../data/jra-results/2026-*.json; do d=$(basename "$f" .json); python check_jra_day.py "$d" --resave || true; python check_jra_day.py "$d" --saved --inputs-only --model=../../data/ml/prev/model.json || true; done
+npx tsx scripts/ml/day_bets.ts --all

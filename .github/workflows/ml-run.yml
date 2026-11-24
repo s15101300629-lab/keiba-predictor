@@ -40,7 +40,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           grep -v '^\s*#' .github/ml-run.txt | grep -v '^\s*$' | while IFS= read -r cmd; do
             echo "::group::$cmd"
-            bash -c "$cmd"
+            bash -c "$cmd" < /dev/null
             echo "::endgroup::"
             git add data/ml; for d in data/jra-results data/overseas data/jra-odds data/baba; do [ -e "$d" ] && git add "$d"; done
             if ! git diff --cached --quiet; then

@@ -7,6 +7,95 @@ export type RaceDetail = {
   ai_top3: Pick[]; result_top3: Pick[]; ai_hits: number; pop_hits: number;
 };
 export type Day = { date: string; detail: RaceDetail[] };
+type BetTicket = { key: string; marks: string[]; prob: number; odds: number | null; hit: boolean; pay: number };
+export type BetRace = {
+  race_id: string; venue: string; race_no: number; race_name: string; shinba: boolean; payouts_ok: boolean; odds_ok: boolean;
+  marks: { n: number; horse: string; mark: string; finish: number | null; pop: number | null; win_pay: number; place_pay: number }[];
+  bets: Record<"prob" | "ev", Record<string, BetTicket[]>>; stars: { kind: string; key: string; hit: boolean; pay: number }[];
+};
+export type BetDay = { date: string; races: BetRace[] };
+
+const BET_TYPES = ["ワイド", "馬連", "馬単", "3連複", "3連単"];
+const STAR_KINDS = ["複勝☆", "ワイド◎-☆", "ワイド○-☆"];
+const MARKS = ["◎", "○", "▲", "☆", "△", "消"];
+const yen = (x: number) => x.toLocaleString("ja-JP") + "円";
+
+/** 券種ごと：買ったレース数・点数・当たったレース数・払戻. */
+function betStats(races: BetRace[], mode: "prob" | "ev") {
+  const rows = BET_TYPES.map((t) => {
+    let racesN = 0, points = 0, hitRaces = 0, ret = 0;
+    for (const r of races) {
+      const ts = r.bets[mode][t] ?? [];
+      if (!ts.length) continue;
+      racesN++; points += ts.length; ret += ts.reduce((s, x) => s + x.pay, 0);
+      if (ts.some((x) => x.hit)) hitRaces++;
+    }
+    return { label: t, racesN, points, hitRaces, ret };
+  });
+  const stars = STAR_KINDS.map((k) => {
+    const ts = races.flatMap((r) => r.stars.filter((x) => x.kind === k));
+    return { label: k.replace("☆", " ☆").replace("複勝 ☆", "☆の複勝"), racesN: ts.length, points: ts.length, hitRaces: ts.filter((x) => x.hit).length,
+      ret: ts.reduce((s, x) => s + x.pay, 0) };
+  });
+  return { rows, stars };
+}
+
+function markStats(races: BetRace[]) {
+  return MARKS.map((m) => {
+    const hs = races.flatMap((r) => r.marks.filter((h) => h.mark === m));
+    const n = hs.length;
+    return { m, n, win: n ? hs.filter((h) => h.finish === 1).length / n : NaN, in3: n ? hs.filter((h) => h.finish != null && h.finish <= 3).length / n : NaN,
+      winRoi: n ? hs.reduce((s, h) => s + h.win_pay, 0) / (100 * n) : NaN, placeRoi: n ? hs.reduce((s, h) => s + h.place_pay, 0) / (100 * n) : NaN };
+  });
+}
+
+function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
+  const [mode, setMode] = useState<"prob" | "ev">("prob");
+  const [skip, setSkip] = useState(false);
+  const rs = races.filter((r) => r.payouts_ok && r.odds_ok && !(skip && r.shinba));
+  const { rows, stars } = betStats(rs, mode);
+  const total = rows.reduce((a, r) => ({ points: a.points + r.points, ret: a.ret + r.ret }), { points: 0, ret: 0 });
+  const line = (r: { label: string; racesN: number; points: number; hitRaces: number; ret: number }, unit: string) => <tr key={r.label}>
+    <th>{r.label}</th><td>{r.points}点</td><td>{r.racesN ? pct(r.hitRaces / r.racesN) : "–"}<small>{r.hitRaces}/{r.racesN}{unit}</small></td>
+    <td className={r.points && r.ret >= r.points * 100 ? "strong" : ""}>{r.points ? pct(r.ret / (r.points * 100)) : "–"}</td></tr>;
+  return <div className="check-summary bet-summary">
+    <p className="check-summary-label">{label} 買い方の成績<span>{rs.length}レース</span></p>
+    <div className="sort-toggle" role="group" aria-label="買い目の選び方">
+      <button type="button" className={mode === "prob" ? "active" : ""} onClick={() => setMode("prob")}>確率順</button>
+      <button type="button" className={mode === "ev" ? "active" : ""} onClick={() => setMode("ev")}>期待値順</button>
+      <button type="button" className={skip ? "active" : ""} onClick={() => setSkip(!skip)}>新馬を除く</button>
+    </div>
+    <table className="check-table bet-stats">
+      <thead><tr><th>印から作る買い目</th><th>点数</th><th>的中したレース</th><th>回収率</th></tr></thead>
+      <tbody>{rows.map((r) => line(r, ""))}
+        <tr className="total"><th>合計</th><td>{total.points}点</td><td>–</td><td>{total.points ? pct(total.ret / (total.points * 100)) : "–"}<small>{yen(total.ret)}</small></td></tr></tbody>
+    </table>
+    <table className="check-table bet-stats">
+      <thead><tr><th>☆の買い目</th><th>点数</th><th>的中</th><th>回収率</th></tr></thead>
+      <tbody>{stars.map((r) => line(r, "点"))}</tbody>
+    </table>
+    <table className="check-table bet-stats">
+      <thead><tr><th>AI印</th><th>頭数</th><th>勝率・3着内率</th><th>単勝・複勝回収率</th></tr></thead>
+      <tbody>{markStats(rs).map((r) => <tr key={r.m}><th>{r.m}</th><td>{r.n}頭</td>
+        <td>{pct(r.win)}<small>{pct(r.in3)}</small></td><td>{pct(r.winRoi)}<small>{pct(r.placeRoi)}</small></td></tr>)}</tbody>
+    </table>
+    <p className="check-note">1点100円・確定の払戻。印と買い目は画面と同じ計算だが、オッズは確定オッズで決めた（レース前に見た印・買い目と違うことがある）。
+      期待値順もオッズは確定オッズ。的中したレース＝その券種の買い目のどれかが当たったレースの割合</p>
+  </div>;
+}
+
+function RaceBets({ race }: { race: BetRace | undefined }) {
+  if (!race) return null;
+  const hits = BET_TYPES.flatMap((t) => (race.bets.prob[t] ?? []).filter((x) => x.hit).map((x) => `${t} ${x.key} ${yen(x.pay)}`))
+    .concat(race.stars.filter((x) => x.hit).map((x) => `${x.kind} ${x.key} ${yen(x.pay)}`));
+  const points = BET_TYPES.reduce((s, t) => s + (race.bets.prob[t]?.length ?? 0), 0);
+  const ret = BET_TYPES.reduce((s, t) => s + (race.bets.prob[t] ?? []).reduce((a, x) => a + x.pay, 0), 0);
+  return <div className="check-bets">
+    <p className="check-marks">{race.marks.map((h) => <span key={h.n} className={h.finish != null && h.finish <= 3 ? "in3" : ""}>
+      <b>{h.mark}</b>{h.n}{h.finish != null ? `（${h.finish}着）` : ""}</span>)}</p>
+    <p className="check-bet-line">買い目（確率順）{points}点・払戻 {yen(ret)}{hits.length ? "：" + hits.join("、") : "：当たりなし"}</p>
+  </div>;
+}
 
 const VENUE_ORDER = ["札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉"];
 const pct = (x: number) => (Number.isNaN(x) ? "–" : `${(x * 100).toFixed(1)}%`);
@@ -56,7 +145,7 @@ function rowsOf(race: RaceDetail): Row[] {
   return [...rows.values()].sort((a, b) => (a.finish ?? 99) - (b.finish ?? 99));
 }
 
-function RaceCard({ race }: { race: RaceDetail }) {
+function RaceCard({ race, bets }: { race: RaceDetail; bets?: BetRace }) {
   return <article className="check-race">
     <header>
       <b>{race.race_no}R</b> {race.race_name}
@@ -72,10 +161,11 @@ function RaceCard({ race }: { race: RaceDetail }) {
         <td><span className={"check-label " + r.label}>{r.label}</span></td>
       </tr>)}</tbody>
     </table>
+    <RaceBets race={bets} />
   </article>;
 }
 
-export default function ResultsView({ days }: { days: Day[] }) {
+export default function ResultsView({ days, betDays = [] }: { days: Day[]; betDays?: BetDay[] }) {
   const [date, setDate] = useState(days[0]?.date ?? "");
   const day = days.find((d) => d.date === date) ?? days[0];
   const venues = useMemo(() => [...new Set((day?.detail ?? []).map((r) => r.venue))]
@@ -84,6 +174,10 @@ export default function ResultsView({ days }: { days: Day[] }) {
   const v = venues.includes(venue) ? venue : venues[0] ?? "";
   const races = (day?.detail ?? []).filter((r) => r.venue === v).sort((a, b) => a.race_no - b.race_no);
   const all = days.flatMap((d) => d.detail);
+  const betAll = betDays.flatMap((d) => d.races);
+  const betDay = betDays.find((d) => d.date === day?.date);
+  const betRaces = (betDay?.races ?? []).filter((r) => r.venue === v);
+  const betById = new Map((betDay?.races ?? []).map((r) => [r.race_id, r]));
 
   return <main className="shell check-page">
     <h1 className="check-title">AI成績</h1>
@@ -92,6 +186,7 @@ export default function ResultsView({ days }: { days: Day[] }) {
       予想はレース前の情報だけで、レースの後に出し直したもの。毎日 17:30 ごろに更新</p>
     {days.length === 0 ? <p className="notice">まだデータがない。</p> : <>
       <Summary races={all} label="累計" />
+      {betAll.length > 0 && <BetSummary races={betAll} label="累計" />}
       <div className="date-tabs" role="tablist" aria-label="開催日">
         {days.map((d) => <button key={d.date} type="button" role="tab" aria-selected={d.date === day.date}
           className={d.date === day.date ? "date-tab active" : "date-tab"} onClick={() => setDate(d.date)}>{fmtDate(d.date)}</button>)}
@@ -101,7 +196,8 @@ export default function ResultsView({ days }: { days: Day[] }) {
           className={x === v ? "venue-tab active" : "venue-tab"} onClick={() => setVenue(x)}>{x}</button>)}
       </div>
       <Summary races={races} label={`${fmtDate(day.date)} ${v}`} />
-      <div className="check-races">{races.map((r) => <RaceCard key={r.race_id} race={r} />)}</div>
+      {betRaces.length > 0 && <BetSummary races={betRaces} label={`${fmtDate(day.date)} ${v}`} />}
+      <div className="check-races">{races.map((r) => <RaceCard key={r.race_id} race={r} bets={betById.get(r.race_id)} />)}</div>
     </>}
   </main>;
 }

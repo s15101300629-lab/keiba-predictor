@@ -2,6 +2,8 @@
 
     cd scripts/ml && python check_jra_day.py 2026-11-21            # → data/ml/day_check/2026-11-21.json
     cd scripts/ml && python check_jra_day.py 2026-11-21 --training # 調教評価（netkeiba の調教ページ）も取って入れる（Actions で使う）
+    --saved --inputs-only --model=../../data/ml/prev/model.json        # 過去の日の買い方の成績の入力だけ（prev_models.py の一式で）
+買い方の成績（day_bets.ts）の入力 data/ml/day_check/inputs/日付.json.gz と、結果ページの払戻（payouts）も保存する
     日付を省くと今日（JST）。その日の結果ページがなければ何もしない
 画面の「答え合わせ」（app/results）がこの JSON を読む。毎日 17:30 JST ごろに day-check.yml が動かして main に保存する
 - 確定の単勝・複勝オッズはオッズのページ（accessO、pw151ou…）から取る
@@ -149,12 +151,31 @@ def parse_race(block: str, date: str, venue_code: str) -> dict | None:
     ev = re.search(r"競走中の出来事等(.*?)(?:ページトップへ戻る|$)", foot)
     notes = [x.strip() for x in ev[1].split("・") if x.strip()] if ev else []  # 出遅れ・不利・制裁などの文
     starters = [h for h in results if h["status"] not in ("取消", "除外")]
+    payouts = parse_payouts(block)
     oc = re.search(r"'(pw151ou[^']+)'", block)
     return {"odds_cname": oc[1] if oc else None, "race_no": race_no, "race_name": name, "distance": dist, "course": course, "surface": surface, "going": going,
             "weather": baba.get("天候"), "prize": [int(prize1[1].replace(",", "")) * 10000] if prize1 else [],
             "race_id": f"{date[:4]}{venue_code}{kai:02d}{day:02d}{race_no:02d}", "date": date, "kai": kai, "day": day,
             "starters": len(starters), "results": results, "laps": laps, "corners": corners, "notes": notes,
-            "last_3f": float(l3[1]) if l3 else None}
+            "last_3f": float(l3[1]) if l3 else None, "payouts": payouts}
+
+
+PAYOUT_TYPES = {"win": "単勝", "place": "複勝", "wakuren": "枠連", "wide": "ワイド", "umaren": "馬連", "umatan": "馬単", "trio": "3連複", "tierce": "3連単"}
+
+
+def parse_payouts(block: str) -> dict:
+    """払戻金（券種 → 組 → 円）。馬連・ワイド・3連複・枠連は小さい順「1-2」、馬単・3連単は着順「2-1」（2026-11-24）."""
+    out: dict = {}
+    for cls, body in re.findall(r'<li class="(win|place|wakuren|wide|umaren|umatan|trio|tierce)">(.*?)</li>', block, re.S):
+        t = PAYOUT_TYPES[cls]
+        for num, yen in re.findall(r'<div class="num">(.*?)</div>\s*<div class="yen">([\d,]+)<', body, re.S):
+            ns = [int(x) for x in re.findall(r"\d+", text(num))]
+            if not ns:
+                continue
+            if t not in ("馬単", "3連単"):
+                ns = sorted(ns)
+            out.setdefault(t, {})["-".join(map(str, ns))] = int(yen.replace(",", ""))
+    return out
 
 
 def fetch_day(date: str) -> list[dict]:
@@ -405,6 +426,35 @@ def save_raw(date: str, days: list[dict]) -> None:
                                 ensure_ascii=False, separators=(",", ":")) + "\n")
 
 
+def save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath) -> None:
+    """data/ml/day_check/inputs/日付.json.gz：レースごとに、各馬の着順・確定オッズ・モデルの生の確率・本体の入力と、払戻."""
+    import gzip
+    flat = {r["race_id"]: (d, r) for d in days for r in d["races"]}
+    races = []
+    for race_id in sorted(set(rid)):
+        d, info = flat[race_id]
+        res = {h["umaban"]: h for h in info["results"]}
+        horses = []
+        for i in np.flatnonzero(rid == race_id):
+            h = res[rows[i]["umaban"]]
+            x = [rows[i].get(f, float("nan")) for f in model["features"]]
+            horses.append({"n": rows[i]["umaban"], "horse": rows[i]["horse"], "finish": h["finish"], "odds": h.get("odds"),
+                           "place": list(h["place_odds"]) if h.get("place_odds") else None,
+                           "top3": float(raw3[i]), "top2": float(extra_raw["top2"][i]) if "top2" in extra_raw else None,
+                           "win": float(extra_raw["win"][i]) if "win" in extra_raw else None,
+                           "x": [None if (v is None or (isinstance(v, float) and math.isnan(v))) else float(v) for v in x]})
+        races.append({"race_id": race_id, "venue": d["venue_name"], "race_no": info["race_no"], "race_name": info["race_name"],
+                      "course": f'{info["surface"]}{info["distance"]}', "payouts": info.get("payouts") or {}, "horses": horses})
+    path = OUT / "day_check" / "inputs" / f"{date}.json.gz"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with gzip.open(path, "wt", encoding="utf-8") as fh:
+        # model_dir：モデルのフォルダ（data/ml からの相対。"" は本番、"prev" は 2025年までの一式）。day_bets.ts が同じフォルダの係数を読む
+        mdir = Path(mpath).resolve().parent
+        rel = "" if mdir == OUT.resolve() else str(mdir.relative_to(OUT.resolve()))
+        fh.write(json.dumps({"date": date, "model": Path(mpath).name, "model_dir": rel, "features": model["features"], "races": races},
+                            ensure_ascii=False, separators=(",", ":")) + "\n")
+
+
 def backfill() -> None:
     """結果ページで見られる過去の開催日（約2か月分）のうち、まだ保存していない日を取る（予測はしない）."""
     top = post("/JRADB/accessS.html", "pw01sli00/AF")
@@ -519,7 +569,15 @@ def main() -> None:
     print("model", mpath, len(model["features"]), "features", file=sys.stderr, flush=True)
     X = np.array([[r.get(f, float("nan")) for f in model["features"]] for r in rows], dtype=np.float64)
     rid = np.array([r["race_id"] for r in rows])
-    p = normalize_sum(rid, predict(model, X))
+    raw3 = predict(model, X)
+    p = normalize_sum(rid, raw3)
+    # 買い方の成績（day_bets.ts）用の入力：モデルの生の確率（3着以内・連対・勝率）と本体の入力（☆の2段目）。画面と同じ計算をするため
+    extra_raw = {}
+    for kind in ("win", "top2"):
+        mp = Path(mpath).with_name(f"model_{kind}.json")
+        if mp.exists():
+            mk = json.loads(mp.read_text(encoding="utf-8"))
+            extra_raw[kind] = predict(mk, np.array([[r.get(f, float("nan")) for f in mk["features"]] for r in rows], dtype=np.float64))
     y = np.array([r["label"] for r in rows])
     shutil.rmtree(tmp)
 
@@ -558,6 +616,9 @@ def main() -> None:
            "logloss": round(float(log_loss(y, p)), 4), "auc": round(float(roc_auc_score(y, p)), 4),
            "ai_top3_hit": round(ai_hits / n3, 4), "pop_top3_hit": round(pop_hits / n3, 4),
            "ai_top1_win": round(top1["win"] / n, 4), "ai_top1_top3": round(top1["top3"] / n, 4), "detail": races_out}
+    save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath)
+    if "--inputs-only" in sys.argv:  # 買い方の成績の入力だけ作る（過去の日を別のモデルで。AI成績の day_check/日付.json は変えない）
+        return
     path = OUT / "day_check" / f"{date}.json"
     path.parent.mkdir(exist_ok=True)
     path.write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

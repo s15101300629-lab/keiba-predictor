@@ -53,9 +53,17 @@ jobs:
         working-directory: scripts/ml
         run: python check_jra_day.py ${{ github.event.inputs.date }} --training
 
+      # 買い方の成績（画面と同じ計算の AI印・印から作る買い目を、確定の払戻で数える。scripts/ml/day_bets.ts）
+      - name: Bet results
+        run: |
+          d=$(ls data/ml/day_check/inputs/*.json.gz 2>/dev/null | sort | tail -1 | xargs -r basename | cut -c1-10)
+          if [ -n "${{ github.event.inputs.date }}" ]; then d="${{ github.event.inputs.date }}"; fi
+          if [ -n "$d" ] && [ -f "data/ml/day_check/inputs/$d.json.gz" ]; then npx tsx scripts/ml/day_bets.ts "$d"; fi
+
       - name: Commit
         run: |
           git add data/ml/day_check data/jra-results data/baba
+          git add data/ml/day_bets 2>/dev/null || true
           git add data/jra-odds 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no changes"
@@ -63,6 +71,6 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "day check: $(ls -t data/ml/day_check | head -1)"
+          git commit -m "day check: $(ls -t data/ml/day_check/*.json | head -1 | xargs basename)"
           git pull --rebase --autostash
           git push

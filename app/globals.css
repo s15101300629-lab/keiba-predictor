@@ -768,3 +768,17 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .ai-score-num strong { font-size: 14px; font-variant-numeric: tabular-nums; }
 .ai-score-num small { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .tier-top .ai-score-num strong { color: #ff6b5e; }
+
+/* AI成績：買い方の成績（2026-11-24） */
+.bet-summary .sort-toggle { margin: 6px 0 8px; }
+.bet-stats { margin-top: 8px; }
+.bet-stats th, .bet-stats td { font-size: 12px; }
+.bet-stats td small { display: block; color: var(--muted); font-size: 10px; }
+.bet-stats tr.total th, .bet-stats tr.total td { border-top: 1px solid var(--line); font-weight: 700; }
+.check-note { margin-top: 6px; font-size: 11px; color: var(--muted); line-height: 1.5; }
+.check-bets { margin-top: 6px; font-size: 12px; }
+.check-marks { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.check-marks span { color: var(--muted); }
+.check-marks span b { color: var(--accent); margin-right: 2px; }
+.check-marks span.in3 { color: var(--text); font-weight: 700; }
+.check-bet-line { margin-top: 4px; color: var(--muted); }
