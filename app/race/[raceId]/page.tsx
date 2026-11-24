@@ -418,7 +418,8 @@ const FRAME_COLORS: Record<number, [string, string]> = {
   5: ["#f2cf2a", "#111"], 6: ["#2e9e4f", "#fff"], 7: ["#f08a24", "#111"], 8: ["#f39ac0", "#111"],
 };
 function HorseNumberBadge({ entry }: { entry: Entry | null }) {
-  if (entry?.horseNumber == null) return null;
+  // 枠順の確定前（ジャパンカップなどは木曜）は馬番がない。列の並びが崩れないように、空の札を出す
+  if (entry?.horseNumber == null) return <span className="horse-number-badge pending" title="枠順の確定前">-</span>;
   const colors = entry.frameNumber != null ? FRAME_COLORS[entry.frameNumber] : undefined;
   return <span className="horse-number-badge" title={entry.frameNumber != null ? entry.frameNumber + "枠" : undefined}
     style={colors ? { background: colors[0], color: colors[1] } : undefined}>{entry.horseNumber}</span>;

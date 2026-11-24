@@ -749,7 +749,9 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .mark-bet-odds small { display: block; font-size: 11px; color: var(--muted); }
 .mark-bet-odds small.ev-hi { color: var(--accent-strong); font-weight: 700; }
 
-/* iPhone の上の切り欠き・時刻の帯（viewport-fit=cover・ホーム画面のアプリで画面の上まで描くとき）にヘッダーやタブが隠れないようにする */
-.site-header { padding-top: env(safe-area-inset-top); }
-.race-tabs, .date-tabs { top: env(safe-area-inset-top); }
-.site-header-inner, .site-footer-inner { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+/* ヘッダーは画面の上に固定（依頼者の指示、2026-11-24）。iPhone の上の切り欠き・時刻の帯（viewport-fit=cover）の分だけ下げる。
+   上に固定する日付タブ・レース詳細のタブは、ヘッダーのすぐ下に止まる */
+:root { --header-h: calc(60px + env(safe-area-inset-top)); }
+.site-header { position: sticky; top: 0; z-index: 40; padding-top: env(safe-area-inset-top); }
+.race-tabs, .date-tabs { top: var(--header-h); }
+.horse-number-badge.pending { background: var(--panel-2); color: var(--muted); }
