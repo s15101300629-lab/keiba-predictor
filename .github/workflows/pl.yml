@@ -24,11 +24,8 @@ jobs:
       fail-fast: false
       matrix:
         task:
-          - "python compare_pl.py base"
-          - "python compare_pl.py pl"
-          - "python drift.py build && python compare_round4.py venue"
-          - "python compare_round4.py missing"
-          - "python compare_round4.py rounds && python compare_round4.py seeds"
+          # 2026-11-25：払戻が data/jra-results に入ったので、seed 5本の期待値の買い目の比較だけ回し直す（ほかの結果はもう commit 済み）
+          - "python compare_round4.py seeds"
     steps:
       - uses: actions/checkout@v4
       - run: git pull -q --rebase origin "${GITHUB_REF_NAME}"
@@ -58,4 +55,4 @@ jobs:
           for f in data/ml/round4_*.json data/ml/feature_stats.json data/ml/pl_*.json; do if [ -e "$f" ]; then git add "$f"; fi; done
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git commit -q -m "pl: ${{ matrix.task }}"
-          for i in 1 2 3 4 5 6; do git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break; sleep $((i * 15)); done
+          for i in 1 2 3 4 5 6; do git pull -q --rebase --autostash origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break; sleep $((i * 15)); done
