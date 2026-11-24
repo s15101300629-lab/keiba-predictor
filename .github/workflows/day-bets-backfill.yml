@@ -3,6 +3,7 @@ name: 買い方の成績の過去分（作業ブランチ用）
 # 2026-11-25：過去の開催日の買い方の成績。1日の予測し直し（check_jra_day.py --saved）に約30分かかり、ml-run で順に回すと
 # 6時間の上限に収まらなかったので、日付を分けて同時に回す。各ジョブは、結果ページを取り直して（払戻を入れる）、
 # 2025年までのデータだけのモデル一式（data/ml/prev）で予測の入力を作り、data/jra-results と data/ml/day_check/inputs を commit する。
+# commit しないファイル（血統の表など）が変わっていると pull --rebase が失敗するので --autostash を付ける（2026-11-25、1回目はこれで何も残らなかった）
 # 全部終わったら day_bets.ts --all で data/ml/day_bets を作って commit する。このファイルを変えて push すると起動する
 on:
   push:
@@ -67,7 +68,16 @@ jobs:
           done
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git commit -q -m "day-bets: inputs ${{ matrix.dates }}"
-          for i in 1 2 3 4 5 6 7 8; do git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break; sleep $((i * 15)); done
+          for i in 1 2 3 4 5 6 7 8; do git pull -q --rebase --autostash origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break; sleep $((i * 15)); done
+          git fetch -q origin "${GITHUB_REF_NAME}"; git merge-base --is-ancestor HEAD FETCH_HEAD || { echo "push できなかった"; exit 1; }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inputs-${{ strategy.job-index }}
+          path: |
+            data/jra-results/*.json
+            data/ml/day_check/inputs/*.json.gz
+          if-no-files-found: ignore
 
   bets:
     needs: inputs
@@ -90,4 +100,5 @@ jobs:
           git add data/ml/day_bets
           if git diff --cached --quiet; then echo "no changes"; exit 0; fi
           git commit -q -m "day-bets: day_bets.ts --all"
-          for i in 1 2 3 4 5 6; do git pull -q --rebase origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break; sleep $((i * 15)); done
+          for i in 1 2 3 4 5 6; do git pull -q --rebase --autostash origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break; sleep $((i * 15)); done
+          git fetch -q origin "${GITHUB_REF_NAME}"; git merge-base --is-ancestor HEAD FETCH_HEAD || { echo "push できなかった"; exit 1; }
