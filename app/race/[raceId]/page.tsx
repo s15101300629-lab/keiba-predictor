@@ -838,7 +838,7 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
         </details>)}
         <p className="bet-note">{betMode === "prob" ? <>当たる確率を優先した買い目で、<b className="bet-warn">回収率は過去どの券種も 70〜80% 台（100% は超えていない）</b>。</>
           : <><b className="bet-warn">期待値順は過去の成績を確かめていない</b>（全部の組の過去のオッズを持っていないため）。期待値が1を超えていても、確率の見込みのずれでそう見えているだけのことが多い。</>}
-          馬単のオッズは取得していない。確率はハービルの式（勝率から2着・3着を順に決める）による見込み。期待値＝確率×オッズ（1を超えると、見込みどおりなら買うほど得）。</p>
+          馬単のオッズは取得していない。確率は勝率から1着・2着・3着を順に決める見込み（2着・3着は勝率を少し平らにして計算する Benter の補正）。期待値＝確率×オッズ（1を超えると、見込みどおりなら買うほど得）。</p>
       </div>}
       {evidence && <details className="model-note" open>
         <summary>印の意味と過去の成績</summary>

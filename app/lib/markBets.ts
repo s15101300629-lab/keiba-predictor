@@ -1,6 +1,6 @@
 // AI印から作る買い目（2026-11-23）。単勝・複勝はなし。決め方は scripts/ml/backtest_mark_bets.py の「合わせた勝率｜確率上位 N点」
 // - 勝率：AI と市場の勝率を条件付きロジットで合わせたもの（winCoef。オッズがないときは AI の勝率）
-// - 組み合わせの確率：ハービルの式（勝率に比例して1着が決まり、残りの馬で同じように2着・3着が決まる）
+// - 組み合わせの確率：1着は勝率に比例、2着・3着は残りの馬の勝率を少し平らにした値（Benter の補正。下の BENTER_L2・L3）に比例
 // - 印の付いた馬（◎○▲☆△。消を除く）の組み合わせから、確率の高い順に券種ごとの点数
 // 過去の成績（2024〜2026年、確定の払戻）は data/ml/mark_bets_backtest.json
 
@@ -29,7 +29,32 @@ export function combinedWin(hs: MarkBetHorse[], winCoef: { ai: number; market: n
   return { p: e.map((x) => x / s), usedOdds: true };
 }
 
-const tri = (p: number[], i: number, j: number, k: number) => p[i] * (p[j] / (1 - p[i])) * (p[k] / (1 - p[i] - p[j]));
+// Benter の補正（2026-11-24）：2着は残りの馬の p^λ2、3着は p^λ3 に比例させる（ハービルは λ=1）。ハービルは人気馬の2・3着を多めに、
+// 人気薄を少なめに見積もるため。λ は scripts/ml/benter_exotic.py が前の年の着順で決めた値（2024〜2026年で 0.80〜0.82・0.66〜0.70、
+// 3年とも実際の2着・3着・並び・組の対数尤度がハービルより良い）。ここは直近（2026年に使った 2025年の当てはめ）の値
+export const BENTER_L2 = 0.82;
+export const BENTER_L3 = 0.70;
+const cache = new WeakMap<number[], { w2: number[]; w3: number[]; s2: number; s3: number }>();
+function weights(p: number[]) {
+  let c = cache.get(p);
+  if (!c) {
+    const w2 = p.map((x) => Math.pow(x, BENTER_L2));
+    const w3 = p.map((x) => Math.pow(x, BENTER_L3));
+    c = { w2, w3, s2: w2.reduce((a, b) => a + b, 0), s3: w3.reduce((a, b) => a + b, 0) };
+    cache.set(p, c);
+  }
+  return c;
+}
+/** i が1着・j が2着の確率. */
+const exacta = (p: number[], i: number, j: number) => {
+  const w = weights(p);
+  return p[i] * w.w2[j] / (w.s2 - w.w2[i]);
+};
+/** i→j→k の並びの確率. */
+const tri = (p: number[], i: number, j: number, k: number) => {
+  const w = weights(p);
+  return exacta(p, i, j) * w.w3[k] / (w.s3 - w.w3[i] - w.w3[j]);
+};
 const perms3 = (a: number, b: number, c: number) => [[a, b, c], [a, c, b], [b, a, c], [b, c, a], [c, a, b], [c, b, a]];
 const trioProb = (p: number[], a: number, b: number, c: number) => perms3(a, b, c).reduce((s, q) => s + tri(p, q[0], q[1], q[2]), 0);
 
@@ -37,8 +62,8 @@ function candidates(p: number[], t: MarkBetType, use: number[], n: number): { id
   const out: { idx: number[]; prob: number }[] = [];
   for (const i of use) for (const j of use) {
     if (j === i || (!ORDERED[t] && j < i)) continue;
-    if (t === "馬単") out.push({ idx: [i, j], prob: p[i] * p[j] / (1 - p[i]) });
-    else if (t === "馬連") out.push({ idx: [i, j], prob: p[i] * p[j] / (1 - p[i]) + p[j] * p[i] / (1 - p[j]) });
+    if (t === "馬単") out.push({ idx: [i, j], prob: exacta(p, i, j) });
+    else if (t === "馬連") out.push({ idx: [i, j], prob: exacta(p, i, j) + exacta(p, j, i) });
     else if (t === "ワイド") {
       let s = 0;
       for (let k = 0; k < n; k++) if (k !== i && k !== j) s += trioProb(p, i, j, k);
