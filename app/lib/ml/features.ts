@@ -26,6 +26,8 @@ export type Store = {
   c4?: Record<string, Record<string, number[]>>;
   // レーティング：馬名 → [全体, 全体の更新日数, 芝, 芝の日数, ダート, ダートの日数]（scripts/ml/features.py の update_ratings。最終日まで）
   ratings?: Record<string, [number, number, number, number, number, number]>;
+  // 含水率の平均："競馬場コード-芝ダ" → 年 → その年より前（2020年〜）の平均（scripts/ml/features.py の BABA_MEAN）
+  babaMean?: Record<string, Record<string, number>>;
 };
 
 export type RaceInput = {
@@ -39,6 +41,8 @@ export type RaceInput = {
   turn?: number | null; // 回り 0=右 1=左 2=直線（courseInfo）
   sband?: number | null; // 直線の区分 0=〜300m 1=〜400m 2=400m〜（courseInfo）
   cStraight?: number | null; cElev?: number | null; cLap?: number | null; // コースの直線・高低差・一周（m。courseInfo）
+  // その日の馬場の細かい値（JRA の馬場情報）：芝のクッション値・今回の芝ダの含水率（ゴール前と4コーナーの平均）・芝の使用コース A=0〜D=3
+  baba?: { cushion: number | null; moist: number | null; course: number | null } | null;
 };
 
 // コースの [直線 m, 高低差 m, 一周 m]。"競馬場-芝0/ダ1-内回り0・外回り1・直線2" → JRA のコース紹介の A コース（scripts/ml/features.py の COURSE）
@@ -714,6 +718,27 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
     jockey_course_n: j.courseN, jockey_course_top3: rate(j.courseTop3, j.courseN),
     jockey_n_py: j.pyN, jockey_top3_py: rate(j.pyTop3, j.pyN),
   });
+  // 乗り替わりの向き（features.py の jockey_dir_features）：前走の騎手の3着内率（前の年・今年）と、今回の騎手との差
+  if (last && lastJockey && runner.jockeyKey) {
+    const pj = jockeyStats(store, race, lastJockey);
+    const pPy = rate(pj.pyTop3, pj.pyN);
+    const pTy = rate(pj.top3, pj.n);
+    const same = runner.jockeyKey === lastJockey;
+    f.jc_prev_top3_py = pPy;
+    f.jc_delta_py = same ? 0 : f.jockey_top3_py - pPy;
+    f.jc_delta_ty = same ? 0 : f.jockey_top3 - pTy;
+  } else {
+    f.jc_prev_top3_py = NaN; f.jc_delta_py = NaN; f.jc_delta_ty = NaN;
+  }
+  // 馬場の細かい値（features.py の baba_features）
+  const b = race.baba;
+  const turf = race.surface === 0;
+  const moist = b?.moist ?? null;
+  const mean = store.babaMean?.[`${race.venue}-${race.surface}`]?.[race.date.slice(0, 4)];
+  f.baba_cushion = turf && b?.cushion != null ? b.cushion : NaN;
+  f.baba_moist = moist ?? NaN;
+  f.baba_moist_rel = moist != null && mean != null ? moist - mean : NaN;
+  f.course_letter = turf && b?.course != null ? b.course : NaN;
   return f;
 }
 

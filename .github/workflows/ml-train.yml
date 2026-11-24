@@ -39,6 +39,10 @@ jobs:
         working-directory: scripts/ml
         run: python collect_training.py "$(TZ=Asia/Tokyo date +%Y)"
 
+      # クッション値・含水率（JRA の馬場情報のページの直近の分。過去の PDF は data/baba/baba.csv に入っている）
+      - name: Collect baba
+        run: python scripts/ml/collect_baba_live.py || true
+
       - run: npm install --no-audit --no-fund
 
       # 血統（本体モデルの入力）: 新しいレースの出走馬の馬ID・父・母父・母母父と、新しい祖先の産駒成績を取り、全出走馬の血統の特徴量を作り直す
@@ -71,7 +75,7 @@ jobs:
 
       - name: Commit model
         run: |
-          git add data/ml data/pedigree data/training
+          git add data/ml data/pedigree data/training data/baba
           if git diff --cached --quiet; then
             echo "no changes"
             exit 0

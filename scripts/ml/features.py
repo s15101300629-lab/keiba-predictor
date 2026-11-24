@@ -121,6 +121,15 @@ ABD_NEAR = 400
 # 芝ダ×距離区分・芝ダ×馬場の3着内率、今回の芝ダでの産駒の勝率、直近3年の3着内率（父・母父・母母父を 50:25:12.5）、父だけの芝ダ×距離区分
 PEDIGREE2_FEATURES = ["pb_band_top3", "pb_going_top3", "pb_win", "pb_recent_top3", "pb_f_band_top3"]
 FEATURES = FEATURES + ABDIST_FEATURES + PEDIGREE2_FEATURES
+FEATURES_BEFORE_BABA = list(FEATURES)  # 馬場の細かい値・乗り替わりの向きを入れる前の209項目
+# 馬場の細かい値（compare_baba.py の「全部」。3年とも logloss 改善、2026-11-24）。その日・その競馬場の朝の測定値
+# baba_cushion：芝のクッション値（芝だけ。2020年秋〜）、baba_moist：そのレースの芝ダの含水率（ゴール前と4コーナーの平均。2020年〜）
+# baba_moist_rel：含水率 − その競馬場・芝ダの、その年より前（2020年〜）の平均、course_letter：芝の使用コース A=0〜D=3（成績表。芝だけ）
+# 値は data/baba/baba.csv（parse_baba.py が JRA の過去の PDF から、collect_baba_live.py が馬場情報のページから）
+BABA_FEATURES = ["baba_cushion", "baba_moist", "baba_moist_rel", "course_letter"]
+# 乗り替わりの向き（compare_jockey_dir.py の「全部」。3年とも logloss 改善、2026-11-24）。前走の騎手と今回の騎手の3着内率の差（同じ騎手なら 0）
+JOCKEY_DIR_FEATURES = ["jc_prev_top3_py", "jc_delta_py", "jc_delta_ty"]
+FEATURES = FEATURES + BABA_FEATURES + JOCKEY_DIR_FEATURES
 STRONG_AB_SLOPE, STRONG_AB_INTERCEPT = 4.074320892848245, -2.911852114339949  # 能力指数 ~ 相手の調子の平均（全走で1本の直線。ラベルは使わない）
 PEDIGREE_FEATURES = ["ped_heavy", "ped_wet", "ped_top3", "ped_dist", *PEDIGREE2_FEATURES]  # runner_features.csv から読む列
 TRAIN_RANK = {"A": 4, "B": 3, "C": 2, "D": 1}
@@ -463,15 +472,70 @@ def add_relative(rows: list[dict], key: str, with_fstd: bool) -> None:
 HISTORY_FROM = "2017"
 
 
+BABA_VENUE = {"札幌": 1, "函館": 2, "福島": 3, "新潟": 4, "東京": 5, "中山": 6, "中京": 7, "京都": 8, "阪神": 9, "小倉": 10}
+COURSE_LETTER = {"A": 0, "B": 1, "C": 2, "D": 3, "Ａ": 0, "Ｂ": 1, "Ｃ": 2, "Ｄ": 3}
+BABA_MEAN: dict[str, dict[str, float]] = {}  # "競馬場-芝ダ" → 年 → その年より前の含水率の平均（store の babaMean）
+
+
+def _num(x) -> float | None:
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+def load_baba(data_root: Path) -> dict[tuple[str, int], dict]:
+    """data/baba/baba.csv → (日付, 競馬場コード) → {cushion, moist_turf, moist_dirt}. BABA_MEAN も作る."""
+    import csv
+    path = data_root.parent / "baba" / "baba.csv"
+    out: dict[tuple[str, int], dict] = {}
+    if not path.exists():
+        return out
+    by_year: dict[tuple[int, int, str], list[float]] = defaultdict(list)
+    with path.open(encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            vc = BABA_VENUE.get(r["venue"])
+            if not vc:
+                continue
+            m = {}
+            for surf, k in ((0, "turf"), (1, "dirt")):
+                g, c = _num(r[f"{k}_goal"]), _num(r[f"{k}_4c"])
+                m[surf] = (g + c) / 2 if g is not None and c is not None else None
+                if m[surf] is not None:
+                    by_year[(vc, surf, r["date"][:4])].append(m[surf])
+            out[(r["date"], vc)] = {"cushion": _num(r["cushion"]), "moist": m, "course": COURSE_LETTER.get(r.get("course") or "")}
+    BABA_MEAN.clear()
+    years = sorted({y for _, _, y in by_year})
+    for vc, surf in {(a, b) for a, b, _ in by_year}:
+        for i, y in enumerate(years + [str(int(years[-1]) + 1)] if years else []):
+            prev = [v for yy in years if yy < y for v in sorted(by_year.get((vc, surf, yy), []))]
+            if prev:
+                BABA_MEAN.setdefault(f"{vc}-{surf}", {})[y] = sum(prev) / len(prev)
+    return out
+
+
+def baba_features(baba: dict | None, venue: int, surface: int, day: str, letter: int | None) -> dict:
+    """そのレースの馬場の細かい値（BABA_FEATURES）."""
+    cushion = baba.get("cushion") if baba and surface == 0 else None
+    moist = baba["moist"].get(surface) if baba else None
+    mean = BABA_MEAN.get(f"{venue}-{surface}", {}).get(day[:4])
+    return {"baba_cushion": NAN if cushion is None else cushion, "baba_moist": NAN if moist is None else moist,
+            "baba_moist_rel": NAN if moist is None or mean is None else moist - mean,
+            "course_letter": NAN if letter is None or surface != 0 else float(letter)}
+
+
 def load_races(data_root: Path) -> list[dict]:
     """平地レースを日付・race_id 順に。各出走馬に time_diff（勝ち馬との差, 秒）と調教評価を付ける."""
     ranks = load_training_ranks(data_root)
     peds = load_pedigree_features(data_root)
+    baba = load_baba(data_root)
     races = []
     for path in sorted((data_root / "json").glob("*/*.json")):
         if path.parent.name < HISTORY_FROM:
             continue
         day = json.loads(path.read_text(encoding="utf-8"))
+        lm = re.search(r"[（(]芝([A-DＡ-Ｄ])コース[）)]", json.dumps(day, ensure_ascii=False))
+        letter = COURSE_LETTER[lm.group(1)] if lm else None
         for r in day["races"]:
             if r.get("surface") not in SURFACE or not r.get("race_id") or not r.get("date"):
                 continue
@@ -499,6 +563,8 @@ def load_races(data_root: Path) -> list[dict]:
                 "agari_ncorners": len(r.get("corners") or []),
                 "last_3f": r.get("last_3f"),
                 **course_info(int(day["venue_code"]), SURFACE[r["surface"]], r.get("course")),
+                "baba": baba_features(baba.get((r["date"], int(day["venue_code"]))), int(day["venue_code"]), SURFACE[r["surface"]], r["date"],
+                                      letter if letter is not None else (baba.get((r["date"], int(day["venue_code"]))) or {}).get("course")),
             })
     races.sort(key=lambda x: (x["date"], x["race_id"]))
     # ペース判定: 芝ダ×距離帯ごとに pace_index を3等分（0=スロー 1=ミドル 2=ハイ）。結果(着順)は使わない
@@ -955,8 +1021,25 @@ def waku_features(course: dict, waku) -> dict:
     return {"waku_course_n": n, "waku_course_diff": t / n - total_t / total_n if n and total_n else NAN}
 
 
+def jockey_dir_features(f: dict, last: dict | None, jk: str, race: dict, jockeys_all: dict | None) -> dict:
+    """乗り替わりの向き（JOCKEY_DIR_FEATURES）：前走の騎手の3着内率（前の年・今年）と、今回の騎手との差."""
+    if not last or not last.get("jockey") or not jk or jockeys_all is None:
+        return {k: NAN for k in JOCKEY_DIR_FEATURES}
+    y = race["date"][:4]
+    py = str(int(y) - 1)
+    rides = [r for r in jockeys_all.get(last["jockey"], []) if r["date"] < race["date"]]
+    prev_py = [r for r in rides if r["date"][:4] == py]
+    prev_ty = [r for r in rides if r["date"][:4] == y]
+    p_py = rate(sum(r["top3"] for r in prev_py), len(prev_py))
+    p_ty = rate(sum(r["top3"] for r in prev_ty), len(prev_ty))
+    same = jk == last["jockey"]
+    return {"jc_prev_top3_py": p_py, "jc_delta_py": 0.0 if same else f["jockey_top3_py"] - p_py,
+            "jc_delta_ty": 0.0 if same else f["jockey_top3"] - p_ty}
+
+
 def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rides: list[dict],
-                    trainer_entries: list[dict] = (), course: dict | None = None, people: dict | None = None) -> dict:
+                    trainer_entries: list[dict] = (), course: dict | None = None, people: dict | None = None,
+                    jockeys_all: dict | None = None) -> dict:
     f = {
         "surface": race["surface"], "distance": race["distance"],
         "going": NAN if race["going"] is None else race["going"],
@@ -982,6 +1065,8 @@ def runner_features(race: dict, runner: dict, horse_runs: list[dict], jockey_rid
     last = horse_runs[-1] if horse_runs else None
     f["weight_change"] = w - last["weight"] if last and w and last["weight"] else NAN
     f["jockey_change"] = (0.0 if jk == last["jockey"] else 1.0) if last and jk and last["jockey"] else NAN
+    f.update(jockey_dir_features(f, last, jk, race, jockeys_all))
+    f.update(race.get("baba") or {k: NAN for k in BABA_FEATURES})
     return f
 
 
@@ -1129,7 +1214,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                     runs = sorted(runs + [x for x in EXTRA_RUNS[h["horse"]] if x["date"] < race["date"]], key=lambda x: x["date"])
                 f = runner_features(race, h, runs, hist.jockeys.get(norm_jockey(h.get("jockey")), []),
                                     hist.trainers.get(norm_jockey(h.get("trainer")), []), {k: list(v) for k, v in course.items()} if course else None,
-                                    hist.people)
+                                    hist.people, hist.jockeys)
                 f.update(c4_features(hist.c4, race, runs))
                 f.update({"elom": hist.elom.get(h["horse"], 1500.0), "elom_n": hist.elom_n.get(h["horse"], 0),
                           "elos": hist.elos.get((h["horse"], race["surface"]), 1500.0), "elos_n": hist.elos_n.get((h["horse"], race["surface"]), 0)})

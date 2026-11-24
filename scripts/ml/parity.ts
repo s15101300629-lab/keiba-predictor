@@ -25,6 +25,8 @@ for (const raceRows of byRace.values()) {
     going: num(f0.going), fieldSize: f0.field_size!, prize1stMan: num(f0.prize_1st),
     turn: raceRows[0].turn ?? null, sband: raceRows[0].sband ?? null,
     cStraight: num(f0.c_straight), cElev: num(f0.c_elev), cLap: num(f0.c_lap),
+    // 馬場の細かい値は、アプリでは JRA の馬場情報から取る。ここでは Python の値（含水率の平均との差は TS で計算して比べる）
+    baba: { cushion: f0.baba_cushion ?? null, moist: f0.baba_moist ?? null, course: f0.course_letter ?? null },
   };
   // レーティングは store に最終日の更新後の点数しかない（アプリが予測するのは最終日より後のレース）。
   // 過去のレースでは、Python がそのレース前の点数で計算しているので、その値（行の elom・elos）を入れて比べる

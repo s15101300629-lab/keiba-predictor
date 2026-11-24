@@ -22,6 +22,7 @@ import numpy as np
 from sklearn.metrics import log_loss, roc_auc_score
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import features  # noqa: E402
 from features import FEATURES, build_dataset  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
@@ -160,6 +161,7 @@ def build_store(hist, last_date: str) -> dict:
     ratings = {name: [hist.elom.get(name, 1500.0), hist.elom_n.get(name, 0), hist.elos.get((name, 0), 1500.0), hist.elos_n.get((name, 0), 0),
                       hist.elos.get((name, 1), 1500.0), hist.elos_n.get((name, 1), 0)] for name in horses}
     return {"lastDate": last_date, "yearStart": year_start, "horses": horses, "jockeys": jockeys, "people": people, "c4": c4, "ratings": ratings,
+            "babaMean": features.BABA_MEAN,
             "trainers": trainers, "names": names,
             "runFields": ["date", "venue", "surface", "distance", "going", "field", "finish", "timeDiff", "pace", "posFirst", "posLast",
                           "prize", "weight", "jockey", "trainer", "tidx", "victim",

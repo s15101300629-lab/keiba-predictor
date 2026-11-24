@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
-import { fetchJraBaba } from "@/app/lib/jraBaba";
+import { fetchJraBaba, fetchJraBabaDetail } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
 import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
@@ -974,7 +974,11 @@ export async function GET(
       const venueCode = Number(raceId.slice(4, 6));
       const surfaceCode = surfaceName === "芝" ? 0 : 1;
       const course = courseInfo(venueCode, surfaceCode, raceConditions.direction, raceConditions.courseLayout === "外回り");
+      // クッション値・含水率・使用コース（JRA の馬場情報。features.py の BABA_FEATURES）
+      const babaDetail = raceConditions.venue && raceConditions.date
+        ? await fetchJraBabaDetail(raceConditions.venue, raceConditions.date, forceRefresh).catch(() => null) : null;
       const raceInput = {
+        baba: babaDetail ? { cushion: babaDetail.cushion, moist: surfaceCode === 0 ? babaDetail.moistTurf : babaDetail.moistDirt, course: babaDetail.course } : null,
         date: raceConditions.date,
         venue: venueCode,
         surface: surfaceCode,

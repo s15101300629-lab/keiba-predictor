@@ -437,6 +437,8 @@ def main() -> None:
         (root / "json" / "extra" / (d["file"] + ".json")).write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
     # 調教評価：既存＋（--training なら）当日分。血統：同じ馬の前の走の値
     (tmp / "ml").symlink_to(OUT.resolve())
+    if (DATA.parent / "baba").exists():  # クッション値・含水率・使用コース（features.load_baba）
+        (tmp / "baba").symlink_to((DATA.parent / "baba").resolve())
     (tmp / "training").mkdir()
     for p in (DATA.parent / "training").glob("*.jsonl"):
         (tmp / "training" / p.name).symlink_to(p.resolve())

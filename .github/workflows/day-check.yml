@@ -41,6 +41,10 @@ jobs:
 
       - run: npm install --no-audit --no-fund
 
+      # クッション値・含水率（JRA の馬場情報のページ。答え合わせの入力にも使う）
+      - name: Collect baba
+        run: python scripts/ml/collect_baba_live.py || true
+
       - name: Build pedigree features
         run: npx tsx scripts/ml/pedigree_all_features.ts
 
@@ -51,7 +55,7 @@ jobs:
 
       - name: Commit
         run: |
-          git add data/ml/day_check data/jra-results
+          git add data/ml/day_check data/jra-results data/baba
           if git diff --cached --quiet; then
             echo "no changes"
             exit 0
