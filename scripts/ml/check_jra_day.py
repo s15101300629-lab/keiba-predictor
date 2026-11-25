@@ -3,6 +3,7 @@
     cd scripts/ml && python check_jra_day.py 2026-11-21            # → data/ml/day_check/2026-11-21.json
     cd scripts/ml && python check_jra_day.py 2026-11-21 --training # 調教評価（netkeiba の調教ページ）も取って入れる（Actions で使う）
     --saved --inputs-only --model=../../data/ml/prev/model.json        # 過去の日の買い方の成績の入力だけ（prev_models.py の一式で）
+    --saved --inputs-only --model=… 2026-10-03 2026-10-04 …         # 何日もまとめて（特徴量の表を1回だけ作る。2026-11-25 から）
 買い方の成績（day_bets.ts）の入力 data/ml/day_check/inputs/日付.json.gz と、結果ページの払戻（payouts）も保存する
     日付を省くと今日（JST）。その日の結果ページがなければ何もしない
 画面の「答え合わせ」（app/results）がこの JSON を読む。毎日 17:30 JST ごろに day-check.yml が動かして main に保存する
@@ -509,38 +510,39 @@ def fill_course_letter(days: list[dict], date: str) -> None:
     print(f"使用コースを成績表から入れた: {n} / {len(days)} 競馬場", file=sys.stderr)
 
 
-def main() -> None:
-    if "--backfill" in sys.argv:
-        backfill()
-        return
-    if "--odds-backfill" in sys.argv:
-        odds_backfill()
-        return
-    from datetime import datetime, timedelta, timezone
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    date = args[0] if args else datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
-    if "--resave" in sys.argv:  # 結果ページを取り直して保存し直すだけ（解析を直したとき。予測はしない）
-        days = fetch_day(date)
-        if days:
-            save_raw(date, days)
-            print(date, sum(len(d["races"]) for d in days), "races resaved", file=sys.stderr)
-        return
+def load_days(date: str) -> list[dict] | None:
+    """その日の結果ページ（--saved なら保存済み、なければ取って保存）を読み、直して補う."""
     if "--saved" in sys.argv:  # 保存済みの結果ページの中身から予測し直す（取り直さない）
         days = json.loads((RAW / f"{date}.json").read_text(encoding="utf-8"))["days"]
     else:
         days = fetch_day(date)
         if not days:
             print(f"{date}: 結果ページなし", file=sys.stderr)
-            return
+            return None
         save_raw(date, days)
     days = copy.deepcopy(days)
     repair_results(days)
     if not os.environ.get("NO_OWNER_FILL"):  # NO_OWNER_FILL=1：直す前（2026-11-22 より前）の動きを再現する（入力の見張りの確かめ用）
         fill_owner_breeder(days, date)
     fill_course_letter(days, date)
-    features.EXTRA_RUNS = overseas_runs_for(days, date)
-    flat = [r for d in days for r in d["races"] if r["surface"] in ("芝", "ダート")]
-    print(f"{date}: {len(flat)} races", file=sys.stderr, flush=True)
+    return days
+
+
+def build_rows(by_date: dict[str, list[dict]]) -> list[dict]:
+    """結果ページの日（1日でも何日でも）を成績表の代わりに入れて、特徴量の表を1回だけ作る.
+    何日もまとめるとき（2026-11-25 から。1日ずつだと1日30分かかるため）：対象の日の成績表はすべて除き、結果ページの分で代える。
+    そのため、ある日の過去走のうち、それより前の対象の日の走は結果ページの中身になる（2着以下の馬主は前の走から補う・不利はない）"""
+    dates = set(by_date)
+    all_days = [d for ds in by_date.values() for d in ds]
+    runs: dict[str, list[dict]] = {}
+    for date, ds in by_date.items():
+        for horse, xs in overseas_runs_for(ds, date).items():
+            have = {json.dumps(x, sort_keys=True, ensure_ascii=False) for x in runs.get(horse, [])}
+            runs.setdefault(horse, []).extend(x for x in xs if json.dumps(x, sort_keys=True, ensure_ascii=False) not in have)
+    features.EXTRA_RUNS = runs
+    flat = [r for d in all_days for r in d["races"] if r["surface"] in ("芝", "ダート")]
+    for date, ds in sorted(by_date.items()):
+        print(f"{date}: {sum(1 for d in ds for r in d['races'] if r['surface'] in ('芝', 'ダート'))} races", file=sys.stderr, flush=True)
     tmp = Path(tempfile.mkdtemp())
     root = tmp / "jra-seiseki"
     (root / "json").mkdir(parents=True)
@@ -548,11 +550,11 @@ def main() -> None:
     for y in (DATA / "json").iterdir():
         (root / "json" / y.name).mkdir()
         for fp in y.glob("*.json"):
-            if date[:4] == y.name and any(r.get("date") == date for r in json.loads(fp.read_text(encoding="utf-8"))["races"]):
+            if any(dt[:4] == y.name for dt in dates) and any(r.get("date") in dates for r in json.loads(fp.read_text(encoding="utf-8"))["races"]):
                 continue
             (root / "json" / y.name / fp.name).symlink_to(fp.resolve())
     (root / "json" / "extra").mkdir()
-    for d in days:
+    for d in all_days:
         (root / "json" / "extra" / (d["file"] + ".json")).write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
     # 調教評価：既存＋（--training なら）当日分。血統：同じ馬の前の走の値
     (tmp / "ml").symlink_to(OUT.resolve())
@@ -567,7 +569,6 @@ def main() -> None:
     ped_src = DATA.parent / "pedigree" / "all" / "runner_features.csv"
     (tmp / "pedigree" / "all").mkdir(parents=True)
     lines = ped_src.read_text(encoding="utf-8").splitlines()
-    head = lines[0].split(",")
     seen: dict[str, list] = {}
     meta = {}
     for d in (DATA / "json").glob("*/*.json"):
@@ -584,14 +585,21 @@ def main() -> None:
                 best = min(cands, key=lambda v: (abs(meta[v[0]][1] - r["distance"]), "".join(reversed(meta[v[0]][2]))))
                 add.append(",".join([r["race_id"], str(h["umaban"])] + best[2:]))
     (tmp / "pedigree" / "all" / "runner_features.csv").write_text("\n".join(lines + add) + "\n", encoding="utf-8")
-
     rows, _ = build_dataset(root)
+    shutil.rmtree(tmp)
     ids = {r["race_id"] for r in flat}
-    rows = [r for r in rows if r["race_id"] in ids]
+    return [r for r in rows if r["race_id"] in ids]
+
+
+def finish_day(date: str, days: list[dict], rows_all: list[dict]) -> None:
+    """その日の行を予測して、買い方の成績の入力（と、--inputs-only でなければ AI成績の day_check/日付.json）を書く."""
+    flat = [r for d in days for r in d["races"] if r["surface"] in ("芝", "ダート")]
+    ids = {r["race_id"] for r in flat}
+    rows = [r for r in rows_all if r["race_id"] in ids]
     # --model=パス：その日より前のデータで学習したモデル（後から予測し直すときは、その日を学習したモデルを使わない）
     mpath = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--model=")), str(OUT / "model.json"))
     model = json.loads(Path(mpath).read_text(encoding="utf-8"))
-    print("model", mpath, len(model["features"]), "features", file=sys.stderr, flush=True)
+    print(date, "model", mpath, len(model["features"]), "features", file=sys.stderr, flush=True)
     X = np.array([[r.get(f, float("nan")) for f in model["features"]] for r in rows], dtype=np.float64)
     rid = np.array([r["race_id"] for r in rows])
     raw3 = predict(model, X)
@@ -604,7 +612,6 @@ def main() -> None:
             mk = json.loads(mp.read_text(encoding="utf-8"))
             extra_raw[kind] = predict(mk, np.array([[r.get(f, float("nan")) for f in mk["features"]] for r in rows], dtype=np.float64))
     y = np.array([r["label"] for r in rows])
-    shutil.rmtree(tmp)
 
     from sklearn.metrics import log_loss, roc_auc_score
     byid = {r["race_id"]: r for r in flat}
@@ -660,6 +667,37 @@ def main() -> None:
     path.write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(json.dumps({k: v for k, v in out.items() if k != "detail"}, ensure_ascii=False))
 
+
+
+def main() -> None:
+    if "--backfill" in sys.argv:
+        backfill()
+        return
+    if "--odds-backfill" in sys.argv:
+        odds_backfill()
+        return
+    from datetime import datetime, timedelta, timezone
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    dates = args or [datetime.now(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")]
+    if "--resave" in sys.argv:  # 結果ページを取り直して保存し直すだけ（解析を直したとき。予測はしない）
+        for date in dates:
+            days = fetch_day(date)
+            if days:
+                save_raw(date, days)
+                print(date, sum(len(d["races"]) for d in days), "races resaved", file=sys.stderr)
+        return
+    if len(dates) > 1 and "--saved" not in sys.argv:
+        sys.exit("何日もまとめるのは --saved のときだけ")
+    by_date = {}
+    for date in dates:
+        days = load_days(date)
+        if days:
+            by_date[date] = days
+    if not by_date:
+        return
+    rows_all = build_rows(by_date)
+    for date, days in sorted(by_date.items()):
+        finish_day(date, days, rows_all)
 
 if __name__ == "__main__":
     main()
