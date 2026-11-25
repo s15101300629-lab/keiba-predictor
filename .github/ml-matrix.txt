@@ -2,3 +2,4 @@
 # このファイルを変えて push すると起動する（書いてあるコマンドを全部回すので、済んだものは消す）
 # 2026-11-26：外国馬の扱いの一致テスト（overseas_eval.py の2つ・racedb_dubai_check.py は run 45643484971 で回し中）
 python parity_foreign.py && node --experimental-strip-types parity_foreign.ts
+python overseas_eval.py 今 1+2 "1'+2"

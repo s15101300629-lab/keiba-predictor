@@ -1318,10 +1318,11 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                 fo = (FOREIGN_FIX["rating"] or FOREIGN_FIX["people"]) and is_foreign_trainer(h.get("trainer"))
                 foreign.append(fo)
                 jm = False
-                if fo and FOREIGN_FIX["rating"] and h["horse"] not in hist.elom:
+                if fo and FOREIGN_FIX["rating"] and (h["horse"] not in hist.elom or FOREIGN_FIX.get("rating_all")):
                     init = foreign_rating(f["ab_wmean"], race["surface"])
                     if init is not None:
-                        f["elom"], f["elos"] = init
+                        # rating_all（比べる案。アプリには未実装）：JRA の走がある外国馬も、初めの値＋JRA での増減（1500 からの差）
+                        f["elom"], f["elos"] = init[0] + f["elom"] - 1500.0, init[1] + f["elos"] - 1500.0
                         f["_estimated"] = ["elom", "elos"]
                 if fo and FOREIGN_FIX["people"]:
                     jk = norm_jockey(h.get("jockey"))

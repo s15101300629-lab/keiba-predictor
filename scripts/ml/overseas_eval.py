@@ -180,6 +180,7 @@ VARIANTS = {  # 名前 → (1着賞金の決め方, 1 レーティングの初�
     "1+2": ("racedb", True, True),
     "1+2・賞金は大きいほう": ("max", True, True),
     "1+2・格だけ": ("grade", True, True),
+    "1'+2": ("racedb", "all", True),  # JRA の走がある外国馬も、レーティング＝初めの値＋JRA での増減
 }
 RATING_INIT_PATH = ROOT / "data" / "overseas" / "rating_init.json"
 
@@ -278,7 +279,7 @@ def main() -> None:
         if mode not in runs_by_mode:
             runs_by_mode[mode] = {nm: improved_runs(hid, mode) for nm, hid in by_name.items()}
         features.EXTRA_RUNS = {k: v for k, v in runs_by_mode[mode].items() if v}
-        features.FOREIGN_FIX = {"rating": fix_r, "people": fix_p}
+        features.FOREIGN_FIX = {"rating": bool(fix_r), "people": fix_p, "rating_all": fix_r == "all"}
         features.RATING_INIT = rating_init
         rows, _ = features.build_dataset(DATA)
         Xs[name] = np.array([[rows[i][f] for f in features.FEATURES] for i in keep], dtype=np.float64)
@@ -352,7 +353,7 @@ def main() -> None:
     print(json.dumps({k: out[k] for k in ("all", "foreign", "japanese", "japanese_in_foreign_races")}, ensure_ascii=False), file=sys.stderr)
 
 
-VARIANTS_TAG = {"今": "now", "1+2・賞金は大きいほう": "12max", "1+2・格だけ": "12grade", "1+2": "12"}
+VARIANTS_TAG = {"1'+2": "1all2", "今": "now", "1+2・賞金は大きいほう": "12max", "1+2・格だけ": "12grade", "1+2": "12"}
 
 
 if __name__ == "__main__":
