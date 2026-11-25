@@ -1328,6 +1328,10 @@ def fill_foreign_level(rows: list[dict], foreign: list[bool]) -> None:
 # 成績表にない過去走（海外の走）。馬名 → 過去走（History.add_race と同じ形）。答え合わせ（check_jra_day.py）だけが使う。
 # アプリの extraRuns（app/lib/ml/features.ts）と同じく、本人の過去走（horse_features・斤量の変化・乗り替わり）にだけ足す
 EXTRA_RUNS: dict[str, list[dict]] = {}
+# 海外の走を足すレース（None は全部）。答え合わせ・一致テストでは予測するレースだけにする（2026-11-26）。
+# 全部のレースに足すと、遠征帰りの馬の過去のレースの「そのときの調子」（form_at）が変わり、相手の前走レベル・直接対決が
+# アプリ（store は学習データ＝海外の走なし）とずれるため
+EXTRA_RUNS_RACES: set[str] | None = None
 
 
 def build_dataset(data_root: Path) -> tuple[list[dict], History]:
@@ -1350,7 +1354,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
             for h in race["runners"]:
                 course = hist.course_waku.get((race["venue"], race["surface"], race["distance"]))
                 runs = hist.horses.get(h["horse"], [])
-                if EXTRA_RUNS.get(h["horse"]):
+                if EXTRA_RUNS.get(h["horse"]) and (EXTRA_RUNS_RACES is None or race["race_id"] in EXTRA_RUNS_RACES):
                     runs = sorted(runs + [x for x in EXTRA_RUNS[h["horse"]] if x["date"] < race["date"]], key=lambda x: x["date"])
                 f = runner_features(race, h, runs, hist.jockeys.get(norm_jockey(h.get("jockey")), []),
                                     hist.trainers.get(norm_jockey(h.get("trainer")), []), {k: list(v) for k, v in course.items()} if course else None,

@@ -39,8 +39,14 @@ def main() -> None:
     features.FOREIGN_FIX = {"rating": True, "people": True}
     ri = ROOT / "data/overseas/rating_init.json"
     features.RATING_INIT = json.loads(ri.read_text(encoding="utf-8"))["coef"] if ri.exists() else None
+    # 海外の走を足すのは、外国馬のいる今年のレースだけ（アプリと同じ。過去のレースの form_at を変えない）
+    target = set()
+    for fp in sorted((DATA / "json").glob(f"{since[:4]}/*.json")):
+        for r in json.loads(fp.read_text(encoding="utf-8"))["races"]:
+            if r.get("race_id") and since <= (r.get("date") or "") <= store["lastDate"] and any(features.is_foreign_trainer(h.get("trainer")) for h in r["results"]):
+                target.add(r["race_id"])
+    features.EXTRA_RUNS_RACES = target
     rows, _ = features.build_dataset(DATA)
-    target = {r["race_id"] for r in rows if since <= r["date"] <= store["lastDate"] and features.is_foreign_trainer(r.get("trainer"))}
     rows = [r for r in rows if r["race_id"] in target]
     model = json.loads((OUT / "model.json").read_text(encoding="utf-8"))
     X = np.array([[r.get(f, float("nan")) for f in model["features"]] for r in rows], dtype=np.float64)

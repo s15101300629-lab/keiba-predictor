@@ -565,6 +565,7 @@ def main() -> None:
         fill_owner_breeder(days, date)
     fill_course_letter(days, date)
     features.EXTRA_RUNS = overseas_runs_for(days, date)
+    features.EXTRA_RUNS_RACES = {r["race_id"] for d in days for r in d["races"]}  # 足すのはその日のレースだけ（アプリと同じ）
     # 外国馬の扱い（2026-11-26。アプリと同じ）：レーティングの初めの値、騎手（短期免許は通算）・調教師・馬主・生産者（日本馬の中央値）
     features.FOREIGN_FIX = {"rating": True, "people": True}
     ri = DATA.parent / "overseas" / "rating_init.json"
