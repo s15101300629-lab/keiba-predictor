@@ -84,14 +84,15 @@ function isOverseasVenue(venue: string): boolean {
 // 海外の走の見積もり（scripts/ml/overseas.py。2026-11-24 採用：外国馬・遠征帰りの日本馬で logloss が一番良かった）
 // racedb.com で分かった馬ごとの1着賞金（万円）・タイム差（data/overseas/runs.json）と、主要国以外は格を1つ下げる決まり・能力指数の式（impute.json）
 type OverseasImpute = { coef: Record<string, { ab: number[]; tidx: number[] }>; major_venues: string[]; grade_prize: [string, number][]; lower: Record<string, number> };
-type OverseasData = { imp: OverseasImpute | null; runs: Record<string, Record<string, { prize?: number; time_diff?: number }>> };
+type OverseasData = { imp: OverseasImpute | null; runs: Record<string, Record<string, { prize?: number; time_diff?: number }>>;
+  venueMap: { map: [string, number, number][]; default: [number, number] } | null };
 let overseasData: Promise<OverseasData> | null = null;
 function loadOverseas(): Promise<OverseasData> {
   overseasData ??= (async () => {
     const dir = path.join(process.cwd(), "data", "overseas");
     const read = (n: string) => readFile(path.join(dir, n), "utf8").then((t) => JSON.parse(t)).catch(() => null);
-    const [imp, runs] = await Promise.all([read("impute.json"), read("runs.json")]);
-    return { imp, runs: runs ?? {} };
+    const [imp, runs, venueMap] = await Promise.all([read("impute.json"), read("runs.json"), read("venue_map.json")]);
+    return { imp, runs: runs ?? {}, venueMap };
   })();
   return overseasData;
 }
@@ -117,11 +118,12 @@ function overseasRuns(performances: { values: Record<string, string> }[], horseI
     const imp = od?.imp;
     if (imp) {
       const x = od.runs[horseId]?.[date];
-      if (x?.prize != null) prize = x.prize;
-      else if (!imp.major_venues.some((m) => (v["開催"] ?? "").includes(m))) {
-        const g = imp.grade_prize.find(([pat]) => new RegExp(pat).test(name));
-        if (g) prize = imp.lower[String(g[1])] ?? g[1];
-      }
+      const major = imp.major_venues.some((m) => (v["開催"] ?? "").includes(m));
+      const g = imp.grade_prize.slice(0, 5).find(([pat]) => new RegExp(pat).test(name)); // G1〜OP
+      // 主要国（欧州・香港・ドバイなど）の格のあるレースは JRA の同じ格の値（2026-11-26。scripts/ml/overseas.py の improve と同じ）
+      if (major && g) prize = g[1];
+      else if (x?.prize != null) prize = x.prize;
+      else if (!major && g) prize = imp.lower[String(g[1])] ?? g[1];
       if (x?.time_diff != null && ok) timeDiff = x.time_diff;
       if (ok && timeDiff >= 0) {
         const c = imp.coef[course[1] === "芝" ? "0" : "1"];
@@ -131,10 +133,16 @@ function overseasRuns(performances: { values: Record<string, string> }[], horseI
         tidx = dot(c.tidx);
       }
     }
+    // 海外の競馬場を近い JRA のコースに読み替える（data/overseas/venue_map.json。check_jra_day.py の overseas_course と同じ）
+    const surf = course[1] === "芝" ? 0 : 1;
+    const vm = od?.venueMap;
+    const [jv, layout] = vm ? (vm.map.find(([pat]) => (v["開催"] ?? "").includes(pat))?.slice(1) as [number, number] | undefined) ?? vm.default : [0, 0];
+    const ci = vm ? courseInfo(jv, surf, [4, 5, 7].includes(jv) ? "左" : "右", surf === 0 && layout === 1) : null;
     runs.push([
-      date, 0, course[1] === "芝" ? 0 : 1, Number(course[2]), OVERSEAS_GOING[(v["馬場"] ?? "").slice(0, 1)] ?? -1, field,
+      date, jv, surf, Number(course[2]), OVERSEAS_GOING[(v["馬場"] ?? "").slice(0, 1)] ?? -1, field,
       ok ? finish : -1, timeDiff,
       -1, -1, -1, prize, Number.isFinite(weight) && weight > 0 ? weight : null, -1, -1, tidx, 0, ab,
+      null, null, null, null, ci?.turn ?? null, ci?.sband ?? null, null, ci?.cStraight ?? null, ci?.cElev ?? null,
     ]);
   }
   return runs;

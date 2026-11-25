@@ -354,9 +354,20 @@ export function resolveTrainer(name: string | null | undefined, store: Store, ra
   const n = normJockey((name ?? "").replace(/^(美浦|栗東|地方|海外)/, ""));
   if (!n) return null;
   const runs = (store.horses[horse] ?? []).filter((r) => r[0] < raceDate);
+  // netkeiba は名前の途中を略すことがある（「手塚久」＝手塚貴久）。頭の文字が同じで、略した名前の文字が順に全部入っていれば同じ人とみる（2026-11-26）
+  const abbrevOf = (full: string) => {
+    if (!full || full[0] !== n[0]) return false;
+    let j = 0;
+    for (const ch of full) if (ch === n[j]) j++;
+    return j === n.length;
+  };
   for (let i = runs.length - 1; i >= 0; i--) {
     const t = store.names?.[runs[i][14]] ?? "";
     if (t && (t === n || t.startsWith(n))) return t;
+  }
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const t = store.names?.[runs[i][14]] ?? "";
+    if (abbrevOf(t)) return t;
   }
   const trainers = store.trainers ?? {};
   if (trainers[n]) return n;

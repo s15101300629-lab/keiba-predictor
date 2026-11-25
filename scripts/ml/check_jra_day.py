@@ -318,8 +318,19 @@ def netkeiba_performances(horse_id: str) -> list[dict]:
     return rows
 
 
-def overseas_runs(perf: list[dict]) -> list[dict]:
-    """海外のレースを、features.History.add_race の過去走と同じ形にする（アプリの overseasRuns と同じ値）."""
+VENUE_MAP = json.loads((Path(__file__).resolve().parents[2] / "data/overseas/venue_map.json").read_text(encoding="utf-8"))
+
+
+def overseas_course(venue_text: str, surface: int) -> dict:
+    """海外の競馬場 → 近い JRA のコース（data/overseas/venue_map.json）。競馬場・回り・直線の区分・直線・高低差."""
+    v, layout = next(((c, o) for pat, c, o in VENUE_MAP["map"] if pat in venue_text), VENUE_MAP["default"])
+    c = features.COURSE.get((v, surface, layout if surface == 0 else 0)) or features.COURSE.get((v, surface, 0))
+    return {"venue": v, "turn": 1 if v in (4, 5, 7) else 0, "sband": features.straight_band(c[0]), "c_straight": c[0], "c_elev": c[1]}
+
+
+def overseas_runs(perf: list[dict], venue_map: bool = True) -> list[dict]:
+    """海外のレースを、features.History.add_race の過去走と同じ形にする（アプリの overseasRuns と同じ値）.
+    venue_map：競馬場を近い JRA のコースに読み替える（2026-11-26。False は前の形＝競馬場不明。overseas_eval.py の比べる基準）."""
     out = []
     for v in perf:
         if not is_overseas_venue(v.get("開催", "")):
@@ -349,6 +360,8 @@ def overseas_runs(perf: list[dict]) -> list[dict]:
             "turn": None, "sband": None, "race_id": None, "c_straight": None, "c_elev": None, "form_at": None, "tm5_at": None,
             "ov_venue": v.get("開催", ""), "ov_name": name,  # 見積もり（overseas.improve）で使う
         })
+        if venue_map:
+            out[-1].update(overseas_course(v.get("開催", ""), out[-1]["surface"]))
     return out
 
 
@@ -430,9 +443,10 @@ def save_raw(date: str, days: list[dict]) -> None:
 
 def store_run(r: dict) -> list:
     """海外の走（overseas_runs・overseas.improve の形）→ store.horses の1走（アプリの overseasRuns と同じ並び）."""
-    return [r["date"], 0, r["surface"], r["distance"], -1 if r["going"] is None else r["going"], r["field"],
+    return [r["date"], r["venue"], r["surface"], r["distance"], -1 if r["going"] is None else r["going"], r["field"],
             -1 if r["finish"] is None else r["finish"], -1 if r["time_diff"] is None else r["time_diff"],
-            -1, -1, -1, r["prize"], r["weight"], -1, -1, r["tidx"], 0, r["ab"]]
+            -1, -1, -1, r["prize"], r["weight"], -1, -1, r["tidx"], 0, r["ab"], None, None, None, None,
+            r["turn"], r["sband"], None, r["c_straight"], r["c_elev"]]
 
 
 def save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath) -> None:

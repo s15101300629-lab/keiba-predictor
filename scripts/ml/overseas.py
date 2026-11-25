@@ -3,7 +3,8 @@
     python scripts/ml/overseas.py build   # → data/overseas/impute.json（式）・data/overseas/runs.json（racedb で分かった馬ごとの値）
 
 海外の走（netkeiba の戦績のうち JRA・地方の競馬場でないもの）を過去走に足すときに、
-- 1着賞金：racedb.com のレース結果の1着賞金を円に直した値（JRA の一番高い 5億円で頭打ち）。racedb になければ格で決めた値
+- 1着賞金：主要国（MAJOR_VENUES）の格のあるレース（G1〜OP）は、JRA の同じ格の値（G1 17000万円など。2026-11-26、依頼者の指示で欧州・香港・ドバイの G1 を日本の G1 と同格に）。
+  それ以外は racedb.com のレース結果の1着賞金を円に直した値（JRA の一番高い 5億円で頭打ち）。racedb になければ格で決めた値
   （check_jra_day.OVERSEAS_PRIZE）で、主要国（MAJOR_VENUES）以外の競馬場は格を1つ下げる（依頼者の指示「区別する」）
 - 勝ち馬とのタイム差：racedb の着差（馬身）× 1馬身の秒（racedb の JRA の重賞と成績表から決めた値）。なければ着順ごとの中央値
 - 能力指数・タイム指数：成績表の JRA の走で、芝ダごとに log 1着賞金・タイム差（3秒で頭打ち）・log 頭数 から当てた式
@@ -39,13 +40,14 @@ def improve(run: dict, venue: str, race_name: str, horse_id: str | None) -> dict
         return run
     x = (runs.get(horse_id or "") or {}).get(run["date"])
     prize = run["prize"]
-    if x and x.get("prize") is not None:
+    major = any(m in venue for m in imp["major_venues"])
+    graded = next((p for pat, p in imp["grade_prize"][:5] if re.search(pat, race_name)), None)  # G1〜OP
+    if major and graded is not None:
+        prize = graded  # 主要国（欧州・香港・ドバイなど）の格のあるレースは、JRA の同じ格と同じ値（2026-11-26、依頼者の指示）
+    elif x and x.get("prize") is not None:
         prize = x["prize"]
-    elif not any(m in venue for m in imp["major_venues"]):
-        for pat, p in imp["grade_prize"]:
-            if re.search(pat, race_name):
-                prize = LOWER.get(p, p)
-                break
+    elif not major and graded is not None:
+        prize = LOWER.get(graded, graded)
     td = run["time_diff"]
     if x and x.get("time_diff") is not None and run["finish"]:
         td = x["time_diff"]

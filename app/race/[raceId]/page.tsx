@@ -654,7 +654,7 @@ function OverallHorseCard({ horse, categories, mark, odds, value, score, onOpen,
   </details>;
 }
 
-/** 外国馬の注意と、学習データにない形なので推定で埋めた値（app/lib/ml/features.ts の fillForeignPeople など）. */
+/** 外国馬：市場と合わせた確率と、学習データにない形なので推定で埋めた値（注意の文は 2026-11-26 に依頼者の指示でやめた）（app/lib/ml/features.ts の fillForeignPeople など）. */
 function ForeignNote({ foreign, value }: { foreign: NonNullable<Prediction["foreign"]>; value: ValueResult | null }) {
   const v = foreign.values;
   const pct = (x: number | null | undefined) => (x == null ? "-" : (x * 100).toFixed(1) + "%");
@@ -665,8 +665,8 @@ function ForeignNote({ foreign, value }: { foreign: NonNullable<Prediction["fore
   else if (est.has("jockey_n")) rows.push(["騎手", `同じレースの日本馬の騎手の中央値（${v.jockey_n ?? "-"}騎乗・3着内率 ${pct(v.jockey_top3)}。JRA での騎乗がない）`]);
   if (est.has("trainer_n")) rows.push(["調教師", `同じレースの日本馬の中央値（今年 ${v.trainer_n ?? "-"}頭・3着内率 ${pct(v.trainer_top3)}）`]);
   if (est.has("owner_n_y")) rows.push(["馬主・生産者", `同じレースの日本馬の中央値（3着内率 馬主 ${pct(v.owner_top3_y)}・生産者 ${pct(v.breeder_top3_y)}）`]);
+  if (!rows.length && !value) return null;
   return <section className="foreign-note" role="note">
-    <p>⚠ 外国馬。学習の例が少ない（学習データの外国馬は{foreign.trainingRuns != null ? `過去${foreign.trainingRuns}走` : "わずか"}）ので、AI の評価は参考程度。</p>
     {value && <p>市場（単勝オッズ）と合わせた3着以内確率：<b>{(value.combined * 100).toFixed(1)}%</b>（市場だけ {(value.market * 100).toFixed(1)}%）</p>}
     {rows.length > 0 && <dl className="fact-list">
       {rows.map(([label, text]) => <div key={label}><dt>{label}<small className="estimated-tag">推定</small></dt><dd>{text}</dd></div>)}
