@@ -1,4 +1,4 @@
 # 1行1コマンド（scripts/ml で動かす）。行ごとに別のジョブで同時に回す（.github/workflows/ml-matrix.yml）。
 # このファイルを変えて push すると起動する（書いてあるコマンドを全部回すので、済んだものは消す）
-# 2026-11-25：compare_name_fix.py は前の回で実行中。案 B（勝率と組み合わせは着順モデル）を画面と同じ形で比べる
-python compare_pl_b.py
+# 2026-11-25：新馬・実績の少ない馬に兄弟（母系の近い馬）の成績を足す比較
+python compare_siblings.py

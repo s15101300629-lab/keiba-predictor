@@ -229,7 +229,7 @@ def fetch_training(race_ids: list[str]) -> list[dict]:
     from collect_training import URL, WAIT_SECONDS, parse
     out = []
     for rid in race_ids:
-        res = requests.get(URL.format(rid), headers={"User-Agent": "Mozilla/5.0", "Connection": "close"}, timeout=20)
+        res = requests.get(URL.format(rid), headers={"User-Agent": "data-collector/1.0", "Connection": "close"}, timeout=20)
         res.encoding = "utf-8"
         if res.ok:
             out.append({"race_id": rid, "horses": parse(res.text)})

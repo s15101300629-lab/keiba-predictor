@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import re
 import sys
 import time
@@ -20,7 +21,7 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[2]
 URL = "https://race.netkeiba.com/race/oikiri.html?race_id={}"
-WAIT_SECONDS = 5.0
+WAIT_SECONDS = float(os.environ.get("TRAINING_WAIT_SECONDS", "5"))  # 過去分の取得（2026-11-25）は 2秒
 ROW = re.compile(r'<tr class\s*=\s*"OikiriDataHead\d+ HorseList"[^>]*>(.*?)</tr>', re.S)
 
 
@@ -64,7 +65,8 @@ def main() -> None:
         out.write_text("".join(good), encoding="utf-8")
     todo = [r for r in races if r not in done]
     print(f"{year}: {len(races)} races, done {len(done)}, todo {len(todo)}", file=sys.stderr, flush=True)
-    headers = {"User-Agent": "Mozilla/5.0", "Connection": "close"}
+    # ブラウザのふりはしない（依頼者のルール、2026-11-25 に直した）。requests の既定の名前は 400 になるので、一般的な名前を付ける
+    headers = {"User-Agent": "data-collector/1.0", "Connection": "close"}
     failures = 0
     with out.open("a", encoding="utf-8") as f:
         for i, race_id in enumerate(todo, 1):
