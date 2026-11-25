@@ -1,0 +1,79 @@
+name: 比較を同時に回す（作業ブランチ用）
+
+# 2026-11-25：pl.yml・round4.yml を1つにまとめた。.github/ml-matrix.txt に1行1つ書いたコマンド（scripts/ml で動かす）を、別々のジョブで同時に回す。
+# 学習用の表は最初のジョブで1回だけ作り（元のファイルが同じならキャッシュから戻すだけ）、各ジョブはキャッシュから戻す。
+# 結果（data/ml の変わったファイル）を作業ブランチに commit する。.github/ml-matrix.txt を変えて push すると起動する
+on:
+  push:
+    branches: [claude/nice-feynman-qgk2q6]
+    paths: [.github/ml-matrix.txt]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ml-matrix
+  cancel-in-progress: false
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      tasks: ${{ steps.tasks.outputs.tasks }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: tasks
+        run: echo "tasks=$(grep -v '^\s*#' .github/ml-matrix.txt | grep -v '^\s*$' | jq -R . | jq -cs .)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/ml/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: pip install -r scripts/ml/requirements.txt
+      - run: npm ci --no-audit --no-fund
+      - uses: ./.github/actions/dataset
+
+  run:
+    needs: prep
+    if: needs.prep.outputs.tasks != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    strategy:
+      fail-fast: false
+      matrix:
+        task: ${{ fromJSON(needs.prep.outputs.tasks) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: scripts/ml/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: pip install -r scripts/ml/requirements.txt optuna
+      - run: npm ci --no-audit --no-fund
+      - id: dataset
+        uses: ./.github/actions/dataset
+      - name: Run
+        working-directory: scripts/ml
+        run: bash -c "${{ matrix.task }}" < /dev/null
+      - name: Commit
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ml
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -q -m "matrix: ${{ matrix.task }}"
+          # commit しないファイルが変わっていても pull --rebase が止まらないように --autostash
+          for i in 1 2 3 4 5 6 7 8; do git pull -q --rebase --autostash origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && break; sleep $((i * 15)); done
+          git fetch -q origin "${GITHUB_REF_NAME}"; git merge-base --is-ancestor HEAD FETCH_HEAD || { echo "push できなかった"; exit 1; }
