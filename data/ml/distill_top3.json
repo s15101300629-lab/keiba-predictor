@@ -1,0 +1,117 @@
+{
+ "target": "top3",
+ "note": "cd scripts/ml && python cache_dataset.py\n    cd scripts/ml && python compare_distill.py top3    # → data/ml/distill_top3.json（win・top2 も同じ）",
+ "years": {
+  "2024": {
+   "今の1本": {
+    "trees": 1829,
+    "logloss_sum": 0.41746,
+    "auc": 0.79979,
+    "hit": 0.51118
+   },
+   "5本の平均": {
+    "trees": 7475,
+    "logloss_sum": 0.41701,
+    "auc": 0.80071,
+    "hit": 0.51108
+   },
+   "案1 蒸留": {
+    "trees": 3000,
+    "logloss_sum": 0.41909,
+    "auc": 0.79802,
+    "hit": 0.50749,
+    "kept_of_gain": -3.622
+   },
+   "案2 速い5本": {
+    "trees": 1830,
+    "trees_each": 366,
+    "logloss_sum": 0.41722,
+    "auc": 0.80013,
+    "hit": 0.51188,
+    "kept_of_gain": 0.533
+   }
+  },
+  "2025": {
+   "今の1本": {
+    "trees": 1626,
+    "logloss_sum": 0.41585,
+    "auc": 0.79731,
+    "hit": 0.50517
+   },
+   "5本の平均": {
+    "trees": 6968,
+    "logloss_sum": 0.4157,
+    "auc": 0.79769,
+    "hit": 0.50706
+   },
+   "案1 蒸留": {
+    "trees": 2189,
+    "logloss_sum": 0.41759,
+    "auc": 0.79526,
+    "hit": 0.50587,
+    "kept_of_gain": -11.6
+   },
+   "案2 速い5本": {
+    "trees": 1625,
+    "trees_each": 325,
+    "logloss_sum": 0.41609,
+    "auc": 0.79704,
+    "hit": 0.50597,
+    "kept_of_gain": -1.6
+   }
+  },
+  "2026": {
+   "今の1本": {
+    "trees": 1551,
+    "logloss_sum": 0.41334,
+    "auc": 0.80329,
+    "hit": 0.51478
+   },
+   "5本の平均": {
+    "trees": 7951,
+    "logloss_sum": 0.41285,
+    "auc": 0.80403,
+    "hit": 0.51355
+   },
+   "案1 蒸留": {
+    "trees": 2569,
+    "logloss_sum": 0.41498,
+    "auc": 0.80135,
+    "hit": 0.51221,
+    "kept_of_gain": -3.347
+   },
+   "案2 速い5本": {
+    "trees": 1550,
+    "trees_each": 310,
+    "logloss_sum": 0.41286,
+    "auc": 0.80391,
+    "hit": 0.51109,
+    "kept_of_gain": 0.98
+   }
+  }
+ },
+ "mean": {
+  "今の1本": {
+   "logloss_sum": 0.41555,
+   "auc": 0.80013,
+   "hit": 0.51038
+  },
+  "5本の平均": {
+   "logloss_sum": 0.41519,
+   "auc": 0.80081,
+   "hit": 0.51056
+  },
+  "案1 蒸留": {
+   "logloss_sum": 0.41722,
+   "auc": 0.79821,
+   "hit": 0.50852,
+   "kept_of_gain": -4.639
+  },
+  "案2 速い5本": {
+   "logloss_sum": 0.41539,
+   "auc": 0.80036,
+   "hit": 0.50965,
+   "kept_of_gain": 0.444
+  }
+ }
+}
