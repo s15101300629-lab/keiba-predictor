@@ -428,6 +428,13 @@ def save_raw(date: str, days: list[dict]) -> None:
                                 ensure_ascii=False, separators=(",", ":")) + "\n")
 
 
+def store_run(r: dict) -> list:
+    """海外の走（overseas_runs・overseas.improve の形）→ store.horses の1走（アプリの overseasRuns と同じ並び）."""
+    return [r["date"], 0, r["surface"], r["distance"], -1 if r["going"] is None else r["going"], r["field"],
+            -1 if r["finish"] is None else r["finish"], -1 if r["time_diff"] is None else r["time_diff"],
+            -1, -1, -1, r["prize"], r["weight"], -1, -1, r["tidx"], 0, r["ab"]]
+
+
 def save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath) -> None:
     """data/ml/day_check/inputs/日付.json.gz：レースごとに、各馬の着順・確定オッズ・モデルの生の確率・本体の入力と、払戻."""
     import gzip
@@ -446,7 +453,11 @@ def save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath) -> Non
                            "win": float(extra_raw["win"][i]) if "win" in extra_raw else None,
                            "x": [None if (v is None or (isinstance(v, float) and math.isnan(v))) else float(v) for v in x],
                            # 一致テスト（parity_day.ts）用：アプリと同じ入力から TS で計算し直して、項目ごとに比べる
-                           "meta": {k: rows[i].get(k) for k in ("jockey", "trainer", "owner", "breeder")}})
+                           "meta": {k: rows[i].get(k) for k in ("jockey", "trainer", "owner", "breeder")},
+                           # 外国馬（海外の厩舎）と、足した海外の走（store.horses と同じ形）。アプリと同じ扱いを TS で確かめるため
+                           **({"foreign": True} if features.is_foreign_trainer(rows[i].get("trainer")) else {}),
+                           **({"extra": [store_run(x) for x in features.EXTRA_RUNS[rows[i]["horse"]] if x["date"] < date]}
+                              if features.EXTRA_RUNS.get(rows[i]["horse"]) else {})})
         r0 = rows[int(np.flatnonzero(rid == race_id)[0])]
         races.append({"race_id": race_id, "date": date, "turn": r0.get("turn"), "sband": r0.get("sband"), "venue": d["venue_name"], "race_no": info["race_no"], "race_name": info["race_name"],
                       "course": f'{info["surface"]}{info["distance"]}', "payouts": info.get("payouts") or {}, "horses": horses})
@@ -540,6 +551,10 @@ def main() -> None:
         fill_owner_breeder(days, date)
     fill_course_letter(days, date)
     features.EXTRA_RUNS = overseas_runs_for(days, date)
+    # 外国馬の扱い（2026-11-26。アプリと同じ）：レーティングの初めの値、騎手（短期免許は通算）・調教師・馬主・生産者（日本馬の中央値）
+    features.FOREIGN_FIX = {"rating": True, "people": True}
+    ri = DATA.parent / "overseas" / "rating_init.json"
+    features.RATING_INIT = json.loads(ri.read_text(encoding="utf-8"))["coef"] if ri.exists() else None
     flat = [r for d in days for r in d["races"] if r["surface"] in ("芝", "ダート")]
     print(f"{date}: {len(flat)} races", file=sys.stderr, flush=True)
     tmp = Path(tempfile.mkdtemp())

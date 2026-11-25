@@ -1,14 +1,15 @@
 // 一致テストの中身（parity.ts・parity_day.ts で共通）
-import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, normJockey, runnerFeatures, type Store } from "../../app/lib/ml/features.ts";
+import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, fillForeignPeople, normJockey, runnerFeatures, storeHorseKey, type RunnerInput, type Store } from "../../app/lib/ml/features.ts";
 import { predictProbability, type Model } from "../../app/lib/ml/model.ts";
 import { treeShap } from "../../app/lib/ml/shap.ts";
 
-export type Row = { race_id: string; date: string; horse: string; shap?: number[]; owner?: string | null; breeder?: string | null; turn?: number | null; sband?: number | null; jockey: string | null; trainer: string | null; features: Record<string, number | null>; pred: number };
+export type Row = { race_id: string; date: string; horse: string; foreign?: boolean; extra?: Store["horses"][string]; shap?: number[]; owner?: string | null; breeder?: string | null; turn?: number | null; sband?: number | null; jockey: string | null; trainer: string | null; features: Record<string, number | null>; pred: number };
 export type Mismatch = { race_id: string; horse: string; name: string; python: number | null; ts: number };
 export type ParityResult = { rows: number; failures: number; worstFeature: number; worstPred: number; worstShap: number; mismatches: Mismatch[] };
 
 const num = (v: number | null) => (v === null ? null : v);
-export function runParity(store: Store, model: Model, rows: Row[], quiet = false): ParityResult {
+// ratingsFromStore：store のレーティングをそのまま使う（その日が store の最終日より後のとき。外国馬のレーティングの初めの値も確かめる）
+export function runParity(store: Store, model: Model, rows: Row[], quiet = false, ratingsFromStore = false): ParityResult {
 let worstFeature = 0;
 let worstPred = 0;
 let worstShap = 0;
@@ -34,9 +35,11 @@ for (const raceRows of byRace.values()) {
     const s = [r.elos ?? 1500, r.elos_n ?? 0];
     ratings[row.horse] = [r.elom ?? 1500, r.elom_n ?? 0, ...(race.surface === 0 ? s : [1500, 0]), ...(race.surface === 0 ? [1500, 0] : s)] as [number, number, number, number, number, number];
   }
-  const raceStore: Store = { ...store, ratings };
-  const computed = raceRows.map((row) => runnerFeatures(raceStore, race, {
-    horse: row.horse, jockeyKey: normJockey(row.jockey) || null, trainerKey: normJockey(row.trainer) || null,
+  const raceStore: Store = ratingsFromStore ? store : { ...store, ratings };
+  const keys = raceRows.map((row) => storeHorseKey(raceStore, row.horse));
+  const runners: RunnerInput[] = raceRows.map((row, i) => ({
+    horse: keys[i], jockeyKey: normJockey(row.jockey) || null, trainerKey: normJockey(row.trainer) || null,
+    foreign: !!row.foreign, extraRuns: row.extra,
     waku: num(row.features.waku), umaban: num(row.features.umaban), weight: num(row.features.weight),
     age: num(row.features.age), sex: row.features.sex === null ? null : ["牡", "牝", "セ"][row.features.sex],
     bodyWeight: num(row.features.body_weight), bodyWeightDiff: num(row.features.body_weight_diff),
@@ -44,10 +47,12 @@ for (const raceRows of byRace.values()) {
     pedigree: Object.fromEntries(["ped_heavy", "ped_wet", "ped_top3", "ped_dist", "pb_band_top3", "pb_going_top3", "pb_win", "pb_recent_top3", "pb_f_band_top3"]
       .map((k) => [k, num(row.features[k])])),
   }));
+  const computed = runners.map((r) => runnerFeatures(raceStore, race, r));
+  fillForeignPeople(raceStore, race, computed, runners);
   addFormDeviation(computed);
   addFieldFeatures(computed);
-  addOpponentFeatures(raceStore, race, computed, raceRows.map((row) => row.horse));
-  addSimilarCondFeatures(raceStore, race, computed, raceRows.map((row) => row.horse));
+  addOpponentFeatures(raceStore, race, computed, keys);
+  addSimilarCondFeatures(raceStore, race, computed, keys);
   raceRows.forEach((row, i) => {
     for (const name of model.features) {
       const expected = row.features[name];

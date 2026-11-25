@@ -5,7 +5,7 @@ import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
 import { fetchJraBaba, fetchJraBabaDetail } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
-import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
+import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, fillForeignPeople, jockeyStats, resolveCareerJockey, resolveTrainer, runningStyle, storeHorseKey, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type RunnerInput, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionNeedsRefresh, stallionRecord,
@@ -734,6 +734,13 @@ function loadMlAssets() {
         .then((text) => JSON.parse(text) as { top3: number; top2: number; win: number }).catch(() => null);
       const longshotFeatures = await readFile(path.join(dir, "model_longshot.json"), "utf8")
         .then((text) => (JSON.parse(text) as { features: string[] }).features).catch(() => null);
+      // 外国馬の扱い（2026-11-26）：短期免許の騎手の JRA での通算（scripts/ml/foreign_jockeys.py）・レーティングの初めの値の式（overseas_eval.py）
+      const ov = path.join(process.cwd(), "data", "overseas");
+      const [jockeyCareer, ratingInit] = await Promise.all(["jockey_career.json", "rating_init.json"].map((name) =>
+        readFile(path.join(ov, name), "utf8").then((text) => JSON.parse(text)).catch(() => null)));
+      (store as Store).jockeyCareer = jockeyCareer?.jockeys ?? undefined;
+      (store as Store).ratingInit = ratingInit?.coef ?? null;
+      (store as Store).foreignTrainingRuns = jockeyCareer?.foreign_training_runs ?? undefined;
       return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence, betsEvidence, betsSkipClasses, betsExtras, longshotFeatures, calibration };
     } catch {
       mlAssets = null; // 次のリクエストで再試行
@@ -1132,10 +1139,13 @@ async function getRace(
         const assumedBodyWeight = entry?.bodyWeight == null
           ? previousBodyWeight(performances, raceConditions.date!) ?? DEBUT_BODY_WEIGHT[sexAge?.[1] ?? ""] ?? DEBUT_BODY_WEIGHT["牡"]
           : null;
-        const jockeyKey = resolveJockey(entry?.jockey, ml.store, raceInput.date);
-        const trainerKey = resolveTrainer(entry?.trainer, ml.store, raceInput.date, horse.name);
-        const features = runnerFeatures(ml.store, raceInput, {
-          horse: horse.name, jockeyKey, trainerKey,
+        // 外国馬（海外の厩舎）。成績表の馬名「カランダガン（Calandagan（IRE））（仏）」とつなぐ（storeHorseKey）
+        const foreign = /^海外/.test(entry?.trainer ?? "");
+        const horseKey = storeHorseKey(ml.store, horse.name);
+        const jockeyKey = (foreign ? resolveCareerJockey(entry?.jockey, ml.store, raceInput.date) : null) ?? resolveJockey(entry?.jockey, ml.store, raceInput.date);
+        const trainerKey = resolveTrainer(entry?.trainer, ml.store, raceInput.date, horseKey);
+        const runner: RunnerInput = {
+          horse: horseKey, jockeyKey, trainerKey, foreign,
           waku: entry?.frameNumber ?? null, umaban: entry?.horseNumber ?? null,
           weight: entry?.carriedWeight ?? null,
           age: sexAge ? Number(sexAge[2]) : null, sex: sexAge?.[1] ?? null,
@@ -1148,13 +1158,17 @@ async function getRace(
           // 馬主・生産者（netkeiba の馬のプロフィール。名前は features.ts の normOwner で成績表の書き方にそろえる）
           owner: (results[index] as { profile?: { label: string; value: string }[] | null }).profile?.find((p) => p.label === "馬主")?.value ?? null,
           breeder: (results[index] as { profile?: { label: string; value: string }[] | null }).profile?.find((p) => p.label.startsWith("生産者"))?.value ?? null,
-        });
-        return { jockeyKey, trainerKey, features, bodyWeightAssumed: assumedBodyWeight !== null, overseasRuns: overseas.length };
+        };
+        const features = runnerFeatures(ml.store, raceInput, runner);
+        return { jockeyKey, trainerKey, features, runner, horseKey, foreign, estimated: [] as string[], bodyWeightAssumed: assumedBodyWeight !== null, overseasRuns: overseas.length };
       });
+      // 外国馬の調教師・馬主・生産者などを、同じレースの日本馬の中央値で埋める（埋めた項目は画面で「推定」）
+      fillForeignPeople(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].runner))
+        .forEach((keys, k) => { rows[activeIdx[k]].estimated = keys; });
       addFormDeviation(activeIdx.map((i) => rows[i].features));
       addFieldFeatures(activeIdx.map((i) => rows[i].features));
-      addOpponentFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
-      addSimilarCondFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
+      addOpponentFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].horseKey));
+      addSimilarCondFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].horseKey));
       timing.features += performance.now() - tFeat;
       // メリハリの補正（案 10）：モデルの log-odds に T を掛ける。この後、合計を 3・2・1 にそろえる
       const temper = (p: number, T: number | undefined) => {
@@ -1212,6 +1226,9 @@ async function getRace(
           winProbability: winProbs[i], top2Probability: top2Probs[i], baseWinProbability: baseWinProbs[i],
           heavyNote: heavyNotes[i],
           modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior, overseasRuns: rows[i].overseasRuns,
+          // 外国馬：学習データの外国馬の走の数（注意の表示）と、日本馬の中央値などで埋めた項目（補足の表の「推定」）
+          foreign: rows[i].foreign ? { estimated: rows[i].estimated, trainingRuns: ml.store.foreignTrainingRuns ?? null, values: Object.fromEntries(
+            ["elom", "elos", "jockey_n", "jockey_top3", "trainer_n", "trainer_top3", "owner_n_y", "owner_top3_y", "breeder_n_y", "breeder_top3_y"].map((k) => [k, num(f[k])])) } : null,
           training: (() => { const n = entryByHorseId.get(horses[i].horseId)?.horseNumber; return n != null ? training.get(n) ?? null : null; })(),
           jockeyName: rows[i].jockeyKey,
           pace: {

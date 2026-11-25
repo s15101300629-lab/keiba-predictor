@@ -10,22 +10,26 @@ import { runParity, type Row } from "./parity_core.ts";
 
 const root = new URL("../../data/ml/", import.meta.url);
 const date = process.argv[2];
-type H = { n: number; horse: string; top3: number; x: (number | null)[]; meta?: Record<string, string | null> };
+type H = { n: number; horse: string; top3: number; x: (number | null)[]; meta?: Record<string, string | null>; foreign?: boolean; extra?: Store["horses"][string] };
 const inp = JSON.parse(gunzipSync(readFileSync(new URL(`day_check/inputs/${date}.json.gz`, root))).toString("utf8")) as {
   model_dir?: string; features: string[]; races: { race_id: string; date: string; turn: number | null; sband: number | null; horses: H[] }[] };
 const store = JSON.parse(readFileSync(new URL("store.json", root), "utf8")) as Store;
 const model = JSON.parse(readFileSync(new URL("model.json", root), "utf8")) as Model;
+// 外国馬の扱い（アプリの loadMlAssets と同じファイル）
+const readOv = (name: string) => { try { return JSON.parse(readFileSync(new URL(`../overseas/${name}`, root), "utf8")); } catch { return null; } };
+store.jockeyCareer = readOv("jockey_career.json")?.jockeys ?? undefined;
+store.ratingInit = readOv("rating_init.json")?.coef ?? null;
 const out: Record<string, unknown> = { date, storeLastDate: store.lastDate };
 if ((inp.model_dir ?? "") !== "" || date <= store.lastDate || inp.features.join() !== model.features.join()) {
   out.skipped = "その日が store の最終日以前か、本番と違うモデルの入力なので比べない";
 } else {
   const rows: Row[] = inp.races.flatMap((r) => r.horses.map((h) => ({
-    race_id: r.race_id, date: r.date, horse: h.horse, turn: r.turn, sband: r.sband,
+    race_id: r.race_id, date: r.date, horse: h.horse, turn: r.turn, sband: r.sband, foreign: h.foreign, extra: h.extra,
     jockey: h.meta?.jockey ?? null, trainer: h.meta?.trainer ?? null, owner: h.meta?.owner ?? null, breeder: h.meta?.breeder ?? null,
     features: Object.fromEntries(inp.features.map((f, k) => [f, h.x[k]])), pred: h.top3,
   })));
-  // レーティングは store の最終日の点数（その日は store より後なので、Python の値と同じはず）
-  const r = runParity(store, model, rows, true);
+  // レーティングは store の最終日の点数（その日は store より後なので、Python の値と同じはず。外国馬の初めの値も TS で計算して比べる）
+  const r = runParity(store, model, rows, true, true);
   Object.assign(out, { races: inp.races.length, rows: r.rows, failures: r.failures, worstFeature: r.worstFeature, worstPred: r.worstPred,
     byFeature: Object.entries(r.mismatches.reduce((m, x) => ({ ...m, [x.name]: (m[x.name] ?? 0) + 1 }), {} as Record<string, number>)).sort((a, b) => b[1] - a[1]),
     examples: r.mismatches.slice(0, 50) });

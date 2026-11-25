@@ -517,10 +517,25 @@ def load_baba(data_root: Path) -> dict[tuple[str, int], dict]:
 HEAD_COUNT_NOTE = re.compile(r"[（(][0-9０-９]+頭[）)]")
 
 
+FOREIGN_NAME = re.compile(r"^([^（(]+)[（(]+[A-Za-z]")
+
+
 def clean_horse_name(name: str | None) -> str | None:
     """成績表の変換で馬名に付いてしまう「（12頭）」を外す（2026-11-25。2017〜2026年で 1,674走。付いた走は別の馬の走になり、
-    その馬の過去走から抜けていた）。地方の所属「（北海道）」・改名前の名前「（旧名）」はそのまま"""
-    return HEAD_COUNT_NOTE.sub("", name).strip() if name else name
+    その馬の過去走から抜けていた）。地方の所属「（北海道）」・改名前の名前「（旧名）」はそのまま。
+    外国馬の「カランダガン（Calandagan（IRE））（仏）」は、英字名と国の部分を外してカナだけにする（2026-11-26。netkeiba の出馬表・
+    JRA の結果ページの馬名とつなぐため）。変換の誤りでカナが2回続く「ロマンチックウォリアーロマンチックウォリアー（（…」は1回にする。
+    app/lib/ml/features.ts の cleanHorseName と同じ規則"""
+    if not name:
+        return name
+    s = HEAD_COUNT_NOTE.sub("", name).strip()
+    m = FOREIGN_NAME.match(s)
+    if m:
+        s = m.group(1).strip()
+        h = len(s) // 2
+        if len(s) % 2 == 0 and s[:h] == s[h:]:
+            s = s[:h]
+    return s
 
 
 def baba_features(baba: dict | None, venue: int, surface: int, day: str, letter: int | None) -> dict:
@@ -555,6 +570,8 @@ def load_races(data_root: Path) -> list[dict]:
             victims = victim_umabans(r.get("notes") or [])
             runners = []
             for h in starters:
+                if is_short_term_jockey(h.get("jockey")):
+                    SHORT_TERM_JOCKEYS.add(norm_jockey(h.get("jockey")))
                 finish = h.get("finish") if h.get("status") != "中止" else None
                 td = None
                 if finish is not None and h.get("time_sec") and win_time is not None:
@@ -1197,6 +1214,74 @@ def add_rating_field(rows: list[dict]) -> None:
             r[name + "_dmax"] = v - top
 
 
+# --- 外国馬（海外の厩舎の馬）の扱い（2026-11-26、ジャパンカップのため）。予測するときだけ（答え合わせ・overseas_eval.py）。学習データには使わない ---
+# 学習データでは、レーティング 1500・騎手や調教師などの成績 0 の馬はほとんどが新馬・未勝利・転入したばかりの馬なので、外国馬が「弱い馬の形」に見えていた。
+# rating：JRA の走がない外国馬のレーティングの初めの値を、海外の走から見積もった能力指数（ab_wmean）から RATING_INIT の式（芝ダ別）で決める
+# people：調教師・馬主・生産者の成績を、同じレースの日本馬の中央値で埋める。短期免許の外国人騎手は、今年の成績のかわりに JRA での通算。
+#         JRA での騎乗がない騎手は、同じレースの日本馬の騎手の中央値。app/lib/ml/features.ts の applyForeignFix と同じ
+FOREIGN_FIX = {"rating": False, "people": False}
+RATING_INIT: dict | None = None  # {"0": {"elom": [切片, 傾き], "elos": [切片, 傾き]}, "1": …}（data/overseas/rating_init.json）
+FOREIGN_TRAINER = re.compile(r"^[A-Za-z][.．]")
+SHORT_TERM_JOCKEY = re.compile(r"^[A-Za-z]\..*\(")
+SHORT_TERM_JOCKEYS: set[str] = set()  # 成績表で「R.ムーア(英)」のように国の付く騎手（load_races が集める）
+TRAINER_FILL = ["trainer_n", "trainer_top3", "trainer_venue_n", "trainer_venue_top3", "trainer_n_py", "trainer_top3_py"]
+OWNER_FILL = [f"{k}_{s}_{y}" for k in ("owner", "breeder") for y in ("y", "py") for s in ("n", "top3")]
+JOCKEY_FILL = ["jockey_n", "jockey_top3", "jockey_venue_n", "jockey_venue_top3", "jockey_course_n", "jockey_course_top3", "jockey_n_py", "jockey_top3_py"]
+
+
+def is_foreign_trainer(trainer: str | None) -> bool:
+    """成績表・JRA の結果ページの調教師が「F．グラファール」のような海外の調教師か（JRA の調教師は漢字の名前）."""
+    return bool(trainer) and bool(FOREIGN_TRAINER.match(unicodedata.normalize("NFKC", trainer)))
+
+
+def is_short_term_jockey(jockey: str | None) -> bool:
+    """成績表の騎手名が「R.ムーア(英)」の形（短期免許の外国人騎手。地方の騎手は「石川倭(北海道)」で英字がない）."""
+    return bool(jockey) and bool(SHORT_TERM_JOCKEY.match(unicodedata.normalize("NFKC", jockey)))
+
+
+def jockey_career_features(rides: list[dict], race: dict) -> dict:
+    """JRA での通算（レースの日より前の全部の騎乗）の、全体・同じ競馬場・同じコースの騎乗数と3着内率."""
+    f: dict[str, float] = {}
+    for prefix, cond in (("jockey", lambda r: True), ("jockey_venue", lambda r: r["venue"] == race["venue"]),
+                         ("jockey_course", lambda r: r["venue"] == race["venue"] and r["surface"] == race["surface"] and r["distance"] == race["distance"])):
+        sel = [r for r in rides if r["date"] < race["date"] and cond(r)]
+        f[prefix + "_n"] = len(sel)
+        f[prefix + "_top3"] = rate(sum(r["top3"] for r in sel), len(sel))
+    return f
+
+
+def median_of(vals: list[float]) -> float:
+    xs = sorted(v for v in vals if not math.isnan(v))
+    if not xs:
+        return NAN
+    n = len(xs)
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
+def foreign_rating(ab: float, surface: int) -> tuple[float, float] | None:
+    """能力指数（同じ芝ダの近走の直近加重平均）→ レーティングの初めの値（全体・今回の芝ダ）."""
+    c = (RATING_INIT or {}).get(str(surface))
+    if not c or math.isnan(ab):
+        return None
+    return c["elom"][0] + c["elom"][1] * ab, c["elos"][0] + c["elos"][1] * ab
+
+
+def fill_foreign_people(rows: list[dict], foreign: list[bool], jockey_missing: list[bool]) -> None:
+    """外国馬の調教師・馬主・生産者（と、JRA での騎乗がない騎手）の成績を、同じレースの日本馬の中央値で埋める.
+    埋めた項目は行の "_estimated" に入れる（画面の「推定」用）."""
+    japanese = [r for r, fo in zip(rows, foreign) if not fo]
+    if not japanese:
+        return
+    med = {k: median_of([r[k] for r in japanese]) for k in TRAINER_FILL + OWNER_FILL + JOCKEY_FILL}
+    for r, fo, jm in zip(rows, foreign, jockey_missing):
+        if not fo:
+            continue
+        keys = TRAINER_FILL + OWNER_FILL + (JOCKEY_FILL if jm else [])
+        for k in keys:
+            r[k] = med[k]
+        r.setdefault("_estimated", []).extend(keys)
+
+
 # 成績表にない過去走（海外の走）。馬名 → 過去走（History.add_race と同じ形）。答え合わせ（check_jra_day.py）だけが使う。
 # アプリの extraRuns（app/lib/ml/features.ts）と同じく、本人の過去走（horse_features・斤量の変化・乗り替わり）にだけ足す
 EXTRA_RUNS: dict[str, list[dict]] = {}
@@ -1216,6 +1301,9 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
             i += 1
         for race in same_day:
             race_rows = []
+            foreign: list[bool] = []
+            jockey_missing: list[bool] = []
+            ctx: list[tuple] = []
             for h in race["runners"]:
                 course = hist.course_waku.get((race["venue"], race["surface"], race["distance"]))
                 runs = hist.horses.get(h["horse"], [])
@@ -1227,12 +1315,35 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                 f.update(c4_features(hist.c4, race, runs))
                 f.update({"elom": hist.elom.get(h["horse"], 1500.0), "elom_n": hist.elom_n.get(h["horse"], 0),
                           "elos": hist.elos.get((h["horse"], race["surface"]), 1500.0), "elos_n": hist.elos_n.get((h["horse"], race["surface"]), 0)})
+                fo = (FOREIGN_FIX["rating"] or FOREIGN_FIX["people"]) and is_foreign_trainer(h.get("trainer"))
+                foreign.append(fo)
+                jm = False
+                if fo and FOREIGN_FIX["rating"] and h["horse"] not in hist.elom:
+                    init = foreign_rating(f["ab_wmean"], race["surface"])
+                    if init is not None:
+                        f["elom"], f["elos"] = init
+                        f["_estimated"] = ["elom", "elos"]
+                if fo and FOREIGN_FIX["people"]:
+                    jk = norm_jockey(h.get("jockey"))
+                    rides = [r for r in hist.jockeys.get(jk, []) if r["date"] < race["date"]]
+                    if jk in SHORT_TERM_JOCKEYS and rides:
+                        f.update(jockey_career_features(rides, race))
+                        f.setdefault("_estimated", []).extend(["jockey_career"])
+                    elif not rides:
+                        jm = True
+                jockey_missing.append(jm)
+                ctx.append((runs[-1] if runs else None, norm_jockey(h.get("jockey"))))
                 f.update({
                     "race_id": race["race_id"], "date": race["date"], "horse": h["horse"], "turn": race["turn"], "sband": race["sband"],
                     "finish": h["finish"], "popularity": h.get("popularity"), "jockey": h.get("jockey"), "trainer": h.get("trainer"),
                     "owner": h.get("owner"), "breeder": h.get("breeder"), "label": 1 if h["finish"] is not None and h["finish"] <= 3 else 0,
                 })
                 race_rows.append(f)
+            if FOREIGN_FIX["people"] and any(foreign):
+                fill_foreign_people(race_rows, foreign, jockey_missing)
+                for f, fo, (last, jk) in zip(race_rows, foreign, ctx):
+                    if fo:  # 乗り替わりの向きを、埋めた騎手の成績で計算し直す
+                        f.update(jockey_dir_features(f, last, jk, race, hist.jockeys))
             add_form_deviation(race_rows)
             add_field_features(race_rows)
             add_rating_field(race_rows)
