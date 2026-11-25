@@ -1,0 +1,6 @@
+# 1行1コマンド（scripts/ml で動かす）。行ごとに別のジョブで同時に回す（.github/workflows/ml-matrix.yml）。
+# このファイルを変えて push すると起動する（書いてあるコマンドを全部回すので、済んだものは消す）
+# 2026-11-26：外国馬の扱い（1 レーティングの初めの値・2 騎手・調教師・馬主・生産者・5 海外の走の1着賞金）
+python overseas_eval.py 今 1 2
+python overseas_eval.py 今 1+2 "1+2・賞金は大きいほう" "1+2・格だけ"
+python racedb_dubai_check.py
