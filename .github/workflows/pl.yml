@@ -24,8 +24,8 @@ jobs:
       fail-fast: false
       matrix:
         task:
-          # 2026-11-25：払戻が data/jra-results に入ったので、seed 5本の期待値の買い目の比較だけ回し直す（ほかの結果はもう commit 済み）
-          - "python compare_round4.py seeds"
+          # 2026-11-25：案 A（着順モデルの2着・3着に Benter の補正）
+          - "python compare_pl.py lam"
     steps:
       - uses: actions/checkout@v4
       - run: git pull -q --rebase origin "${GITHUB_REF_NAME}"

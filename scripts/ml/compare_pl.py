@@ -3,6 +3,7 @@
     cd scripts/ml && python cache_dataset.py
     cd scripts/ml && python compare_pl.py base   # 今：3着以内・連対・勝率の二値モデル3つ → data/ml/pl_base.json
     cd scripts/ml && python compare_pl.py pl     # Plackett-Luce（1つのモデル）            → data/ml/pl_model.json
+    cd scripts/ml && python compare_pl.py lam    # 同じモデルの2着・3着に Benter の補正（案 A）→ data/ml/pl_lam.json
 
 Plackett-Luce：各馬の強さ f（木の合計）、重み w = exp(f)。1着は全馬の w に比例して選ばれ、2着は残りの馬の w に比例、3着も同じ。
 学習では、実際の1〜3着の起こりやすさ L = Π_k w_(k) / Σ_{残り} w の −log を小さくする（LightGBM の自作の目的関数。レースごとに勾配と
@@ -117,7 +118,7 @@ def train_pl(X, gfit: Groups, Xval, gval: Groups, Xtr, gtr: Groups):
         _, gr, he = gtr.stages(preds)
         return gr, he
     p["objective"] = fobj2
-    return lgb.train(p, lgb.Dataset(Xtr, np.zeros(len(Xtr))), rounds), rounds
+    return lgb.train(p, lgb.Dataset(Xtr, np.zeros(len(Xtr))), rounds), rounds, b
 
 
 def race_slices(race_id):
@@ -125,7 +126,7 @@ def race_slices(race_id):
     return [slice(s, e) for s, e in zip(start, np.r_[start[1:], len(race_id)])]
 
 
-def evaluate(win, top2, top3, strengths, d, te, pays) -> dict:
+def evaluate(win, top2, top3, strengths, d, te, pays, l2: float = 1.0, l3: float = 1.0) -> dict:
     """win・top2・top3：各馬の確率（合計 1・2・3）、strengths：レースごとの強さ（組み合わせ用）."""
     fin, rid, um = d["finish"][te], d["race_id"][te], d["umaban"][te]
     y3, y2, y1 = (fin <= 3).astype(float), (fin <= 2).astype(float), (fin == 1).astype(float)
@@ -143,7 +144,8 @@ def evaluate(win, top2, top3, strengths, d, te, pays) -> dict:
         pos = [np.flatnonzero(f == j) for j in (1, 2, 3)]
         if all(len(x) == 1 for x in pos):
             a, b, c = pos[0][0], pos[1][0], pos[2][0]
-            p = st[a] * st[b] / (1 - st[a]) * st[c] / (1 - st[a] - st[b])
+            w2, w3 = st ** l2, st ** l3
+            p = st[a] * w2[b] / (w2.sum() - w2[a]) * w3[c] / (w3.sum() - w3[a] - w3[b])
             ll_order += np.log(max(p, 1e-15)); n_order += 1
         race = str(rid[s.start])
         pay = pays.get(race)
@@ -152,7 +154,7 @@ def evaluate(win, top2, top3, strengths, d, te, pays) -> dict:
         nums = um[s].astype(int)
         top6 = list(np.argsort(-top3[s], kind="stable")[:6])
         for t in TYPES:
-            probs = ticket_probs(st, 1.0, 1.0, top6, t)
+            probs = ticket_probs(st, l2, l3, top6, t)
             pick = sorted(probs, key=lambda c: -probs[c])[:FIXED_N[t]]
             got = sum(pay.get(t, {}).get(key(t, [int(nums[i]) for i in c]), 0) for c in pick)
             r = bets[t]
@@ -192,7 +194,7 @@ def run(mode: str) -> None:
             strengths = [invert_strength(top3[s], 1.0, 1.0) for s in race_slices(rid[te])]
         else:
             gfit, gval, gtr = Groups(rid[fit], fin[fit]), Groups(rid[val], fin[val]), Groups(rid[tr], fin[tr])
-            m, r = train_pl(X[fit], gfit, X[val], gval, X[tr], gtr)
+            m, r, _ = train_pl(X[fit], gfit, X[val], gval, X[tr], gtr)
             rounds = {"pl": r}
             f = m.predict(X[te], raw_score=True)
             win, top2, top3, strengths = np.zeros(te.sum()), np.zeros(te.sum()), np.zeros(te.sum()), []
@@ -211,5 +213,46 @@ def run(mode: str) -> None:
     (OUT / f"pl_{'base' if mode == 'base' else 'model'}.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
 
+def run_lam() -> None:
+    """案 A（2026-11-25）：着順モデルの2着・3着に Benter の補正（2着は残りの馬の s^λ2、3着は s^λ3 に比例）.
+    λ は前の年（検証の年）の予測で決める：前々年までで学習した途中のモデルで前年を予測し、実際の2着・3着の条件付き対数尤度が
+    一番良い λ（0.40〜1.20、0.02刻み）。同じモデルの λ=1（今の pl_model.json と同じ形）と並べて pl_lam.json に書く"""
+    from benter_exotic import fit_lam
+    d = load()
+    X, fin, year, rid = d["X"], d["finish"], d["year"], d["race_id"]
+    pays = load_payouts(YEARS)
+    out = {"mode": "pl_lam", "note": run_lam.__doc__.strip(), "years": {}}
+    for ty in YEARS:
+        vy = str(int(ty) - 1)
+        fit, val, tr, te = year < vy, year == vy, year < ty, year == ty
+        gfit, gval, gtr = Groups(rid[fit], fin[fit]), Groups(rid[val], fin[val]), Groups(rid[tr], fin[tr])
+        m, r, mfit = train_pl(X[fit], gfit, X[val], gval, X[tr], gtr)
+        fv = mfit.predict(X[val], raw_score=True, num_iteration=mfit.best_iteration)
+        races = []
+        for s_ in race_slices(rid[val]):
+            f_ = fin[val][s_]
+            pos = [np.flatnonzero(f_ == j) for j in (1, 2, 3)]
+            if all(len(x) == 1 for x in pos):
+                w = np.exp(fv[s_] - fv[s_].max())
+                races.append((w / w.sum(), [pos[0][0], pos[1][0], pos[2][0]]))
+        l2, l3 = fit_lam(races, 2), fit_lam(races, 3)
+        f = m.predict(X[te], raw_score=True)
+        res_y = {"rounds": r, "lambda2": l2, "lambda3": l3, "lambda_races": len(races)}
+        for name, a2, a3 in (("λ=1", 1.0, 1.0), ("λ（前の年で決めた）", l2, l3)):
+            win, top2, top3, strengths = np.zeros(te.sum()), np.zeros(te.sum()), np.zeros(te.sum()), []
+            for s_ in race_slices(rid[te]):
+                w = np.exp(f[s_] - f[s_].max())
+                st = w / w.sum()
+                strengths.append(st)
+                t3, p12, _ = top3_from_strength(st, a2, a3)
+                win[s_], top2[s_], top3[s_] = st, st + p12.sum(0), t3
+            win, top2, top3 = (np.clip(x, 1e-9, 1 - 1e-9) for x in (win, top2, top3))
+            res_y[name] = evaluate(win, top2, top3, strengths, d, te, pays, a2, a3)
+            print(ty, name, l2, l3, json.dumps({k: res_y[name][k] for k in ("top3", "top2", "win", "top1_win", "order_loglik_per_race")}, ensure_ascii=False),
+                  json.dumps(res_y[name]["bets"]["全券種"]), file=sys.stderr, flush=True)
+        out["years"][ty] = res_y
+    (OUT / "pl_lam.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+
 if __name__ == "__main__":
-    run(sys.argv[1])
+    run_lam() if sys.argv[1] == "lam" else run(sys.argv[1])
