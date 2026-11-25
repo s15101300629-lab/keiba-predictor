@@ -359,7 +359,7 @@ def overseas_runs_for(days: list[dict], date: str) -> dict[str, list[dict]]:
     for fp in (DATA / "json").glob("*/*.json"):
         for r in json.loads(fp.read_text(encoding="utf-8"))["races"]:
             if (r.get("date") or "") < date:
-                known.update(h["horse"] for h in r["results"])
+                known.update(features.clean_horse_name(h["horse"]) for h in r["results"])
     out: dict[str, list[dict]] = {}
     for day in days:
         for r in day["races"]:
@@ -388,10 +388,11 @@ def fill_owner_breeder(days: list[dict], date: str) -> None:
         for r in json.loads(fp.read_text(encoding="utf-8"))["races"]:
             d = r.get("date") or ""
             for h in r["results"]:
-                if h.get("owner") and d < date and (h["horse"] not in last or d >= last[h["horse"]][0]):
-                    last[h["horse"]] = (d, h.get("owner"), h.get("breeder"))
-                if h.get("body_weight") and d < date and (h["horse"] not in last_bw or d >= last_bw[h["horse"]][0]):
-                    last_bw[h["horse"]] = (d, h["body_weight"])
+                name = features.clean_horse_name(h["horse"])  # 成績表の「（12頭）」付きの馬名（2026-11-25）
+                if h.get("owner") and d < date and (name not in last or d >= last[name][0]):
+                    last[name] = (d, h.get("owner"), h.get("breeder"))
+                if h.get("body_weight") and d < date and (name not in last_bw or d >= last_bw[name][0]):
+                    last_bw[name] = (d, h["body_weight"])
     n = m = nb = 0
     for day in days:
         for r in day["races"]:

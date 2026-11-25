@@ -514,6 +514,15 @@ def load_baba(data_root: Path) -> dict[tuple[str, int], dict]:
     return out
 
 
+HEAD_COUNT_NOTE = re.compile(r"[（(][0-9０-９]+頭[）)]")
+
+
+def clean_horse_name(name: str | None) -> str | None:
+    """成績表の変換で馬名に付いてしまう「（12頭）」を外す（2026-11-25。2017〜2026年で 1,674走。付いた走は別の馬の走になり、
+    その馬の過去走から抜けていた）。地方の所属「（北海道）」・改名前の名前「（旧名）」はそのまま"""
+    return HEAD_COUNT_NOTE.sub("", name).strip() if name else name
+
+
 def baba_features(baba: dict | None, venue: int, surface: int, day: str, letter: int | None) -> dict:
     """そのレースの馬場の細かい値（BABA_FEATURES）."""
     cushion = baba.get("cushion") if baba and surface == 0 else None
@@ -550,7 +559,7 @@ def load_races(data_root: Path) -> list[dict]:
                 td = None
                 if finish is not None and h.get("time_sec") and win_time is not None:
                     td = max(0.0, round(h["time_sec"] - win_time, 1))
-                runners.append({**h, "finish": finish, "time_diff": td, "victim": 1 if h.get("umaban") in victims else 0,
+                runners.append({**h, "horse": clean_horse_name(h.get("horse")), "finish": finish, "time_diff": td, "victim": 1 if h.get("umaban") in victims else 0,
                                 "train_rank": ranks.get((r["race_id"], h.get("umaban"))),
                                 "pedigree": peds.get((r["race_id"], h.get("umaban")))})
             races.append({

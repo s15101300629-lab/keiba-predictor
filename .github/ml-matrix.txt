@@ -1,3 +1,5 @@
 # 1行1コマンド（scripts/ml で動かす）。行ごとに別のジョブで同時に回す（.github/workflows/ml-matrix.yml）。
 # このファイルを変えて push すると起動する。コマンドがなければ表をキャッシュに作るだけ
 # （2026-11-25 の compare_distill.py top3・win・top2 は済んだので消した）
+# 2026-11-25：馬名の「（12頭）」を外す修正の前と後の比較（依頼者の指示で直す）
+python compare_name_fix.py
