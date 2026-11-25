@@ -869,7 +869,8 @@ export function fillForeignPeople(store: Store, race: RaceInput, rows: Features[
     const r = runners[i];
     if (!r.foreign) return;
     const keys = [...TRAINER_FILL, ...OWNER_FILL, ...(f._jockey_missing ? JOCKEY_FILL : [])];
-    for (const k of keys) f[k] = quantileOf(japanese.map((x) => x[k]), qs[i]);
+    // JRA で乗ったことがない騎手は、馬の強さと関係ないので中央値（features.py と同じ）
+    for (const k of keys) f[k] = quantileOf(japanese.map((x) => x[k]), JOCKEY_FILL.includes(k) ? 0.5 : qs[i]);
     f._q = qs[i];
     est[i].push(...keys);
     const prior = horseRuns(store, r.horse, r.extraRuns).filter((x) => x[0] < race.date);

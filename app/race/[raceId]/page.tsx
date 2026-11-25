@@ -662,7 +662,7 @@ function ForeignNote({ foreign, value }: { foreign: NonNullable<Prediction["fore
   const rows: [string, string][] = [];
   if (est.has("elom")) rows.push(["レーティング", `${Math.round(v.elom ?? 0)}（海外の走から見積もった能力指数から。日本馬の能力指数とレーティングの関係の式）`]);
   if (est.has("jockey_career")) rows.push(["騎手", `JRA での通算 ${v.jockey_n ?? 0}騎乗・3着内率 ${pct(v.jockey_top3)}（短期免許なので今年のかわりに通算）`]);
-  else if (est.has("jockey_n")) rows.push(["騎手", `同じレースの日本馬の騎手の値（強さの位置。${v.jockey_n ?? "-"}騎乗・3着内率 ${pct(v.jockey_top3)}。JRA での騎乗がない）`]);
+  else if (est.has("jockey_n")) rows.push(["騎手", `同じレースの日本馬の騎手の中央値（${v.jockey_n ?? "-"}騎乗・3着内率 ${pct(v.jockey_top3)}。JRA での騎乗がない）`]);
   if (est.has("trainer_n")) rows.push(["調教師", `同じレースの日本馬の値（強さの位置。今年 ${v.trainer_n ?? "-"}頭・3着内率 ${pct(v.trainer_top3)}）`]);
   if (est.has("lv_field_form") || est.has("lv_field_tidx")) rows.push(["出走レースレベル", "前走の相手の成績が海外の走なので分からない。同じレースの日本馬の値（強さの位置）"]);
   if (est.has("owner_n_y")) rows.push(["馬主・生産者", `同じレースの日本馬の値（強さの位置。3着内率 馬主 ${pct(v.owner_top3_y)}・生産者 ${pct(v.breeder_top3_y)}）`]);

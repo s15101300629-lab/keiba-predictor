@@ -47,7 +47,7 @@ def improve(run: dict, venue: str, race_name: str, horse_id: str | None) -> dict
     elif x and x.get("prize") is not None:
         prize = x["prize"]
     elif not major and graded is not None:
-        prize = LOWER.get(graded, graded)
+        prize = {int(k): v for k, v in imp["lower"].items()}.get(graded, graded)  # 主要国以外（impute.json の lower）
     td = run["time_diff"]
     if x and x.get("time_diff") is not None and run["finish"]:
         td = x["time_diff"]

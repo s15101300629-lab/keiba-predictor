@@ -1302,7 +1302,8 @@ def fill_foreign_people(rows: list[dict], foreign: list[bool], jockey_missing: l
             continue
         keys = TRAINER_FILL + OWNER_FILL + (JOCKEY_FILL if jm else [])
         for k in keys:
-            r[k] = quantile_of([x[k] for x in japanese], q)
+            # JRA で乗ったことがない騎手は、馬の強さと関係ないので中央値（2026-11-26。テアオの L.トーレスが上位騎手並みになったため）
+            r[k] = quantile_of([x[k] for x in japanese], 0.5 if k in JOCKEY_FILL else q)
         r["_q"] = q
         r.setdefault("_estimated", []).extend(keys)
 
