@@ -1,6 +1,3 @@
 # 1行1コマンド（scripts/ml で動かす）。行ごとに別のジョブで同時に回す（.github/workflows/ml-matrix.yml）。
 # このファイルを変えて push すると起動する。コマンドがなければ表をキャッシュに作るだけ
-# 2026-11-25：seed 5本の平均を表示を遅くせずに入れる比較（今の1本・5本の平均・案1 蒸留・案2 速い5本）
-python compare_distill.py top3
-python compare_distill.py win
-python compare_distill.py top2
+# （2026-11-25 の compare_distill.py top3・win・top2 は済んだので消した）
