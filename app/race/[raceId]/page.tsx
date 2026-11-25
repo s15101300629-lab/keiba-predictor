@@ -540,13 +540,6 @@ function HorseDetailCard({ horse, mark, onMarkChange, odds }: {
   </details>;
 }
 
-const FACTOR_BY_CATEGORY: Record<string, string> = {
-  "コース適性": "競馬場・馬場適性",
-  "騎手": "騎手(今年)",
-  "枠順": "枠順実績",
-  "血統": "血統適性",
-};
-
 // 出走馬の中で上位3位以内 → 強み、下位3位以内 → 弱み
 function strengthsOf(categories: CategoryRank[]) {
   const ranked = categories.filter((c) => c.rank !== null && c.total >= 4);
@@ -591,23 +584,19 @@ function probabilityTier(rank: number | undefined) {
 
 const VALUE_CLASS: Record<string, string> = { 妙味あり: "good", 妥当: "even", 割高: "bad" };
 
-function OverallHorseCard({ horse, categories, factors, mark, odds, value, score }: {
-  horse: Horse; total: number; categories: CategoryRank[]; factors: FactorScore[]; mark: string;
+function OverallHorseCard({ horse, categories, mark, odds, value, score, onOpen, shapState }: {
+  horse: Horse; total: number; categories: CategoryRank[]; mark: string;
   odds: HorseOdds | null; value: ValueResult | null; score: number | null;
+  onOpen: () => void; shapState: ShapState;
 }) {
   const prediction = horse.prediction;
   const probability = prediction ? prediction.probability * 100 : null;
   const probabilityText = probability === null ? "算出不可" : probability.toFixed(1) + "%";
   const entry = horse.raceEntry;
-  const factorFor = (label: string) => {
-    const factorLabel = FACTOR_BY_CATEGORY[label] ?? label;
-    return factors.find((factor) => factor.label === factorLabel);
-  };
   const { strong, weak } = strengthsOf(categories);
-  const missing = categories.filter((c) => c.rank === null && !factorFor(c.label) && c.detail === NO_DATA).map((c) => c.label);
   const heavy = prediction?.heavyNote && (prediction.heavyNote.applied || prediction.heavyNote.show) ? prediction.heavyNote : null;
 
-  return <details className={"prediction-horse-details" + probabilityTier(prediction?.rank)}>
+  return <details className={"prediction-horse-details" + probabilityTier(prediction?.rank)} onToggle={(event) => { if (event.currentTarget.open) onOpen(); }}>
     <summary className="prediction-horse-summary ai-row">
       <HorseNumberBadge entry={entry} />
       <span className="horse-main">
@@ -639,6 +628,8 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
         </div>
         <span className="ai-detail-score"><small>AIスコア</small><strong>{score === null ? "-" : Math.round(score)}</strong><small>3着内 {probability === null ? "-" : probability.toFixed(1) + "%"}</small></span>
       </div>
+      {/* 各観点のスコア（AIスコアの内訳）の表は 2026-11-25 にやめた（依頼者の指示）。プラス・マイナス評価ポイントは、行を開いたときに /api/shap で計算して出す */}
+      {!horse.prediction?.shapGroups && <ShapStatus state={shapState} onRetry={onOpen} />}
       {strong.length > 0 && <section className="ai-points plus">
         <h4>プラス評価ポイント</h4><p>出走馬の中で上位3頭に入る観点</p>
         <div>{strong.map((label) => <span key={label}>{label}</span>)}</div>
@@ -650,42 +641,25 @@ function OverallHorseCard({ horse, categories, factors, mark, odds, value, score
       {heavy && <p className="heavy-note" role="note">
         ⚠ 道悪（重・不良）未経験・血統は道悪{heavy.label}（血統の道悪倍率 {heavy.ratio.toFixed(2)}倍）。血統の道悪適性は、AIスコアにすでに含めて計算している。
       </p>}
-      <section className="ai-ranks">
-        <h4>各観点のスコア（AIスコアの内訳）</h4>
-        {score !== null && (() => {
-          const shown = categories.filter((c) => !missing.includes(c.label) && c.points != null);
-          const total = round1(score - 50);
-          const sum = shown.reduce((a, c) => a + round1(c.points!), 0);
-          return <p className="points-total">AIスコア {round1(score).toFixed(1)} ＝ 50 {total >= 0 ? "＋" : "−"} {Math.abs(total).toFixed(1)}。各観点のスコアの「50との差」を全部（その他 {signedPoints(total - sum)} も）足すと、この {total >= 0 ? "＋" : "−"}{Math.abs(total).toFixed(1)} になる</p>;
-        })()}
-        {categories.filter((c) => !missing.includes(c.label)).map((c) => {
-          const top = c.rank !== null && c.rank <= 3 && c.total >= 4;
-          return <details key={c.label} className={top ? "top" : ""}>
-            <summary><span className="rank-label">{c.label}<small>{[c.type, c.rank !== null ? `${c.rank}位/${c.total}頭` : ""].filter(Boolean).join("・")}</small></span>
-              {c.points != null ? <PointsBar points={c.points} label={c.label} />
-                : <span>{c.rank !== null ? <><b>{c.rank}</b>位<small>/{c.total}頭</small></> : <small>-</small>}</span>}</summary>
-            {c.detail && <p>{c.detail}</p>}
-          </details>;
-        })}
-        {score !== null && (() => {
-          const shown = categories.filter((c) => !missing.includes(c.label) && c.points != null);
-          const other = round1(score - 50) - shown.reduce((a, c) => a + round1(c.points!), 0);
-          return <details className="other">
-            <summary><span className="rank-label">その他<small>レース条件など</small></span><PointsBar points={other} label="その他" /></summary>
-            <p>レース条件（距離・頭数・1着賞金など、出走馬の全員で同じ値の項目）が、ほかの項目との組み合わせで馬ごとに少しずつ違う点を付けた分と、表示の四捨五入のずれ。観点の点と足すと AIスコアに一致する。</p>
-          </details>;
-        })()}
-        {missing.length > 0 && <p className="missing-note">データなし：{missing.join("・")}</p>}
-        <p className="ai-ranks-note">観点のスコア＝50＋その観点が AIスコアを上げた・下げた点（SHAP を、出走馬1頭ずつとの確率の差に分けて AIスコアの点に直したもの）。AIスコアと同じ目盛りで、全部の観点の「50との差」を足すと AIスコアの「50との差」になる。順位は高い順。押すと主な項目（点）が出る。</p>
-      </section>
     </div>
   </details>;
 }
 
+// AIスコアの内訳（SHAP）は、内訳を開いたとき（馬の行を開く・観点別）に /api/shap で計算する（2026-11-25。レースを開くのを速くするため）
+type ShapState = "idle" | "loading" | "done" | "error";
+type ShapGroupsData = NonNullable<Prediction["shapGroups"]>;
+
+function ShapStatus({ state, onRetry }: { state: ShapState; onRetry: () => void }) {
+  if (state === "error") return <p className="missing-note">評価ポイントを計算できなかった。<button type="button" className="refresh-button" onClick={onRetry}>もう一度</button></p>;
+  return <p className="missing-note"><span className="loading-spinner" aria-hidden="true" /> 評価ポイントを計算中…（出走馬全部を比べるので、最初の1回だけ1秒ほどかかる）</p>;
+}
+
 /** 観点別：観点を選ぶと、全馬をその観点の偏差値のバーで並べる（偏差値の高い順）。脚質・ラップタイプは型の名前も出す. */
-function FactorView({ horses, categoryRanks, factor, onFactor }: {
+function FactorView({ horses, categoryRanks, factor, onFactor, shapState, onRetry }: {
   horses: Horse[]; categoryRanks: Map<string, CategoryRank[]>; factor: string; onFactor: (f: string) => void;
+  shapState: ShapState; onRetry: () => void;
 }) {
+  if (shapState !== "done") return <section className="factor-view"><ShapStatus state={shapState} onRetry={onRetry} /></section>;
   const groups = SHAP_GROUPS.filter((g) => horses.some((h) => categoryRanks.get(h.horseId)?.some((c) => c.label === g)));
   const rows = horses.map((h) => ({ h, c: categoryRanks.get(h.horseId)?.find((c) => c.label === factor) }))
     .filter((x): x is { h: Horse; c: CategoryRank } => !!x.c && x.c.points != null)
@@ -951,7 +925,32 @@ export default function RaceDetailPage() {
   }, [data, loadOdds]);
 
   const conditions = data?.raceConditions;
-  const horses = data?.results ?? [];
+  const rawHorses = useMemo(() => data?.results ?? [], [data]);
+  // AIスコアの内訳（SHAP）：内訳を開いたときにだけ /api/shap で計算する。同じ入力のあいだは使い回す
+  const [shap, setShap] = useState<{ key: string; groups: Record<string, ShapGroupsData> } | null>(null);
+  const [shapState, setShapState] = useState<ShapState>("idle");
+  const shapRows = useMemo(() => rawHorses.filter((h) => h.prediction?.inputRow && h.prediction.probability > 0)
+    .map((h) => ({ key: h.horseId, inputRow: h.prediction!.inputRow!, probability: h.prediction!.probability })), [rawHorses]);
+  const shapKey = useMemo(() => JSON.stringify(shapRows), [shapRows]);
+  const shapCache = useRef(new Map<string, Record<string, ShapGroupsData>>());
+  const loadShap = useCallback(async () => {
+    if (!shapRows.length || (shap?.key === shapKey && shapState === "done")) return;
+    const hit = shapCache.current.get(shapKey);
+    if (hit) { setShap({ key: shapKey, groups: hit }); setShapState("done"); return; }
+    setShapState("loading");
+    try {
+      const res = await fetch("/api/shap", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rows: shapRows }) });
+      const json = await res.json() as { ok: boolean; groups?: Record<string, ShapGroupsData>; error?: string };
+      if (!res.ok || !json.ok || !json.groups) throw new Error(json.error || "HTTP " + res.status);
+      shapCache.current.set(shapKey, json.groups);
+      setShap({ key: shapKey, groups: json.groups }); setShapState("done");
+    } catch { setShapState("error"); }
+  }, [shapRows, shapKey, shap?.key, shapState]);
+  // 入力が変わった（更新・想定馬場・馬体重）ら、表示中の内訳は使わない
+  useEffect(() => { if (shap && shap.key !== shapKey) { setShap(null); setShapState("idle"); } }, [shap, shapKey]);
+  const horses = useMemo(() => !shap || shap.key !== shapKey ? rawHorses : rawHorses.map((h) => h.prediction && shap.groups[h.horseId]
+    ? { ...h, prediction: { ...h.prediction, shapGroups: shap.groups[h.horseId] } } : h), [rawHorses, shap, shapKey]);
+  useEffect(() => { if (activeTab === "prediction" && predView === "factor") void loadShap(); }, [activeTab, predView, loadShap]);
   const factorScores = useMemo(() => buildFactorScores(horses), [horses]);
   const categoryRanks = useMemo(() => {
     // 各観点：SHAP の寄与を観点ごとに足し、出走馬の中で AIスコアを押し上げた量の順位（app/lib/ml/shapGroups.ts）
@@ -1100,7 +1099,7 @@ export default function RaceDetailPage() {
                 <button type="button" className={predSort === "prob" ? "active" : ""} onClick={() => setPredSort("prob")}>スコア順</button>
               </div>}
             </div>
-            {predView === "factor" && <FactorView horses={horses} categoryRanks={categoryRanks} factor={factor} onFactor={setFactor} />}
+            {predView === "factor" && <FactorView horses={horses} categoryRanks={categoryRanks} factor={factor} onFactor={setFactor} shapState={shapState} onRetry={() => void loadShap()} />}
             {predView === "horse" && <><div className="ai-row-head" aria-hidden="true">
               <span>馬</span><span>オッズ</span><span>AIスコア<i />平均</span><span>目安</span>
             </div>
@@ -1111,7 +1110,7 @@ export default function RaceDetailPage() {
               value={horse.raceEntry?.horseNumber != null ? values?.get(horse.raceEntry.horseNumber) ?? null : null}
               score={scores.get(horse.horseId) ?? null}
               categories={categoryRanks.get(horse.horseId) ?? []}
-              factors={factorScores.get(horse.horseId) ?? []} />)}</>}
+              onOpen={() => void loadShap()} shapState={shapState} />)}</>}
             <div className="ai-legend">
               <p><b>AIスコア</b>＝AIが出した3着以内に入る確率を、出走馬の中での偏差値にしたもの（平均50。差が大きいほど抜けている）。線は平均の50。確率（%）は行を押すと出る。</p>
               <p><b>目安</b>＝AIと市場（単勝オッズ）を合わせた3着以内の確率が、オッズから見た確率より高いか。

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
@@ -6,10 +7,8 @@ import { fetchJraBaba, fetchJraBabaDetail } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
 import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
-import { treeShap } from "@/app/lib/ml/shap";
-import { groupPoints, scorePoints } from "@/app/lib/ml/shapGroups";
 import {
-  PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionRecord,
+  PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionNeedsRefresh, stallionRecord,
   type StackModel, type StallionRaw, type StallionRecord,
 } from "@/app/lib/pedigree";
 
@@ -193,12 +192,26 @@ function detectCharset(contentType: string | null, bytes: Uint8Array) {
   return null;
 }
 
+// ページ取得の内訳（2026-11-25、表示を速くする調べ）：1回のリクエストの中で、取ったページを種類ごとに数と時間（足し算。同時に取るので合計は待ち時間より長い）で数える
+type FetchStat = { n: number; ms: number; bytes: number };
+const fetchStats = new AsyncLocalStorage<Record<string, FetchStat>>();
+function fetchKind(url: string): string {
+  if (url.includes("/race/shutuba")) return "出馬表";
+  if (url.includes("/race/oikiri")) return "調教";
+  if (url.includes("db.sp.netkeiba.com/horse/")) return "馬のプロフィール";
+  if (url.includes("/horse/result/")) return "戦績";
+  if (url.includes("/horse/ped/")) return "血統表";
+  if (url.includes("/horse/sire/")) return "種牡馬の成績";
+  return "その他";
+}
+
 async function fetchHtml(
   url: string,
   revalidateSeconds: number,
   forceRefresh: boolean,
   fallbackEncoding: "utf-8" | "euc-jp" = "utf-8"
 ) {
+  const tFetch = performance.now();
   const response = await fetch(url, {
     ...(forceRefresh
       ? { cache: "no-store" as const }
@@ -207,6 +220,11 @@ async function fetchHtml(
     signal: AbortSignal.timeout(10000),
   });
   const buffer = new Uint8Array(await response.arrayBuffer());
+  const st = fetchStats.getStore();
+  if (st) {
+    const k = st[fetchKind(url)] ??= { n: 0, ms: 0, bytes: 0 };
+    k.n += 1; k.ms += performance.now() - tFetch; k.bytes += buffer.byteLength;
+  }
   // netkeiba のページは EUC-JP から UTF-8 に移行しているため、宣言された文字コードで読む
   const encoding = detectCharset(response.headers.get("content-type"), buffer) ?? fallbackEncoding;
   return {
@@ -654,6 +672,15 @@ type HeavyAdjustment = {
   beta: number; runners: number; goings?: string[]; chosen?: string; mle_beta?: number; years_improved?: number;
   per_year?: Record<string, unknown>;
 };
+// 種牡馬の成績（2026-11-25、表示を速くする案1）：まず取得済みの data/pedigree/stallions.json（学習と同じ元。週1回の再学習で新しく走った馬の祖先を足す）から読む。
+// 1レースで 60〜126ページ・14〜30MB を netkeiba から取っていたのをやめるため。ファイルにない種牡馬（初めて走る外国馬の祖先など）と、
+// 年が変わって使う年の成績がファイルにまだ入っていない種牡馬（stallionNeedsRefresh）だけページから取り、解析した結果をサーバーの中で7日ためる
+let storedStallions: Promise<Record<string, StallionRaw>> | null = null;
+const loadStoredStallions = () => (storedStallions ??= readFile(path.join(process.cwd(), "data", "pedigree", "stallions.json"), "utf8")
+  .then((t) => JSON.parse(t) as Record<string, StallionRaw>).catch((): Record<string, StallionRaw> => ({})));
+const liveStallions = new Map<string, { raw: StallionRaw; at: number }>();
+const LIVE_STALLION_MS = 7 * 24 * 3600 * 1000;
+
 let mlAssets: Promise<{
   model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
   winModel: Model | null; top2Model: Model | null; valueModel: unknown; marksEvidence: unknown; betsEvidence: unknown; longshotFeatures: string[] | null;
@@ -848,11 +875,23 @@ function summarizePerformances(
   return stats;
 }
 
-export async function GET(
+export async function GET(request: Request, context: { params: Promise<{ raceId: string }> }) {
+  return fetchStats.run({}, () => getRace(request, context));
+}
+
+async function getRace(
   _request: Request,
   context: { params: Promise<{ raceId: string }> }
 ) {
   const startedAt = Date.now();
+  // 表示時間の内訳（2026-11-25）：ページ取得・特徴量・予測・SHAP・それ以外。Server-Timing の見出しとログに出す
+  const timing: Record<string, number> = { fetch: 0, assets: 0, features: 0, predict: 0, shap: 0 };
+  const phase: Record<string, number> = {}; // ページ取得の中の段階の待ち時間（出馬表と調教・JRA の馬場・各馬のページ）
+  const timed = <T,>(name: keyof typeof timing, fn: () => T): T => {
+    const t0 = performance.now();
+    try { return fn(); } finally { timing[name] += performance.now() - t0; }
+  };
+  const t0All = performance.now();
   const { raceId } = await context.params;
   const searchParams = new URL(_request.url).searchParams;
   const summaryOnly = searchParams.get("summary") === "1";
@@ -870,6 +909,7 @@ export async function GET(
   try {
     const raceUrl =
       `https://race.netkeiba.com/race/shutuba.html?race_id=${raceId}`;
+    const tRace = performance.now();
     const [race, trainingPage] = await Promise.all([
       fetchHtml(raceUrl, 3600, refreshEntries),
       fetchHtml(`https://race.netkeiba.com/race/oikiri.html?race_id=${raceId}`, 3600, forceRefresh).catch(() => null),
@@ -888,9 +928,12 @@ export async function GET(
       );
     }
 
+    phase.race = performance.now() - tRace;
     const raceConditions = extractRaceConditions(race.html, raceId);
     // 天候・馬場は JRA の馬場情報（同じ競馬場・同じ開催日のもの）から取る（app/lib/jraBaba.ts。10分ためる）
+    const tJra = performance.now();
     const jraPages = await fetchJraBaba(forceRefresh).catch(() => []);
+    phase.jra = performance.now() - tJra;
     const jra = jraPages.find((b) => b && raceConditions.venue && b.venue === raceConditions.venue && b.date === raceConditions.date) ?? null;
     const jraGoing = jra ? (raceConditions.surface === "ダート" ? jra.dirt : jra.turf) : null;
     // netkeiba の天候・馬場は使わない（依頼者の指示、2026-11-21）。JRA に同じ日のページがなければ未発表
@@ -935,11 +978,24 @@ export async function GET(
       let raw = stallionRaws.get(stallionId);
       if (!raw) {
         raw = (async () => {
+          const st = fetchStats.getStore();
+          const count = (kind: string) => { if (st) (st[kind] ??= { n: 0, ms: 0, bytes: 0 }).n += 1; };
+          // 使う年（レースの前の年）の成績がそろっているか：その年より後に取ったか、その年に産駒が走っていない
+          const usable = (r: StallionRaw) => !stallionNeedsRefresh(r, (throughYear ?? new Date().getFullYear() - 1) + 1);
+          const stored = (await loadStoredStallions())[stallionId];
+          if (stored && usable(stored)) { count("種牡馬（手元のファイル）"); return stored; }
+          const cached = liveStallions.get(stallionId);
+          if (!forceRefresh && cached && Date.now() - cached.at < LIVE_STALLION_MS && usable(cached.raw)) { count("種牡馬（サーバーにためた分）"); return cached.raw; }
           const url = (type: number) => `https://db.netkeiba.com/horse/sire/${stallionId}/?syusai=10&mode=1&type=${type}`;
           const [going, distance] = await Promise.all([1, 2].map((type) => fetchHtml(url(type), 604800, forceRefresh).catch(() => null)));
-          return parseStallionPages(stallionId, name, {
+          const parsed = parseStallionPages(stallionId, name, {
             going: going?.ok ? going.html : null, distance: distance?.ok ? distance.html : null,
           }, new Date().toISOString().slice(0, 10));
+          if (going?.ok || distance?.ok) {
+            liveStallions.set(stallionId, { raw: parsed, at: Date.now() });
+            if (liveStallions.size > 2000) liveStallions.delete(liveStallions.keys().next().value!);
+          }
+          return parsed;
         })();
         stallionRaws.set(stallionId, raw);
       }
@@ -1016,9 +1072,11 @@ export async function GET(
     }
 
     const workerCount = Math.min(CONCURRENCY, horses.length);
+    const tHorses = performance.now();
     await Promise.all(
       Array.from({ length: workerCount }, () => worker())
     );
+    phase.horses = performance.now() - tHorses;
 
     // --- 血統適性・調子偏差値（表示用）・AI予測 ---
     const surfaceName = raceConditions.surface === "芝" || raceConditions.surface === "ダート" ? raceConditions.surface : null;
@@ -1029,7 +1087,10 @@ export async function GET(
       formFromHistory((item as { performances?: { values: Record<string, string> }[] }).performances ?? [], raceConditions.date));
     addDisplayDeviation(forms);
 
+    timing.fetch += performance.now() - t0All; // ここまではページの取得と解析
+    const tAssets = performance.now();
     const ml = await loadMlAssets();
+    timing.assets += performance.now() - tAssets;
     // 出走取消・競走除外の馬は、頭数・出走馬の中での比較・予測から外す（学習データと同じ扱い）
     const activeIdx = horses.map((_, i) => i).filter((i) => !entryByHorseId.get(horses[i].horseId)?.scratched);
     let mlSummary: Record<string, unknown> = { status: "unavailable" };
@@ -1040,8 +1101,10 @@ export async function GET(
       const surfaceCode = surfaceName === "芝" ? 0 : 1;
       const course = courseInfo(venueCode, surfaceCode, raceConditions.direction, raceConditions.courseLayout === "外回り");
       // クッション値・含水率・使用コース（JRA の馬場情報。features.py の BABA_FEATURES）
+      const tBaba = performance.now();
       const babaDetail = raceConditions.venue && raceConditions.date
         ? await fetchJraBabaDetail(raceConditions.venue, raceConditions.date, forceRefresh).catch(() => null) : null;
+      timing.fetch += performance.now() - tBaba;
       const raceInput = {
         baba: babaDetail ? { cushion: babaDetail.cushion, moist: surfaceCode === 0 ? babaDetail.moistTurf : babaDetail.moistDirt, course: babaDetail.course } : null,
         date: raceConditions.date,
@@ -1054,6 +1117,7 @@ export async function GET(
         prize1stMan: extractFirstPrize(race.html),
       };
       const overseasInfo = await loadOverseas();
+      const tFeat = performance.now();
       const rows = horses.map((horse, index) => {
         const entry = entryByHorseId.get(horse.horseId) ?? null;
         const sexAge = entry?.sexAge?.match(/^([牡牝セ])(\d+)$/);
@@ -1087,13 +1151,14 @@ export async function GET(
       addFieldFeatures(activeIdx.map((i) => rows[i].features));
       addOpponentFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
       addSimilarCondFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
+      timing.features += performance.now() - tFeat;
       // メリハリの補正（案 10）：モデルの log-odds に T を掛ける。この後、合計を 3・2・1 にそろえる
       const temper = (p: number, T: number | undefined) => {
         if (!T || T === 1) return p;
         const q = Math.min(Math.max(p, 1e-9), 1 - 1e-9);
         return 1 / (1 + Math.exp(-T * Math.log(q / (1 - q))));
       };
-      const baseProbs = rows.map((row) => temper(predictProbability(ml.model, row.features), ml.calibration?.top3));
+      const baseProbs = timed("predict", () => rows.map((row) => temper(predictProbability(ml.model, row.features), ml.calibration?.top3)));
       const useStack = !!ml.stack?.adopted;
       const isHeavy = raceConditions.going === "重" || raceConditions.going === "不良";
       const stacked = baseProbs.map((p, i) => (useStack ? stackProbability(ml.stack!, stackFeatures(p, aptitudes[i], isHeavy)) : p));
@@ -1117,8 +1182,8 @@ export async function GET(
       activeIdx.forEach((i, k) => { probs[i] = normalized[k]; });
       // 勝率・連対率。3着以内確率を超えないようにそろえる
       // 連対率・勝率も T を掛けて、出走馬の合計を 2・1 にそろえる（案 10）
-      const rawTop2 = rows.map((row) => ml.top2Model ? temper(predictProbability(ml.top2Model, row.features), ml.calibration?.top2) : null);
-      const baseWinProbs = rows.map((row) => ml.winModel ? temper(predictProbability(ml.winModel, row.features), ml.calibration?.win) : null); // AI印の◎・▲（そろえる前の勝率）
+      const rawTop2 = timed("predict", () => rows.map((row) => ml.top2Model ? temper(predictProbability(ml.top2Model, row.features), ml.calibration?.top2) : null));
+      const baseWinProbs = timed("predict", () => rows.map((row) => ml.winModel ? temper(predictProbability(ml.winModel, row.features), ml.calibration?.win) : null)); // AI印の◎・▲（そろえる前の勝率）
       const normIn = (vals: (number | null)[], target: number) => {
         const out = [...vals];
         if (activeIdx.every((i) => vals[i] != null)) {
@@ -1132,9 +1197,8 @@ export async function GET(
       const top2Probs = rows.map((_, i) => top2N[i] != null ? Math.min(top2N[i]!, probs[i]) : null);
       const winProbs = rows.map((_, i) => winN[i] != null ? Math.min(winN[i]!, top2Probs[i] ?? probs[i]) : null);
       const order = activeIdx.map((i) => ({ p: probs[i], i })).sort((a, b) => b.p - a.p);
-      // 各観点：SHAP の寄与を AIスコアの点に直す（内訳の合計 ＝ AIスコア − 50。app/lib/ml/shapGroups.ts の scorePoints）
-      const phis = activeIdx.map((i) => treeShap(ml.model, rows[i].features));
-      const pointsByIdx = new Map(scorePoints(phis, activeIdx.map((i) => probs[i])).map((pts, k) => [activeIdx[k], { phi: phis[k], pts }]));
+      // 各観点（SHAP）は、2026-11-25 から内訳を開いたときに /api/shap で計算する（レースを開くたびに全馬で約0.6秒かかっていたため）。
+      // 画面は下の inputRow と probability を送る
       const longshotReady = !!ml.longshotFeatures && ml.model.features.every((name, k) => ml.longshotFeatures![k] === name);
       order.forEach(({ i }, rank) => {
         const f = rows[i].features;
@@ -1162,13 +1226,8 @@ export async function GET(
           // 各観点の順位（画面）に使う、モデルで効いている項目。能力指数の直近加重平均・推定上がり偏差の直近加重平均・今回の条件での能力
           ability: { ab: num(f.ab_wmean), agari: num(f.ag_dev_wmean), cond: num(f.cond_ab), early: num(f.early_gap_wmean) },
           lapType: lapType((results[i] as { performances?: { values: Record<string, string> }[] }).performances ?? [], raceConditions.date!),
-          // 本体モデルの入力（model.json の features の並び）。人気薄専用の2段目（☆）に使う
+          // 本体モデルの入力（model.json の features の並び）。人気薄専用の2段目（☆）と、AIスコアの内訳（/api/shap）に使う
           inputRow: ml.model.features.map((name) => { const v = f[name]; return v == null || Number.isNaN(v) ? null : v; }),
-          // 各観点：SHAP の寄与（log-odds）と AIスコアの点を観点ごとに足したもの。項目の値も付ける
-          shapGroups: groupPoints(ml.model.features, pointsByIdx.get(i)!.phi, pointsByIdx.get(i)!.pts).map((g) => ({
-            group: g.group, phi: g.phi, points: g.points,
-            top: g.top.map((t) => ({ name: t.name, phi: t.phi, points: t.points, value: num(f[t.name] ?? NaN) })),
-          })),
         };
       });
       const f0 = rows[activeIdx[0]]?.features;
@@ -1224,6 +1283,11 @@ export async function GET(
       entryByHorseId.has(horse.horseId)
     ).length;
 
+    const totalMs = performance.now() - t0All;
+    const otherMs = Math.max(0, totalMs - Object.values(timing).reduce((a, b) => a + b, 0));
+    const serverTiming = [...Object.entries(timing).map(([k, v]) => `${k};dur=${v.toFixed(1)}`), `other;dur=${otherMs.toFixed(1)}`, `total;dur=${totalMs.toFixed(1)}`].join(", ");
+    const kinds = Object.fromEntries(Object.entries(fetchStats.getStore() ?? {}).map(([k, v]) => [k, { n: v.n, ms: Math.round(v.ms), kb: Math.round(v.bytes / 1024) }]));
+    console.log(`[timing] race ${raceId} ${JSON.stringify({ ...Object.fromEntries(Object.entries(timing).map(([k, v]) => [k, Math.round(v)])), other: Math.round(otherMs), total: Math.round(totalMs), horses: horses.length, phase: Object.fromEntries(Object.entries(phase).map(([k, v]) => [k, Math.round(v)])), fetches: kinds })}`);
     return NextResponse.json(
       {
         ok: failedCount === 0 && partialCount === 0 && matchedEntryCount === horses.length,
@@ -1266,6 +1330,7 @@ export async function GET(
         headers: {
           "Content-Type": "application/json; charset=utf-8",
           "Cache-Control": "no-store",
+          "Server-Timing": serverTiming,
         },
       }
     );
