@@ -607,7 +607,9 @@ function OverallHorseCard({ horse, categories, mark, odds, value, score, onOpen,
       <HorseNumberBadge entry={entry} />
       <span className="horse-main">
         <b>{mark && <span className="horse-mark">{mark}</span>}{horse.name}</b>
-        <small>{entry?.jockey ?? ""}{prediction?.foreign && <> ・<span className="foreign-tag">外国馬</span>{value && <> 市場と合わせ {(value.combined * 100).toFixed(1)}%</>}</>}</small>
+        <small>{entry?.jockey ?? ""}</small>
+        {/* 外国馬：市場（単勝オッズ）と合わせた3着以内確率も並べる（オッズがあるとき。詳しくは行を開いた中の注意） */}
+        {prediction?.foreign && <small><span className="foreign-tag">外国馬</span>{value && <> 市場込み {Math.round(value.combined * 100)}%</>}</small>}
       </span>
       <span className="ai-odds">
         {odds?.win != null ? <><b className={odds.popularity != null && odds.popularity <= 3 ? "fav" : ""}>{odds.win.toFixed(1)}</b><small>{odds.popularity}番人気</small></> : <small>-</small>}
