@@ -34,6 +34,9 @@ type RaceEntry = {
   bodyWeight: number | null;
   bodyWeightChange: number | null;
   popularity: number | null;
+  // netkeiba のオッズの番号（行の中の id="odds-1_NN"）。枠順の確定後は馬番と同じ。確定前は出馬表の並びの仮の番号で、
+  // 予想オッズ（status "yoso"）はこの番号で返る（2026-11-25 に気づいた。前は馬番がないと馬にオッズが付かなかった）
+  oddsKey: number | null;
   fieldStatus: {
     frameNumber: string;
     horseNumber: string;
@@ -511,6 +514,7 @@ function extractRaceEntries(html: string): RaceEntry[] {
             : null,
         bodyWeightChange: bodyMatch ? Number(bodyMatch[2]) : null,
         popularity: parseNumber(popularityText),
+        oddsKey: (() => { const m = rowHtml.match(/id=["']odds-1_(\d+)["']/); return m ? Number(m[1]) : null; })(),
         fieldStatus: {
           frameNumber: parseNumber(frameText) === null ? "not_published" : "available",
           horseNumber: parseNumber(numberText) === null ? "not_published" : "available",
