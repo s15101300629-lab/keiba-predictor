@@ -83,7 +83,7 @@ function isOverseasVenue(venue: string): boolean {
 
 // 海外の走の見積もり（scripts/ml/overseas.py。2026-11-24 採用：外国馬・遠征帰りの日本馬で logloss が一番良かった）
 // racedb.com で分かった馬ごとの1着賞金（万円）・タイム差（data/overseas/runs.json）と、主要国以外は格を1つ下げる決まり・能力指数の式（impute.json）
-type OverseasImpute = { coef: Record<string, { ab: number[]; tidx: number[] }>; major_venues: string[]; grade_prize: [string, number][]; lower: Record<string, number> };
+type OverseasImpute = { coef: Record<string, { ab: number[]; tidx: number[] }>; major_venues: string[]; grade_prize: [string, number][]; lower: Record<string, number>; equal_venues?: string[] };
 type OverseasData = { imp: OverseasImpute | null; runs: Record<string, Record<string, { prize?: number; time_diff?: number }>>;
   venueMap: { map: [string, number, number][]; default: [number, number] } | null };
 let overseasData: Promise<OverseasData> | null = null;
@@ -120,8 +120,8 @@ function overseasRuns(performances: { values: Record<string, string> }[], horseI
       const x = od.runs[horseId]?.[date];
       const major = imp.major_venues.some((m) => (v["開催"] ?? "").includes(m));
       const g = imp.grade_prize.slice(0, 5).find(([pat]) => new RegExp(pat).test(name)); // G1〜OP
-      // 主要国（欧州・香港・ドバイなど）の格のあるレースは JRA の同じ格の値（2026-11-26。scripts/ml/overseas.py の improve と同じ）
-      if (major && g) prize = g[1];
+      // 欧州・香港・ドバイの格のあるレースは JRA の同じ格の値（impute.json の equal_venues）（2026-11-26。scripts/ml/overseas.py の improve と同じ）
+      if (g && (imp.equal_venues ?? []).some((m) => (v["開催"] ?? "").includes(m))) prize = g[1];
       else if (x?.prize != null) prize = x.prize;
       else if (!major && g) prize = imp.lower[String(g[1])] ?? g[1];
       if (x?.time_diff != null && ok) timeDiff = x.time_diff;
