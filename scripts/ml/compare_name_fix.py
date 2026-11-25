@@ -35,7 +35,7 @@ def main() -> None:
     assert len(rid_b) == len(d["race_id"]) and (rid_b == d["race_id"]).all(), "行の並びが違う"
     diff = ~((d["X"] == Xb) | (np.isnan(d["X"]) & np.isnan(Xb)))
     changed = diff.any(1)
-    out = {"note": __doc__.split("\n\n")[1].strip(), "rows": int(len(changed)), "rows_changed": int(changed.sum()),
+    out = {"note": __doc__.split("\n\n")[2].strip(), "rows": int(len(changed)), "rows_changed": int(changed.sum()),
            "rows_changed_by_year": {y: int(changed[d["year"] == y].sum()) for y in YEARS},
            "features_changed_most": sorted(((f, int(diff[:, k].sum())) for k, f in enumerate(d["features"])), key=lambda x: -x[1])[:15],
            "years": {}}
