@@ -132,7 +132,7 @@ def subset_metrics(y, p, rid, sel):
 
 def main() -> None:
     d = load()
-    assert d["date"].max() < HOLDOUT
+    assert (d["date"] < HOLDOUT).all()
     S = sibling_features(d)
     names = [f"sib_{g}_{s}" for g in ("fam", "full") for s in STATS]
     cover = {n: round(float((~np.isnan(S[:, k])).mean()), 4) for k, n in enumerate(names) if n.endswith("_runs")}
