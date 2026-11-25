@@ -33,7 +33,7 @@ for (const raceRows of byRace.values()) {
   for (const row of raceRows) {
     const r = row.features;
     const s = [r.elos ?? 1500, r.elos_n ?? 0];
-    ratings[row.horse] = [r.elom ?? 1500, r.elom_n ?? 0, ...(race.surface === 0 ? s : [1500, 0]), ...(race.surface === 0 ? [1500, 0] : s)] as [number, number, number, number, number, number];
+    ratings[storeHorseKey(store, row.horse)] = [r.elom ?? 1500, r.elom_n ?? 0, ...(race.surface === 0 ? s : [1500, 0]), ...(race.surface === 0 ? [1500, 0] : s)] as [number, number, number, number, number, number];
   }
   const raceStore: Store = ratingsFromStore ? store : { ...store, ratings };
   const keys = raceRows.map((row) => storeHorseKey(raceStore, row.horse));

@@ -4,3 +4,4 @@
 python overseas_eval.py 今 1 2
 python overseas_eval.py 今 1+2 "1+2・賞金は大きいほう" "1+2・格だけ"
 python racedb_dubai_check.py
+python parity_foreign.py && node --experimental-strip-types parity_foreign.ts
