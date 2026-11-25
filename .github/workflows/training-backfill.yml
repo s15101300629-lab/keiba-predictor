@@ -1,0 +1,78 @@
+name: 調教評価の過去分の取得
+
+# 2026-11-25、依頼者の指示：netkeiba の調教ページ（短評・A〜D）を 2020〜2024年の平地レース（16,676レース）について取り、
+# data/training/<年>.jsonl に保存する。1本ずつ・2秒間隔（前は5秒）。続きから再開できるので、15分ごとに作業ブランチに commit する。
+# 1回のジョブは約5時間45分で止まるので、順番に最大4回（part）動かす。取り終わった年は飛ばす。
+# ここで取った分は作業ブランチだけに入る（main の再学習には、効き方を確かめて依頼者が決めてから入れる）
+on:
+  push:
+    branches: [claude/nice-feynman-qgk2q6]
+    paths: [.github/workflows/training-backfill.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: training-backfill
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    strategy:
+      max-parallel: 1   # 順番に1つずつ（netkeiba への負担を増やさない）
+      fail-fast: true
+      matrix:
+        part: [1, 2, 3, 4]
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      TRAINING_WAIT_SECONDS: "2"
+    steps:
+      - uses: actions/checkout@v4
+      - run: git pull -q --rebase origin "${GITHUB_REF_NAME}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Wait until netkeiba is available (max 2 hours)
+        run: |
+          for i in $(seq 1 24); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "https://race.netkeiba.com/race/oikiri.html?race_id=202608050411" || true)
+            echo "$(date -d '+9 hours' +%H:%M) JST netkeiba $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 300
+          done
+          echo "netkeiba is still unavailable"; exit 1
+      - name: Collect (resumable, commit every 15 minutes)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          save() {
+            git add data/training
+            if git diff --cached --quiet; then return 0; fi
+            git commit -q -m "data: 調教評価の過去分（途中結果・part ${{ matrix.part }}）"
+            for i in 1 2 3 4 5 6; do
+              git pull -q --rebase --autostash origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}" && return 0
+              sleep $((i * 15))
+            done
+            return 1
+          }
+          start=$(date +%s)
+          while [ $(( $(date +%s) - start )) -lt 19800 ]; do   # 5時間30分まで
+            all=1
+            for y in 2024 2023 2022 2021 2020; do
+              set +e
+              (cd scripts/ml && timeout 15m python collect_training.py "$y")
+              code=$?
+              set -e
+              if [ "$code" -eq 0 ]; then continue; fi
+              all=0
+              save
+              if [ "$code" -ne 124 ]; then echo "collector failed ($code)"; exit "$code"; fi
+              break
+            done
+            save
+            if [ "$all" = 1 ]; then echo "all years collected"; exit 0; fi
+          done
+          echo "time limit; the next part continues"
