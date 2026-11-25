@@ -1,0 +1,229 @@
+{
+ "note": "cd scripts/ml && python cache_dataset.py && python compare_name_fix.py   # → data/ml/name_fix.json",
+ "rows": 410529,
+ "rows_changed": 376586,
+ "rows_changed_by_year": {
+  "2024": 42069,
+  "2025": 43003,
+  "2026": 38182
+ },
+ "features_changed_most": [
+  [
+   "ab_wmean_fstd",
+   373840
+  ],
+  [
+   "ab_wmean_top3_gap",
+   373495
+  ],
+  [
+   "cond_ab_top3_gap",
+   373423
+  ],
+  [
+   "elom_z",
+   372161
+  ],
+  [
+   "elos_z",
+   365484
+  ],
+  [
+   "ab_wmean_z",
+   342278
+  ],
+  [
+   "ab_wmean_dmean",
+   342246
+  ],
+  [
+   "ab_best_z",
+   341535
+  ],
+  [
+   "ab_best_dmean",
+   339546
+  ],
+  [
+   "elom_dmax",
+   339283
+  ],
+  [
+   "ab_wmean_dtop3",
+   335863
+  ],
+  [
+   "cond_ab_dtop3",
+   335681
+  ],
+  [
+   "elos_dmax",
+   331029
+  ],
+  [
+   "elom",
+   330779
+  ],
+  [
+   "abd_w",
+   311853
+  ]
+ ],
+ "years": {
+  "2024": {
+   "top3": {
+    "直す前": {
+     "rounds": 1150,
+     "logloss_sum": 0.41774,
+     "auc": 0.79963,
+     "hit": 0.51198,
+     "changed_rows": 42069
+    },
+    "直した後": {
+     "rounds": 1530,
+     "logloss_sum": 0.41755,
+     "auc": 0.79984,
+     "hit": 0.50948,
+     "changed_rows": 42069
+    }
+   },
+   "top2": {
+    "直す前": {
+     "rounds": 771,
+     "logloss_sum": 0.33275,
+     "auc": 0.80526,
+     "hit": 0.4271,
+     "changed_rows": 42069
+    },
+    "直した後": {
+     "rounds": 1332,
+     "logloss_sum": 0.33244,
+     "auc": 0.8054,
+     "hit": 0.42799,
+     "changed_rows": 42069
+    }
+   },
+   "win": {
+    "直す前": {
+     "rounds": 1023,
+     "logloss_sum": 0.21289,
+     "auc": 0.81125,
+     "hit": 0.31377,
+     "changed_rows": 42069
+    },
+    "直した後": {
+     "rounds": 820,
+     "logloss_sum": 0.21309,
+     "auc": 0.81076,
+     "hit": 0.31437,
+     "changed_rows": 42069
+    }
+   }
+  },
+  "2025": {
+   "top3": {
+    "直す前": {
+     "rounds": 1597,
+     "logloss_sum": 0.41596,
+     "auc": 0.79724,
+     "hit": 0.50587,
+     "changed_rows": 43003
+    },
+    "直した後": {
+     "rounds": 1596,
+     "logloss_sum": 0.41623,
+     "auc": 0.79689,
+     "hit": 0.50557,
+     "changed_rows": 43003
+    }
+   },
+   "top2": {
+    "直す前": {
+     "rounds": 1906,
+     "logloss_sum": 0.3313,
+     "auc": 0.80226,
+     "hit": 0.43288,
+     "changed_rows": 43003
+    },
+    "直した後": {
+     "rounds": 1312,
+     "logloss_sum": 0.33139,
+     "auc": 0.80221,
+     "hit": 0.4281,
+     "changed_rows": 43003
+    }
+   },
+   "win": {
+    "直す前": {
+     "rounds": 1130,
+     "logloss_sum": 0.2126,
+     "auc": 0.807,
+     "hit": 0.30161,
+     "changed_rows": 43003
+    },
+    "直した後": {
+     "rounds": 1182,
+     "logloss_sum": 0.21261,
+     "auc": 0.80681,
+     "hit": 0.29803,
+     "changed_rows": 43003
+    }
+   }
+  },
+  "2026": {
+   "top3": {
+    "直す前": {
+     "rounds": 1287,
+     "logloss_sum": 0.41345,
+     "auc": 0.80328,
+     "hit": 0.51478,
+     "changed_rows": 38182
+    },
+    "直した後": {
+     "rounds": 1254,
+     "logloss_sum": 0.41364,
+     "auc": 0.80295,
+     "hit": 0.51512,
+     "changed_rows": 38182
+    }
+   },
+   "top2": {
+    "直す前": {
+     "rounds": 1347,
+     "logloss_sum": 0.3301,
+     "auc": 0.80774,
+     "hit": 0.42994,
+     "changed_rows": 38182
+    },
+    "直した後": {
+     "rounds": 975,
+     "logloss_sum": 0.33043,
+     "auc": 0.80725,
+     "hit": 0.42692,
+     "changed_rows": 38182
+    }
+   },
+   "win": {
+    "直す前": {
+     "rounds": 798,
+     "logloss_sum": 0.21239,
+     "auc": 0.81148,
+     "hit": 0.30343,
+     "changed_rows": 38182
+    },
+    "直した後": {
+     "rounds": 909,
+     "logloss_sum": 0.21238,
+     "auc": 0.81139,
+     "hit": 0.30679,
+     "changed_rows": 38182
+    }
+   }
+  }
+ },
+ "improved_years": {
+  "top3": 1,
+  "top2": 1,
+  "win": 1
+ }
+}
