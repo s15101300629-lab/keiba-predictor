@@ -8,7 +8,7 @@ import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisp
 import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
 import {
-  PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionRecord,
+  PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionNeedsRefresh, stallionRecord,
   type StackModel, type StallionRaw, type StallionRecord,
 } from "@/app/lib/pedigree";
 
@@ -672,6 +672,15 @@ type HeavyAdjustment = {
   beta: number; runners: number; goings?: string[]; chosen?: string; mle_beta?: number; years_improved?: number;
   per_year?: Record<string, unknown>;
 };
+// 種牡馬の成績（2026-11-25、表示を速くする案1）：まず取得済みの data/pedigree/stallions.json（学習と同じ元。週1回の再学習で新しく走った馬の祖先を足す）から読む。
+// 1レースで 60〜126ページ・14〜30MB を netkeiba から取っていたのをやめるため。ファイルにない種牡馬（初めて走る外国馬の祖先など）と、
+// 年が変わって使う年の成績がファイルにまだ入っていない種牡馬（stallionNeedsRefresh）だけページから取り、解析した結果をサーバーの中で7日ためる
+let storedStallions: Promise<Record<string, StallionRaw>> | null = null;
+const loadStoredStallions = () => (storedStallions ??= readFile(path.join(process.cwd(), "data", "pedigree", "stallions.json"), "utf8")
+  .then((t) => JSON.parse(t) as Record<string, StallionRaw>).catch((): Record<string, StallionRaw> => ({})));
+const liveStallions = new Map<string, { raw: StallionRaw; at: number }>();
+const LIVE_STALLION_MS = 7 * 24 * 3600 * 1000;
+
 let mlAssets: Promise<{
   model: Model; store: Store; metrics: Record<string, unknown>; stack: StackAsset | null; heavy: HeavyAdjustment | null;
   winModel: Model | null; top2Model: Model | null; valueModel: unknown; marksEvidence: unknown; betsEvidence: unknown; longshotFeatures: string[] | null;
@@ -969,11 +978,24 @@ async function getRace(
       let raw = stallionRaws.get(stallionId);
       if (!raw) {
         raw = (async () => {
+          const st = fetchStats.getStore();
+          const count = (kind: string) => { if (st) (st[kind] ??= { n: 0, ms: 0, bytes: 0 }).n += 1; };
+          // 使う年（レースの前の年）の成績がそろっているか：その年より後に取ったか、その年に産駒が走っていない
+          const usable = (r: StallionRaw) => !stallionNeedsRefresh(r, (throughYear ?? new Date().getFullYear() - 1) + 1);
+          const stored = (await loadStoredStallions())[stallionId];
+          if (stored && usable(stored)) { count("種牡馬（手元のファイル）"); return stored; }
+          const cached = liveStallions.get(stallionId);
+          if (!forceRefresh && cached && Date.now() - cached.at < LIVE_STALLION_MS && usable(cached.raw)) { count("種牡馬（サーバーにためた分）"); return cached.raw; }
           const url = (type: number) => `https://db.netkeiba.com/horse/sire/${stallionId}/?syusai=10&mode=1&type=${type}`;
           const [going, distance] = await Promise.all([1, 2].map((type) => fetchHtml(url(type), 604800, forceRefresh).catch(() => null)));
-          return parseStallionPages(stallionId, name, {
+          const parsed = parseStallionPages(stallionId, name, {
             going: going?.ok ? going.html : null, distance: distance?.ok ? distance.html : null,
           }, new Date().toISOString().slice(0, 10));
+          if (going?.ok || distance?.ok) {
+            liveStallions.set(stallionId, { raw: parsed, at: Date.now() });
+            if (liveStallions.size > 2000) liveStallions.delete(liveStallions.keys().next().value!);
+          }
+          return parsed;
         })();
         stallionRaws.set(stallionId, raw);
       }
