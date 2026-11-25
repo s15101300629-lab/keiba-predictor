@@ -24,9 +24,12 @@ const num = (v: unknown) => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
-// 2桁ずつの馬番キー（"0102" など）→ "1-2"（そろえて扱いやすくする）
+// 2桁ずつの馬番キー（"0102" など）→ "1-2"（そろえて扱いやすくする）。
+// 単勝・複勝は1頭の馬番。発売前の予想オッズ（status "yoso"）は "1"・"15" のように0で埋めない（2026-11-25 に気づいた。前は1〜9番を捨てていた）
 function normKey(key: string): string | null {
-  if (!/^\d+$/.test(key) || key.length % 2 !== 0) return null;
+  if (!/^\d+$/.test(key)) return null;
+  if (key.length <= 2) return String(Number(key));
+  if (key.length % 2 !== 0) return null;
   return (key.match(/\d\d/g) ?? []).map((x) => String(Number(x))).join("-");
 }
 
