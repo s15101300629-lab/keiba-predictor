@@ -19,7 +19,10 @@ type Entry = {
   frameNumber: number | null; horseNumber: number | null; sexAge: string | null;
   carriedWeight: number | null; jockey: string | null; trainer: string | null;
   bodyWeight: number | null; popularity: number | null;
+  oddsKey?: number | null; // netkeiba のオッズの番号。枠順の確定前は仮の番号（予想オッズはこれで返る）
 };
+// オッズと結び付ける番号：馬番、枠順の確定前は netkeiba の仮の番号
+const oddsNum = (e: Entry | null | undefined): number | null => e?.horseNumber ?? e?.oddsKey ?? null;
 type PerformanceStats = {
   parsedStarts: number; wins: number; top3: number; averageFinish: number | null;
   gradedStarts: number; gradedWins: number;
@@ -120,6 +123,7 @@ type ResponseData = {
 type CachedRace = { savedAt: number; data: ResponseData };
 type OddsMap = Record<string, { min: number; max: number | null }>;
 type OddsData = { ok: boolean; fetchedAt: string; officialTime: string | null; errors: string[]; status?: string | null;
+  drawn?: boolean; // 取ったときに枠順が確定していたか（確定前の番号は仮の番号なので、確定後は使わない）
   win: OddsMap; place: OddsMap; umaren: OddsMap; wide: OddsMap; trio: OddsMap; trifecta: OddsMap };
 type HorseOdds = { win: number | null; place: { min: number; max: number | null } | null; popularity: number | null };
 type FactorScore = { label: string; score: number; starts: number; rate: number; rank: number; rankedCount: number };
@@ -846,7 +850,10 @@ export default function RaceDetailPage() {
   const [predView, setPredView] = useState<"horse" | "factor">("horse");
   const [factor, setFactor] = useState<string>("能力指数");
   const [assumedGoing, setAssumedGoing] = useState(""); // 馬場未発表時に想定する馬場（空 = 想定なし）
-  const [odds, setOdds] = useState<OddsData | null>(null);
+  const [storedOdds, setOdds] = useState<OddsData | null>(null);
+  // 枠順の確定前に取ったオッズ（仮の番号）は、確定後は別の馬に付いてしまうので使わない（取り直す）。drawn がない古い保存分は確定後に取ったものとみなす
+  const drawnNow = (data?.results ?? []).some((h) => h.raceEntry?.horseNumber != null);
+  const odds = storedOdds && (storedOdds.drawn ?? true) === drawnNow ? storedOdds : null;
   const [oddsState, setOddsState] = useState<"idle" | "loading" | "error">("idle");
   const [oddsError, setOddsError] = useState("");
   const [weightNote, setWeightNote] = useState(""); // オッズ取得のあとの馬体重の反映の結果
@@ -857,6 +864,7 @@ export default function RaceDetailPage() {
       const res = await fetch("/api/odds/" + raceId + "?t=" + Date.now(), { cache: "no-store" });
       const json = await res.json() as OddsData & { error?: string };
       if (!res.ok || !json.ok) throw new Error(json.errors?.join(" / ") || json.error || "HTTP " + res.status);
+      json.drawn = (dataRef.current?.results ?? []).some((h) => h.raceEntry?.horseNumber != null);
       setOdds(json); saveCachedOdds(raceId, json); setOddsState("idle");
       // 馬体重がまだ入っていない（前走の馬体重で計算中の）ときは、出馬表を取り直して予想を計算し直す
       if (dataRef.current?.ml?.bodyWeightAssumed) {
@@ -983,7 +991,7 @@ export default function RaceDetailPage() {
   const sortedHorses = useMemo(() => [...horses].sort((a, b) => predSort === "prob"
     ? (a.prediction?.rank ?? 999) - (b.prediction?.rank ?? 999)
     : (a.raceEntry?.horseNumber ?? 999) - (b.raceEntry?.horseNumber ?? 999)), [horses, predSort]);
-  const horseOdds = useMemo(() => horseOddsOf(horses.map((h) => ({ id: h.horseId, num: h.raceEntry?.horseNumber ?? null })), odds), [odds, horses]);
+  const horseOdds = useMemo(() => horseOddsOf(horses.map((h) => ({ id: h.horseId, num: oddsNum(h.raceEntry) })), odds), [odds, horses]);
   // 発走時刻（日本時間）。オッズの取り直しのすすめ（案9）に使う
   const startAt = conditions?.date && conditions.startTime ? new Date(`${conditions.date}T${conditions.startTime.padStart(5, "0")}:00+09:00`) : null;
   const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} weightNote={weightNote} startAt={startAt} />;
@@ -991,16 +999,16 @@ export default function RaceDetailPage() {
   const values = useMemo(() => {
     const model = data?.ml?.valueModel;
     if (!odds || !model) return null;
-    const base = new Map(horses.filter((h) => h.prediction && h.raceEntry?.horseNumber != null)
-      .map((h) => [h.raceEntry!.horseNumber!, h.prediction!.baseProbability]));
+    const base = new Map(horses.filter((h) => h.prediction && oddsNum(h.raceEntry) != null)
+      .map((h) => [oddsNum(h.raceEntry)!, h.prediction!.baseProbability]));
     return valueLabels(base, odds.win, model);
   }, [odds, horses, data?.ml?.valueModel]);
   // AI印の☆：人気薄専用の2段目（/api/longshot）。オッズを取ったら、各馬の入力と確率を送って倍率をもらう
   const [longshot, setLongshot] = useState<Map<number, number> | null>(null);
   useEffect(() => {
     setLongshot(null);
-    const rows = horses.filter((h) => h.prediction?.inputRow && h.prediction.baseWinProbability != null && h.raceEntry?.horseNumber != null)
-      .map((h) => ({ n: h.raceEntry!.horseNumber!, x: h.prediction!.inputRow!, top3: h.prediction!.baseProbability, win: h.prediction!.baseWinProbability! }));
+    const rows = horses.filter((h) => h.prediction?.inputRow && h.prediction.baseWinProbability != null && oddsNum(h.raceEntry) != null)
+      .map((h) => ({ n: oddsNum(h.raceEntry)!, x: h.prediction!.inputRow!, top3: h.prediction!.baseProbability, win: h.prediction!.baseWinProbability! }));
     if (!odds || rows.length < 3 || !data?.ml?.longshotReady) return;
     const winOdds = Object.fromEntries(rows.filter((r) => odds.win[String(r.n)]?.min).map((r) => [r.n, odds.win[String(r.n)].min]));
     let cancelled = false;
@@ -1107,7 +1115,7 @@ export default function RaceDetailPage() {
               total={predictedCount}
               mark={marks[horse.horseId] ?? ""}
               odds={horseOdds.get(horse.horseId) ?? null}
-              value={horse.raceEntry?.horseNumber != null ? values?.get(horse.raceEntry.horseNumber) ?? null : null}
+              value={oddsNum(horse.raceEntry) != null ? values?.get(oddsNum(horse.raceEntry)!) ?? null : null}
               score={scores.get(horse.horseId) ?? null}
               categories={categoryRanks.get(horse.horseId) ?? []}
               onOpen={() => void loadShap()} shapState={shapState} />)}</>}
