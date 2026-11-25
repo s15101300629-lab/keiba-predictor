@@ -28,7 +28,7 @@ from sklearn.metrics import log_loss
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import features  # noqa: E402
-from check_jra_day import OVERSEAS_GOING, OVERSEAS_PRIZE, TIME_DIFF_BY_FINISH, is_overseas_venue, overseas_runs  # noqa: E402
+from check_jra_day import OVERSEAS_PRIZE, overseas_runs  # noqa: E402
 from train import DATA, OUT, PARAMS, TRAIN_FROM  # noqa: E402
 from tune_params import normalize_sum  # noqa: E402
 
@@ -173,16 +173,53 @@ def calibrate_length(rdb: dict, races: dict, td_jra: dict) -> tuple[float, int]:
     return float((xs[ok] * ys[ok]).sum() / (xs[ok] * xs[ok]).sum()), int(ok.sum())
 
 
+VARIANTS = {  # 名前 → (1着賞金の決め方, 競馬場の読み替え, 1 レーティングの初めの値, 2 騎手・調教師・馬主・生産者)
+    # 1着賞金 old：racedb の値、なければ格（主要国以外は1つ下げる）。major：主要国の格のあるレースは JRA の同じ格の値（2026-11-26、依頼者の指示）
+    # rating "all"：JRA の走がある外国馬も、初めの値＋JRA での増減
+    "今": ("old", False, False, False),
+    "新": ("major", True, True, True),
+    "新・読み替えなし": ("major", False, True, True),
+    "新・賞金は前のまま": ("old", True, True, True),
+    "新・JRAの走ありも": ("major", True, "all", True),
+}
+RATING_INIT_PATH = ROOT / "data" / "overseas" / "rating_init.json"
+
+
+def fit_rating_init(rows: list[dict]) -> dict:
+    """日本馬の「能力指数（今回の芝ダの近走の直近加重平均 ab_wmean）とレーティング」の関係（芝ダ別、最小二乗）.
+    レーティングが落ち着いた馬（更新5日以上）の、学習の期間（TRAIN_FROM〜）の行で当てる."""
+    coef = {}
+    for surf in (0, 1):
+        out = {}
+        for name in ("elom", "elos"):
+            sel = [(r["ab_wmean"], r[name]) for r in rows if r["date"] >= TRAIN_FROM and r["surface"] == surf
+                   and not math.isnan(r["ab_wmean"]) and r[name + "_n"] >= 5 and not features.is_foreign_trainer(r.get("trainer"))]
+            x = np.array([a for a, _ in sel]); yv = np.array([b for _, b in sel])
+            b, a = np.polyfit(x, yv, 1)
+            out[name] = [round(float(a), 4), round(float(b), 4)]
+            out[name + "_n"] = len(sel)
+            out[name + "_r"] = round(float(np.corrcoef(x, yv)[0, 1]), 4)
+        coef[str(surf)] = out
+    return coef
+
+
 def main() -> None:
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    names = args or list(VARIANTS)
     hist, rdb, races = load_sources()
-    # 馬名（成績表）→ netkeiba の馬ID
-    by_name = {nm: hid for hid, v in hist.items() for nm in v["names"]}
+    # 馬名（成績表。clean_horse_name でそろえた名前）→ netkeiba の馬ID
+    by_name = {features.clean_horse_name(nm): hid for hid, v in hist.items() for nm in v["names"]}
     perf = {hid: v["rows"] for hid, v in hist.items()}
-    print("馬:", len(hist), "racedb のレース:", len(races), file=sys.stderr, flush=True)
+    print("馬:", len(hist), "racedb のレース:", len(races), "比べる:", names, file=sys.stderr, flush=True)
 
     # 1. 海外の走なしで作る（学習・比べる基準）
     features.EXTRA_RUNS = {}
+    features.FOREIGN_FIX = {"rating": False, "people": False}
     rows0, h0 = features.build_dataset(DATA)
+    rating_init = fit_rating_init(rows0)
+    RATING_INIT_PATH.write_text(json.dumps({"note": "外国馬のレーティングの初めの値の式：レーティング＝切片＋傾き×能力指数（ab_wmean）。芝ダ別（scripts/ml/overseas_eval.py の fit_rating_init）",
+                                            "coef": rating_init}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print("レーティングの初めの値の式:", rating_init, file=sys.stderr, flush=True)
     # 見積もりの式：JRA の走（成績表）の能力指数・タイム指数を、芝ダごとに log 1着賞金・タイム差・頭数で当てる
     coef = {}
     for surf in (0, 1):
@@ -204,21 +241,23 @@ def main() -> None:
     spl, n_cal = calibrate_length(rdb, races, td_jra)
     print("見積もりの式:", coef, "1馬身:", spl, file=sys.stderr, flush=True)
 
-    def improved_runs(hid: str) -> list[dict]:
+    def improved_runs(hid: str, mode: str, venue_map: bool) -> list[dict]:
+        """overseas.improve と同じ見積もり（mode="major" が今のアプリ）。"old" は 2026-11-25 までの1着賞金の決め方."""
         out = []
-        for run in overseas_runs(perf[hid]):
-            v = {"開催": run["ov_venue"], "レース名": run["ov_name"]}
+        for run in overseas_runs(perf[hid], venue_map=venue_map):
             x = racedb_for_run(hid, hist[hid].get("title", ""), run["date"], rdb, races)
-            prize = run["prize"]
-            if x and x.get("prize"):
-                prize = min(x["prize"] / 10000, 50000)  # JRA の一番高い1着賞金（ジャパンカップ・有馬記念）で頭打ち
-            elif not any(m in v.get("開催", "") for m in MAJOR_VENUES):
-                # 主要国以外：格を1つ下げる
-                for pat, p in OVERSEAS_PRIZE:
-                    if re.search(pat, v.get("レース名", "")):
-                        lower = {17000: 5700, 5700: 4100, 4100: 2400}.get(p, p)
-                        prize = lower
-                        break
+            rp = min(x["prize"] / 10000, 50000) if x and x.get("prize") else None  # JRA の一番高い1着賞金（5億円）で頭打ち
+            major = any(m in run["ov_venue"] for m in MAJOR_VENUES)
+            graded = next((p for pat, p in OVERSEAS_PRIZE[:5] if re.search(pat, run["ov_name"])), None)  # G1〜OP
+            lower = {17000: 5700, 5700: 4100, 4100: 2400}
+            if mode == "major" and major and graded is not None:
+                prize = graded
+            elif rp is not None:
+                prize = rp
+            elif not major and graded is not None:
+                prize = lower.get(graded, graded)
+            else:
+                prize = run["prize"]
             td = run["time_diff"]
             if x and x.get("lengths") is not None and run["finish"]:
                 td = round(min(x["lengths"] * spl, 9.9), 1)
@@ -231,28 +270,49 @@ def main() -> None:
             out.append(run)
         return out
 
-    variants = {"今": {nm: overseas_runs(perf[hid]) for nm, hid in by_name.items()},
-                "見積もり": {nm: improved_runs(hid) for nm, hid in by_name.items()}}
     keep = [i for i, r in enumerate(rows0) if r["date"] >= TRAIN_FROM]
-    meta = [{k: rows0[i][k] for k in ("date", "race_id", "horse", "finish", "popularity", "label")} for i in keep]
+    meta = [{k: rows0[i].get(k) for k in ("date", "race_id", "horse", "finish", "popularity", "label", "trainer")} for i in keep]
     Xs = {"なし": np.array([[rows0[i][f] for f in features.FEATURES] for i in keep], dtype=np.float64)}
+    est_rows: dict[str, dict] = {}
     del rows0, h0
-    for name, extra in variants.items():
-        features.EXTRA_RUNS = {k: v for k, v in extra.items() if v}
+    runs_by_mode: dict[str, dict] = {}
+    for name in names:
+        mode, vmap, fix_r, fix_p = VARIANTS[name]
+        if (mode, vmap) not in runs_by_mode:
+            runs_by_mode[(mode, vmap)] = {nm: improved_runs(hid, mode, vmap) for nm, hid in by_name.items()}
+        features.EXTRA_RUNS = {k: v for k, v in runs_by_mode[(mode, vmap)].items() if v}
+        features.FOREIGN_FIX = {"rating": bool(fix_r), "people": fix_p, "rating_all": fix_r == "all"}
+        features.RATING_INIT = rating_init
         rows, _ = features.build_dataset(DATA)
         Xs[name] = np.array([[rows[i][f] for f in features.FEATURES] for i in keep], dtype=np.float64)
+        est_rows[name] = {j: rows[i]["_estimated"] for j, i in enumerate(keep) if rows[i].get("_estimated")}
         del rows
+        print("作った:", name, file=sys.stderr, flush=True)
     features.EXTRA_RUNS = {}
+    features.FOREIGN_FIX = {"rating": False, "people": False}
 
     # 対象：海外の走のあとの JRA の走
-    first_ov = {nm: min(r["date"] for r in runs) for nm, runs in variants["今"].items() if runs}
+    any_runs = next(iter(runs_by_mode.values()))
+    first_ov = {nm: min(r["date"] for r in runs) for nm, runs in any_runs.items() if runs}
     year = np.array([r["date"][:4] for r in meta])
     y = np.array([r["label"] for r in meta], float)
     race_id = np.array([r["race_id"] for r in meta])
     target = np.array([r["horse"] in first_ov and r["date"] > first_ov[r["horse"]] for r in meta])
-    foreign = np.array([r["horse"] in first_ov and "（" in r["horse"] for r in meta])
-    out = {"note": "海外の走の扱いの比較。学習は海外の走なし、予測のときだけ足す。logloss は合計3にそろえた後",
-           "sec_per_length": spl, "length_pairs": n_cal, "coef": coef, "racedb_races": len(races), "years": {}, "foreign_runs": []}
+    foreign = np.array([features.is_foreign_trainer(r["trainer"]) for r in meta])
+    out = {"note": "海外の走の扱いの比較。学習は海外の走なし、予測のときだけ足す。logloss は合計3にそろえた後。"
+                   "1＝JRA の走がない外国馬のレーティングの初めの値、2＝外国馬の騎手（短期免許は通算）・調教師・馬主・生産者（日本馬の中央値）",
+           "sec_per_length": spl, "length_pairs": n_cal, "coef": coef, "rating_init": rating_init, "racedb_races": len(races), "years": {}, "foreign_runs": []}
+    # 日本馬（外国馬でない馬）の値が変わらないかの確かめ：「今」と比べて、値が変わった行の数（項目ごと）。
+    # 出走馬の中の比較（レーティングの順位など）は、同じレースの外国馬の値が変わると変わるので分けて数える
+    base = Xs.get("今")
+    if base is not None:
+        out["japanese_changed"] = {}
+        for name in names:
+            if name == "今":
+                continue
+            d = ~((Xs[name] == base) | (np.isnan(Xs[name]) & np.isnan(base)))
+            jp = d[~foreign]
+            out["japanese_changed"][name] = {f: int(jp[:, k].sum()) for k, f in enumerate(features.FEATURES) if jp[:, k].any()}
     preds = {k: np.full(len(y), np.nan) for k in Xs}
     for ty in TEST_YEARS:
         vy = str(int(ty) - 1)
@@ -282,12 +342,20 @@ def main() -> None:
     out["all"] = summary(done)
     out["foreign"] = summary(done & foreign)
     out["japanese"] = summary(done & ~foreign)
+    # 外国馬のいるレースの日本馬（予測が変わるのは、合計3にそろえる分と、出走馬の中の比較の分だけのはず）
+    same_race = np.isin(race_id, np.unique(race_id[done & foreign])) & ~foreign & ~np.isnan(preds["なし"])
+    out["japanese_in_foreign_races"] = summary(same_race)
     for i in np.flatnonzero(done & foreign):
         r = meta[i]
         out["foreign_runs"].append({"date": r["date"], "race_id": r["race_id"], "horse": r["horse"], "finish": r["finish"], "popularity": r["popularity"],
+                                    "estimated": {k: est_rows[k].get(int(i)) for k in est_rows if est_rows[k].get(int(i))},
                                     **{k: {"prob": round(float(preds[k][i]), 4), "rank": 1 + int((preds[k][race_id == race_id[i]] > preds[k][i]).sum())} for k in preds}})
-    (OUT / "overseas_eval.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(json.dumps({k: out[k] for k in ("all", "foreign", "japanese")}, ensure_ascii=False), file=sys.stderr)
+    tag = "" if not args else "_" + "_".join(VARIANTS_TAG.get(n, n) for n in names)
+    (OUT / f"overseas_eval{tag}.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    print(json.dumps({k: out[k] for k in ("all", "foreign", "japanese", "japanese_in_foreign_races")}, ensure_ascii=False), file=sys.stderr)
+
+
+VARIANTS_TAG = {"今": "now", "新": "new", "新・読み替えなし": "new_novenue", "新・賞金は前のまま": "new_oldprize", "新・JRAの走ありも": "new_ratingall"}
 
 
 if __name__ == "__main__":

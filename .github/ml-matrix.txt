@@ -1,0 +1,4 @@
+# 1行1コマンド（scripts/ml で動かす）。行ごとに別のジョブで同時に回す（.github/workflows/ml-matrix.yml）。
+# このファイルを変えて push すると起動する（書いてあるコマンドを全部回すので、済んだものは消す）
+# 2026-11-26：外国馬の扱いの一致テスト（海外の走は予測するレースだけに足す形に直した）
+python parity_foreign.py && node --experimental-strip-types parity_foreign.ts

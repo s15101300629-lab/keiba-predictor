@@ -1,0 +1,29 @@
+name: 特徴量の表（使い回し）
+description: >
+  学習用の表 data/ml/cache/dataset.npz（と血統の表 data/pedigree/all/runner_features.csv）を、元のファイルが同じならキャッシュから戻す。
+  なければ作ってキャッシュに保存する（2026-11-25。前はジョブごとに 30〜40分かけて作り直していた）。
+  元のファイル：特徴量の定義（features.py・train.py・cache_dataset.py・血統の計算）と、成績表・調教評価・血統・馬場・推定上がりの係数
+outputs:
+  hit:
+    description: キャッシュから戻せたら true
+    value: ${{ steps.restore.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - id: restore
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          data/ml/cache/dataset.npz
+          data/pedigree/all/runner_features.csv
+        key: dataset-v1-${{ hashFiles('scripts/ml/features.py', 'scripts/ml/train.py', 'scripts/ml/cache_dataset.py', 'scripts/ml/pedigree_all_features.ts', 'app/lib/pedigree.ts', 'app/lib/netkeiba.ts', 'data/jra-seiseki/json/**', 'data/training/**', 'data/pedigree/all/race_horses.json', 'data/pedigree/all/horses.json', 'data/pedigree/stallions.json', 'data/baba/baba.csv', 'data/ml/agari_estimate.json') }}
+    - if: steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      run: npx tsx scripts/ml/pedigree_all_features.ts && cd scripts/ml && python cache_dataset.py
+    - if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          data/ml/cache/dataset.npz
+          data/pedigree/all/runner_features.csv
+        key: ${{ steps.restore.outputs.cache-primary-key }}

@@ -62,6 +62,11 @@ jobs:
       - name: Check Python/TypeScript feature parity
         run: node --experimental-strip-types scripts/ml/parity.ts
 
+      # 外国馬の扱い：短期免許の外国人騎手の JRA での通算（アプリが読む。2026-11-26）
+      - name: Foreign jockeys' JRA career
+        working-directory: scripts/ml
+        run: python foreign_jockeys.py
+
       # 2段目（AI確率 + 血統）: 新しい重賞の出走馬の血統を netkeiba から追加取得して学び直す
       - name: Collect pedigrees of graded-race runners
         run: npx tsx scripts/ml/collect_pedigree.ts
@@ -75,7 +80,7 @@ jobs:
 
       - name: Commit model
         run: |
-          git add data/ml data/pedigree data/training data/baba
+          git add data/ml data/pedigree data/training data/baba data/overseas
           if git diff --cached --quiet; then
             echo "no changes"
             exit 0
