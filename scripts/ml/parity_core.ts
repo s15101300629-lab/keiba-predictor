@@ -1,5 +1,5 @@
 // 一致テストの中身（parity.ts・parity_day.ts で共通）
-import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, fillForeignPeople, normJockey, runnerFeatures, storeHorseKey, type RunnerInput, type Store } from "../../app/lib/ml/features.ts";
+import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, fillForeignLevel, fillForeignPeople, normJockey, runnerFeatures, storeHorseKey, type RunnerInput, type Store } from "../../app/lib/ml/features.ts";
 import { predictProbability, type Model } from "../../app/lib/ml/model.ts";
 import { treeShap } from "../../app/lib/ml/shap.ts";
 
@@ -52,6 +52,7 @@ for (const raceRows of byRace.values()) {
   addFormDeviation(computed);
   addFieldFeatures(computed);
   addOpponentFeatures(raceStore, race, computed, keys);
+  fillForeignLevel(computed, runners);
   addSimilarCondFeatures(raceStore, race, computed, keys);
   raceRows.forEach((row, i) => {
     for (const name of model.features) {

@@ -5,7 +5,7 @@ import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
 import { fetchJraBaba, fetchJraBabaDetail } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
-import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, fillForeignPeople, jockeyStats, resolveCareerJockey, resolveTrainer, runningStyle, storeHorseKey, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type RunnerInput, type Store } from "@/app/lib/ml/features";
+import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, fillForeignLevel, fillForeignPeople, jockeyStats, resolveCareerJockey, resolveTrainer, runningStyle, storeHorseKey, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type RunnerInput, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionNeedsRefresh, stallionRecord,
@@ -1176,6 +1176,8 @@ async function getRace(
       addFormDeviation(activeIdx.map((i) => rows[i].features));
       addFieldFeatures(activeIdx.map((i) => rows[i].features));
       addOpponentFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].horseKey));
+      fillForeignLevel(activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].runner))
+        .forEach((keys, k) => { rows[activeIdx[k]].estimated.push(...keys); });
       addSimilarCondFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].horseKey));
       timing.features += performance.now() - tFeat;
       // メリハリの補正（案 10）：モデルの log-odds に T を掛ける。この後、合計を 3・2・1 にそろえる

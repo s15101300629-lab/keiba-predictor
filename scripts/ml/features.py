@@ -1266,20 +1266,62 @@ def foreign_rating(ab: float, surface: int) -> tuple[float, float] | None:
     return c["elom"][0] + c["elom"][1] * ab, c["elos"][0] + c["elos"][1] * ab
 
 
+LEVEL_FILL = ["lv_field_form", "lv_field_tidx", "lv_after_n", "lv_after_top3", "lv_beaten_form", "lv_lost_form"]
+
+
+def strength_q(rows: list[dict], foreign: list[bool], r: dict) -> float:
+    """外国馬 r の能力指数（ab_wmean。海外の走から見積もった値）が、同じレースの日本馬の中で下から何割か（同じ値は半分）。分からなければ 0.5."""
+    a = r["ab_wmean"]
+    xs = [x["ab_wmean"] for x, fo in zip(rows, foreign) if not fo and not math.isnan(x["ab_wmean"])]
+    if math.isnan(a) or not xs:
+        return 0.5
+    return (sum(1 for x in xs if x < a) + 0.5 * sum(1 for x in xs if x == a)) / len(xs)
+
+
+def quantile_of(vals: list[float], q: float) -> float:
+    """日本馬の値（欠けは除く）を小さい順に並べた、割合 q の位置の値（間は直線で補う）."""
+    xs = sorted(v for v in vals if not math.isnan(v))
+    if not xs:
+        return NAN
+    pos = q * (len(xs) - 1)
+    lo = int(math.floor(pos))
+    hi = min(lo + 1, len(xs) - 1)
+    return xs[lo] + (xs[hi] - xs[lo]) * (pos - lo)
+
+
 def fill_foreign_people(rows: list[dict], foreign: list[bool], jockey_missing: list[bool]) -> None:
-    """外国馬の調教師・馬主・生産者（と、JRA での騎乗がない騎手）の成績を、同じレースの日本馬の中央値で埋める.
+    """外国馬の調教師・馬主・生産者（と、JRA での騎乗がない騎手）の成績を、同じレースの日本馬の値で埋める。
+    中央値ではなく、その外国馬の強さの位置（strength_q）の値（2026-11-26、依頼者の指示「中央値だと低くなる」）。
     埋めた項目は行の "_estimated" に入れる（画面の「推定」用）."""
     japanese = [r for r, fo in zip(rows, foreign) if not fo]
     if not japanese:
         return
-    med = {k: median_of([r[k] for r in japanese]) for k in TRAINER_FILL + OWNER_FILL + JOCKEY_FILL}
-    for r, fo, jm in zip(rows, foreign, jockey_missing):
+    qs = [strength_q(rows, foreign, r) if fo else None for r, fo in zip(rows, foreign)]
+    for r, fo, jm, q in zip(rows, foreign, jockey_missing, qs):
         if not fo:
             continue
         keys = TRAINER_FILL + OWNER_FILL + (JOCKEY_FILL if jm else [])
         for k in keys:
-            r[k] = med[k]
+            r[k] = quantile_of([x[k] for x in japanese], q)
+        r["_q"] = q
         r.setdefault("_estimated", []).extend(keys)
+
+
+def fill_foreign_level(rows: list[dict], foreign: list[bool]) -> None:
+    """外国馬の前走レベル（LEVEL_FILL。海外の走は相手の成績がないので欠ける）を、同じレースの日本馬の、強さの位置の値で埋める.
+    add_opponent_features のあとに呼ぶ。app/lib/ml/features.ts の fillForeignLevel と同じ"""
+    japanese = [r for r, fo in zip(rows, foreign) if not fo]
+    if not japanese:
+        return
+    for r, fo in zip(rows, foreign):
+        if not fo:
+            continue
+        q = r.get("_q", 0.5)
+        keys = [k for k in LEVEL_FILL if math.isnan(r[k])]
+        for k in keys:
+            r[k] = quantile_of([x[k] for x in japanese], q)
+        if keys:
+            r.setdefault("_estimated", []).extend(keys)
 
 
 # 成績表にない過去走（海外の走）。馬名 → 過去走（History.add_race と同じ形）。答え合わせ（check_jra_day.py）だけが使う。
@@ -1349,6 +1391,8 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
             add_field_features(race_rows)
             add_rating_field(race_rows)
             add_opponent_features(race_rows, [h["horse"] for h in race["runners"]], race, hist.horses, hist.by_race)
+            if FOREIGN_FIX["people"] and any(foreign):
+                fill_foreign_level(race_rows, foreign)
             similar_cond_features(race_rows, [h["horse"] for h in race["runners"]], race, hist.horses)
             for f, h in zip(race_rows, race["runners"]):  # 後のレースの前走レベル・直接対決で使う「そのときの調子・タイム指数」
                 h["form_at"] = None if math.isnan(f["form_raw"]) else round(f["form_raw"], 6)
