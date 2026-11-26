@@ -785,3 +785,9 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .check-drift { margin: 8px 0; padding: 8px 10px; border: 1px solid #8a5a1a; border-radius: 10px; font-size: 12px; }
 .check-drift summary { color: var(--accent-strong); font-weight: 700; }
 .check-drift ul { margin: 6px 0 0 16px; }
+
+/* 外国馬の注意（2026-11-26） */
+.foreign-tag { color: var(--accent, #d4af37); font-weight: 700; }
+.foreign-note { border: 1px solid var(--accent, #d4af37); border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 0.85rem; }
+.foreign-note p { margin: 0 0 4px; }
+.estimated-tag { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: #3a3220; color: #f0d27a; font-size: 0.7rem; font-weight: 400; }

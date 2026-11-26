@@ -5,7 +5,7 @@ import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
 import { fetchJraBaba, fetchJraBabaDetail } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
-import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, jockeyStats, resolveTrainer, runningStyle, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type Store } from "@/app/lib/ml/features";
+import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, fillForeignLevel, fillForeignPeople, normJockey, jockeyStats, resolveCareerJockey, resolveTrainer, runningStyle, storeHorseKey, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type RunnerInput, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionNeedsRefresh, stallionRecord,
@@ -83,21 +83,214 @@ function isOverseasVenue(venue: string): boolean {
 
 // 海外の走の見積もり（scripts/ml/overseas.py。2026-11-24 採用：外国馬・遠征帰りの日本馬で logloss が一番良かった）
 // racedb.com で分かった馬ごとの1着賞金（万円）・タイム差（data/overseas/runs.json）と、主要国以外は格を1つ下げる決まり・能力指数の式（impute.json）
-type OverseasImpute = { coef: Record<string, { ab: number[]; tidx: number[] }>; major_venues: string[]; grade_prize: [string, number][]; lower: Record<string, number> };
-type OverseasData = { imp: OverseasImpute | null; runs: Record<string, Record<string, { prize?: number; time_diff?: number }>> };
+type OverseasImpute = { coef: Record<string, { ab: number[]; tidx: number[] }>; major_venues: string[]; grade_prize: [string, number][]; lower: Record<string, number>; equal_venues?: string[] };
+type OverseasData = { imp: OverseasImpute | null; runs: Record<string, Record<string, { prize?: number; time_diff?: number }>>;
+  venueMap: { map: [string, number, number][]; default: [number, number] } | null; ifha: IfhaData | null };
 let overseasData: Promise<OverseasData> | null = null;
 function loadOverseas(): Promise<OverseasData> {
   overseasData ??= (async () => {
     const dir = path.join(process.cwd(), "data", "overseas");
     const read = (n: string) => readFile(path.join(dir, n), "utf8").then((t) => JSON.parse(t)).catch(() => null);
-    const [imp, runs] = await Promise.all([read("impute.json"), read("runs.json")]);
-    return { imp, runs: runs ?? {} };
+    const [imp, runs, venueMap, ifha] = await Promise.all([read("impute.json"), read("runs.json"), read("venue_map.json"), read("ifha.json")]);
+    return { imp, runs: runs ?? {}, venueMap, ifha };
   })();
   return overseasData;
 }
 
 /** netkeiba の戦績のうち海外のレースを、store.horses と同じ形の過去走にする（見積もりのデータがあれば overseas.py と同じ見積もり）. */
-function overseasRuns(performances: { values: Record<string, string> }[], horseId = "", od: OverseasData | null = null): Store["horses"][string] {
+type IfhaData = { parts: Record<string, number>; venues: [string, string, string[]][]; unrated_g1: number;
+  races: { year: string; country: string; track: string; surface: number; distance: number; age: string; sex?: string; prize: number }[] };
+const IFHA_GRADES: [RegExp, number][] = [[/\((?:GI|G1)\)/, 1], [/\((?:GII|G2)\)/, 2], [/\((?:GIII|G3)\)/, 3], [/\(L\)/, 4], [/\(OP\)/, 5]];
+const JRA_GRADE_PRIZE: Record<number, number> = { 2: 5700, 3: 4100, 4: 2400, 5: 2200 };
+/** IFHA の格で海外の走の1着賞金（万円）を決める（scripts/ml/overseas.py の ifha_prize と同じ）. */
+function ifhaPrize(d: IfhaData, venue: string, raceName: string, date: string, surface: number, distance: number, horseId: string, fallback: number, sex: string | null): number {
+  const hit = d.venues.find(([pat]) => venue.includes(pat));
+  const country = hit?.[1] ?? null;
+  const tracks = hit?.[2] ?? [];
+  const part = country ? d.parts[country] ?? 3 : 3;
+  const grade = IFHA_GRADES.find(([re]) => re.test(raceName))?.[1] ?? null;
+  if (grade === null || part === 3) return fallback;
+  if (part === 2) return 2400;
+  if (grade !== 1) return JRA_GRADE_PRIZE[grade];
+  const years = [...new Set(d.races.map((r) => r.year))].sort();
+  const y0 = date.slice(0, 4);
+  const y = y0 < years[0] ? years[0] : y0 > years[years.length - 1] ? years[years.length - 1] : y0;
+  const age = /^\d{4}/.test(horseId) ? Number(date.slice(0, 4)) - Number(horseId.slice(0, 4)) : null;
+  const ageOk = (rule: string) => {
+    const m = (rule ?? "").match(/^(\d)(yo)?(\+)?/);
+    if (!m || age === null) return true;
+    return m[3] ? age >= Number(m[1]) : age === Number(m[1]);
+  };
+  const c = d.races.filter((r) => r.year === y && r.country === country && (!tracks.length || tracks.includes(r.track)) && r.surface === surface
+    && Math.abs(r.distance - distance) <= 60 && ageOk(r.age) && !((sex === "牡" || sex === "セ") && (r.sex ?? "").includes("F")));
+  return c.length ? c.reduce((a, r) => a + r.prize, 0) / c.length : d.unrated_g1;
+}
+
+// 外国人騎手の海外主要G1の成績（JRA-VAN Ver.World。scripts/ml/jockey_world.py。2026-11-26）。ファイルにない騎手はその場で検索し、メモリにためる
+type JockeyWorld = { prior: number; shrink: number; fit: { intercept: number; slope: number }; jockeys: Record<string, { name: string; years: Record<string, number[]> }> };
+let jockeyWorldFile: Promise<JockeyWorld | null> | null = null;
+const jockeyWorldLive = new Map<string, Promise<{ name: string; years: Record<string, number[]> } | null>>();
+function splitJockeyName(name: string): [string, string] {
+  const s = name.normalize("NFKC").split("(")[0].replace(/[.・ ]/g, "");
+  const m = s.match(/^([A-Za-z])(.*)$/);
+  return m ? [m[1].toUpperCase(), m[2]] : ["", s];
+}
+async function lookupJockeyWorld(name: string) {
+  const [ini, kana] = splitJockeyName(name);
+  if (!kana) return null;
+  const ua = { headers: { "User-Agent": "keiba-predictor (personal research)" } };
+  const t = await fetch(`https://world.jra-van.jp/db/search?category=2&keywords=${encodeURIComponent(kana)}`, ua).then((r) => r.text());
+  const cands = [...t.matchAll(/href="(\/db\/jockey\/[^"]+\/)"[^>]*>([\s\S]*?)<\/a>/g)]
+    .map((m) => [m[1], m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, "").normalize("NFKC").replace(/\./g, "")] as [string, string])
+    .filter(([, x]) => x.includes(kana) && (!ini || x.startsWith(ini)));
+  if (new Set(cands.map(([h]) => h)).size !== 1) return null;
+  const page = await fetch("https://world.jra-van.jp" + cands[0][0], ua).then((r) => r.text());
+  const i = page.indexOf("海外主要G1レースの成績");
+  const years: Record<string, number[]> = {};
+  for (const tr of page.slice(i, i + 20000).matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
+    const c = [...tr[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map((x) => x[1].replace(/<[^>]+>/g, "").replace(/\s+/g, ""));
+    if (c.length >= 5 && /^\d{4}$/.test(c[0]) && c.slice(1, 5).every((x) => /^\d+$/.test(x))) years[c[0]] = c.slice(1, 5).map(Number);
+  }
+  return { name: cands[0][1], years };
+}
+/** JRA で乗ったことがない外国人騎手の、海外主要G1の成績から式で出した3着内率（features.py の jockey_world_target と同じ）. */
+async function jockeyWorldTarget(name: string | null | undefined, year: string): Promise<number | null> {
+  if (!name) return null;
+  jockeyWorldFile ??= readFile(path.join(process.cwd(), "data", "overseas", "jockey_world.json"), "utf8").then((t) => JSON.parse(t) as JockeyWorld).catch(() => null);
+  const d = await jockeyWorldFile;
+  if (!d) return null;
+  const key = normJockey(name);
+  let e: { years: Record<string, number[]> } | null = d.jockeys[key] ?? null;
+  if (!e) {
+    if (!jockeyWorldLive.has(key)) jockeyWorldLive.set(key, lookupJockeyWorld(name).catch(() => null));
+    e = await jockeyWorldLive.get(key)!;
+  }
+  if (!e) return null;
+  let n = 0;
+  let t = 0;
+  for (const [y, v] of Object.entries(e.years)) if (y <= year) { n += v[0] + v[1] + v[2] + v[3]; t += v[0] + v[1] + v[2]; }
+  if (!n) return null;
+  return d.fit.intercept + d.fit.slope * ((t + d.shrink * d.prior) / (n + d.shrink));
+}
+
+// 香港の走の上がり・位置取り・タイム差（HKJC の区間タイム。scripts/ml/hkjc.py と同じ計算。2026-11-26）。
+// data/overseas/hkjc.json（取ったページの中身）にないレースはその場で取り、メモリにためる
+type HkRace = { distance: number; race_last600: number | null; horses: { no: number; finish: number; pos: number[]; last600: number | null; time: number | null }[] } | null;
+let hkFile: Promise<Record<string, HkRace>> | null = null;
+const hkLive = new Map<string, Promise<HkRace>>();
+const hkNum = (s: string) => { const m = s.trim().match(/^(?:(\d+):)?(\d+\.\d+)$/); return m ? Number(m[1] ?? 0) * 60 + Number(m[2]) : null; };
+const stripTags = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
+function parseHk(page: string): HkRace {
+  const dm = stripTags(page).replace(/\s+/g, " ").match(/Race\s+\d+\s.{0,80}?-\s*(\d{3,4})M\s*-/);
+  if (!dm) return null;
+  let race: number | null = null;
+  const rs = page.indexOf("Sectional Time:");
+  if (rs >= 0) {
+    const cells = [...page.slice(rs, rs + 4000).matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]).slice(1);
+    const secs: number[][] = [];
+    for (const c of cells) {
+      const t = stripTags(c).split(/\s+/).filter(Boolean);
+      if (!t.length || hkNum(t[0]) === null) break;
+      secs.push(t.map(hkNum).filter((x): x is number => x !== null));
+    }
+    if (secs.length >= 2 && secs[secs.length - 2].length >= 3) race = secs[secs.length - 2][2] + secs[secs.length - 1][0];
+  }
+  const horses: NonNullable<HkRace>["horses"] = [];
+  for (const tr of page.matchAll(/<tr>([\s\S]*?)<\/tr>/g)) {
+    if (!tr[1].includes("horseid=")) continue;
+    const cells = [...tr[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
+    const fin = cells[0].replace(/<[^>]+>|\s/g, "");
+    const no = cells[1].replace(/<[^>]+>|\s/g, "");
+    if (!/^\d+$/.test(fin) || !/^\d+$/.test(no)) continue;
+    const pos: number[] = [];
+    const secs: number[][] = [];
+    for (const c of cells.slice(3)) {
+      const p = c.match(/class="f_fl">\s*(\d+)\s*</);
+      if (!p) continue;
+      pos.push(Number(p[1]));
+      const body = c.includes("</p>") ? c.slice(c.indexOf("</p>") + 4) : c;
+      secs.push(stripTags(body).split(/\s+/).filter(Boolean).map(hkNum).filter((x): x is number => x !== null));
+    }
+    const total = hkNum(cells[cells.length - 1].replace(/<[^>]+>|\s/g, ""));
+    const n = secs.length;
+    const last600 = n >= 2 && secs[n - 2].length >= 3 && secs[n - 1].length ? secs[n - 2][2] + secs[n - 1][0] : null;
+    horses.push({ no: Number(no), finish: Number(fin), pos, last600, time: total });
+  }
+  return horses.length ? { distance: Number(dm[1]), race_last600: race, horses } : null;
+}
+async function hkFetch(date: string, no: number): Promise<HkRace> {
+  hkFile ??= readFile(path.join(process.cwd(), "data", "overseas", "hkjc.json"), "utf8").then((t) => JSON.parse(t)).catch(() => ({}));
+  const key = `${date}|${no}`;
+  const f = await hkFile;
+  if (key in f) return f[key];
+  if (!hkLive.has(key)) {
+    const [y, m, d] = date.split("-");
+    hkLive.set(key, fetch(`https://racing.hkjc.com/racing/information/English/Racing/DisplaySectionalTime.aspx?RaceDate=${d}/${m}/${y}&RaceNo=${no}`,
+      { headers: { "User-Agent": "keiba-predictor (personal research)" } }).then((r) => r.text()).then(parseHk).catch(() => null));
+  }
+  return hkLive.get(key)!;
+}
+// フランス（France Galop の区間タイム。scripts/ml/francegalop.py が PDF を読んで data/overseas/francegalop.json にためる。アプリはファイルだけ読む）
+type FgRace = { distance: number; race_last600: number | null; horses: { no: number; finish: number | null; pos400: number; c600: number; arr: number }[] } | null;
+let fgFile: Promise<Record<string, FgRace>> | null = null;
+const FG_TRACKS: [string, string][] = [["パリロンシャン", "LON"], ["ロンシャン", "LON"], ["シャンティイ", "CHA"], ["ドーヴィル", "DEA"]];
+/** netkeiba のフランスの走1つ → 上がり・位置取り・タイム差（francegalop.py の fg_run・metrics と同じ）. */
+async function fgRun(v: Record<string, string>, distance: number) {
+  const track = FG_TRACKS.find(([k]) => (v["開催"] ?? "").includes(k))?.[1];
+  const date = (v["日付"] ?? "").replace(/\//g, "-");
+  if (!track || date < "2020-01-01" || !/^\d+$/.test(v["馬番"] ?? "") || !/^\d+$/.test(v["着順"] ?? "")) return null;
+  fgFile ??= readFile(path.join(process.cwd(), "data", "overseas", "francegalop.json"), "utf8").then((t) => JSON.parse(t)).catch(() => ({}));
+  const f = await fgFile;
+  const nos = /^\d+$/.test(v["R"] ?? "") ? [Number(v["R"])] : Array.from({ length: 10 }, (_, i) => i + 1);
+  for (const no of nos) {
+    const race = f[`${date}|${track}|${no}`];
+    if (!race || Math.abs(race.distance - distance) > 10) continue;
+    const me = race.horses.find((h) => h.no === Number(v["馬番"]));
+    if (!me || me.finish !== Number(v["着順"])) continue;
+    const fin = race.horses.filter((h) => h.finish);
+    if (fin.length < 3 || race.race_last600 === null) return null; // francegalop.py と同じ
+    const last = fin.map((h) => h.arr - h.c600);
+    const a = me.arr - me.c600;
+    const srt = [...last].sort((x, y) => x - y);
+    const r4 = (x: number) => Math.round(x * 1e4) / 1e4;
+    return {
+      agDev: r4(last.reduce((s, x) => s + x, 0) / last.length - a), agRank: r4((1 + srt.indexOf(a)) / last.length),
+      earlyGap: r4(me.c600 - Math.min(...fin.map((h) => h.c600))), fade: r4(a - race.race_last600!),
+      posFirst: null, posLast: me.pos400, timeDiff: Math.round((me.arr - Math.min(...fin.map((h) => h.arr))) * 10) / 10,
+    };
+  }
+  return null;
+}
+
+/** netkeiba の香港の走1つ → 上がり・位置取り・タイム差（hkjc.py の hk_run・metrics と同じ）. */
+async function hkRun(v: Record<string, string>, distance: number) {
+  const venue = v["開催"] ?? "";
+  if (!["シャティン", "ハッピーヴァレー", "ハッピーバレー", "香港"].some((x) => venue.includes(x)) || !/^\d+$/.test(v["馬番"] ?? "") || !/^\d+$/.test(v["着順"] ?? "")) return null;
+  const date = (v["日付"] ?? "").replace(/\//g, "-");
+  const nos = /^\d+$/.test(v["R"] ?? "") ? [Number(v["R"])] : Array.from({ length: 11 }, (_, i) => i + 1);
+  for (const no of nos) {
+    const race = await hkFetch(date, no);
+    if (!race || Math.abs(race.distance - distance) > 10) continue;
+    const me = race.horses.find((h) => h.no === Number(v["馬番"]));
+    if (!me || me.finish !== Number(v["着順"])) continue;
+    const fin = race.horses.filter((h) => h.last600 !== null && h.time !== null) as { no: number; pos: number[]; last600: number; time: number }[];
+    if (fin.length < 3 || !fin.includes(me as never) || race.race_last600 === null) return null; // hkjc.py と同じ（レース全体の上がりがないときは使わない）
+    const a = me.last600!;
+    const mean = fin.reduce((s, h) => s + h.last600, 0) / fin.length;
+    const srt = fin.map((h) => h.last600).sort((x, y) => x - y);
+    const r4 = (x: number) => Math.round(x * 1e4) / 1e4;
+    return {
+      agDev: r4(mean - a), agRank: r4((1 + srt.indexOf(a)) / fin.length),
+      earlyGap: r4(me.time! - a - Math.min(...fin.map((h) => h.time - h.last600))),
+      fade: r4(a - race.race_last600!),
+      posFirst: me.pos[0] ?? null, posLast: me.pos.length >= 2 ? me.pos[me.pos.length - 2] : null,
+      timeDiff: Math.round((me.time! - Math.min(...fin.map((h) => h.time))) * 10) / 10,
+    };
+  }
+  return null;
+}
+
+async function overseasRuns(performances: { values: Record<string, string> }[], horseId = "", od: OverseasData | null = null, sex: string | null = null): Promise<Store["horses"][string]> {
   const runs: Store["horses"][string] = [];
   for (const p of performances) {
     const v = p.values;
@@ -114,15 +307,15 @@ function overseasRuns(performances: { values: Record<string, string> }[], horseI
     let timeDiff = ok ? TIME_DIFF_BY_FINISH[Math.min(finish, TIME_DIFF_BY_FINISH.length - 1)] : -1;
     let tidx: number | null = null;
     let ab: number | null = null;
+    let hk: Awaited<ReturnType<typeof hkRun>> | Awaited<ReturnType<typeof fgRun>> = null;
     const imp = od?.imp;
     if (imp) {
       const x = od.runs[horseId]?.[date];
-      if (x?.prize != null) prize = x.prize;
-      else if (!imp.major_venues.some((m) => (v["開催"] ?? "").includes(m))) {
-        const g = imp.grade_prize.find(([pat]) => new RegExp(pat).test(name));
-        if (g) prize = imp.lower[String(g[1])] ?? g[1];
-      }
+      // 1着賞金は IFHA の格で決める（2026-11-26。scripts/ml/overseas.py の ifha_prize と同じ。ifha.json がなければ元のまま）
+      if (od.ifha) prize = Math.round(ifhaPrize(od.ifha, v["開催"] ?? "", name, date, course[1] === "芝" ? 0 : 1, Number(course[2]), horseId, prize, sex) * 10) / 10;
       if (x?.time_diff != null && ok) timeDiff = x.time_diff;
+      hk = (await hkRun(v, Number(course[2]))) ?? (await fgRun(v, Number(course[2])));
+      if (hk && ok) timeDiff = hk.timeDiff;
       if (ok && timeDiff >= 0) {
         const c = imp.coef[course[1] === "芝" ? "0" : "1"];
         const z = [1, Math.log(Math.max(prize, 100)), Math.min(timeDiff, 3), Math.log(field)];
@@ -131,10 +324,16 @@ function overseasRuns(performances: { values: Record<string, string> }[], horseI
         tidx = dot(c.tidx);
       }
     }
+    // 海外の競馬場を近い JRA のコースに読み替える（data/overseas/venue_map.json。check_jra_day.py の overseas_course と同じ）
+    const surf = course[1] === "芝" ? 0 : 1;
+    const vm = od?.venueMap;
+    const [jv, layout] = vm ? (vm.map.find(([pat]) => (v["開催"] ?? "").includes(pat))?.slice(1) as [number, number] | undefined) ?? vm.default : [0, 0];
+    const ci = vm ? courseInfo(jv, surf, [4, 5, 7].includes(jv) ? "左" : "右", surf === 0 && layout === 1) : null;
     runs.push([
-      date, 0, course[1] === "芝" ? 0 : 1, Number(course[2]), OVERSEAS_GOING[(v["馬場"] ?? "").slice(0, 1)] ?? -1, field,
+      date, jv, surf, Number(course[2]), OVERSEAS_GOING[(v["馬場"] ?? "").slice(0, 1)] ?? -1, field,
       ok ? finish : -1, timeDiff,
-      -1, -1, -1, prize, Number.isFinite(weight) && weight > 0 ? weight : null, -1, -1, tidx, 0, ab,
+      -1, hk?.posFirst ?? -1, hk?.posLast ?? -1, prize, Number.isFinite(weight) && weight > 0 ? weight : null, -1, -1, tidx, 0, ab,
+      hk?.agDev ?? null, hk?.agRank ?? null, hk?.earlyGap ?? null, hk?.fade ?? null, ci?.turn ?? null, ci?.sband ?? null, null, ci?.cStraight ?? null, ci?.cElev ?? null,
     ]);
   }
   return runs;
@@ -734,6 +933,14 @@ function loadMlAssets() {
         .then((text) => JSON.parse(text) as { top3: number; top2: number; win: number }).catch(() => null);
       const longshotFeatures = await readFile(path.join(dir, "model_longshot.json"), "utf8")
         .then((text) => (JSON.parse(text) as { features: string[] }).features).catch(() => null);
+      // 外国馬の扱い（2026-11-26）：短期免許の騎手の JRA での通算（scripts/ml/foreign_jockeys.py）・レーティングの初めの値の式（overseas_eval.py）
+      const ov = path.join(process.cwd(), "data", "overseas");
+      const [jockeyCareer, ratingInit, wbrr] = await Promise.all(["jockey_career.json", "rating_init.json", "wbrr.json"].map((name) =>
+        readFile(path.join(ov, name), "utf8").then((text) => JSON.parse(text)).catch(() => null)));
+      (store as Store).jockeyCareer = jockeyCareer?.jockeys ?? undefined;
+      (store as Store).ratingInit = ratingInit?.coef ?? null;
+      (store as Store & { wbrr?: unknown }).wbrr = wbrr?.foreign ?? null;
+      (store as Store).foreignTrainingRuns = jockeyCareer?.foreign_training_runs ?? undefined;
       return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence, betsEvidence, betsSkipClasses, betsExtras, longshotFeatures, calibration };
     } catch {
       mlAssets = null; // 次のリクエストで再試行
@@ -1122,20 +1329,28 @@ async function getRace(
       };
       const overseasInfo = await loadOverseas();
       const tFeat = performance.now();
+      // 海外の走（香港の区間タイムをその場で取ることがあるので、先にまとめて作る）
+      const overseasList = await Promise.all(horses.map((horse, index) => overseasRuns(
+        (results[index] as { performances?: { values: Record<string, string> }[] }).performances ?? [], horse.horseId, overseasInfo,
+        entryByHorseId.get(horse.horseId)?.sexAge?.match(/^([牡牝セ])/)?.[1] ?? null)));
       const rows = horses.map((horse, index) => {
         const entry = entryByHorseId.get(horse.horseId) ?? null;
         const sexAge = entry?.sexAge?.match(/^([牡牝セ])(\d+)$/);
         // 馬体重は当日の発表。学習データには欠けがないので、発表前は前走の馬体重・増減0 で計算する
         // （前走の馬体重がない馬は、学習データの初出走馬の性別ごとの中央値。scripts/ml/eval_body_weight.py で検証）
         const performances = (results[index] as { performances?: { values: Record<string, string> }[] }).performances ?? [];
-        const overseas = overseasRuns(performances, horse.horseId, overseasInfo);
+        const overseas = overseasList[index];
         const assumedBodyWeight = entry?.bodyWeight == null
           ? previousBodyWeight(performances, raceConditions.date!) ?? DEBUT_BODY_WEIGHT[sexAge?.[1] ?? ""] ?? DEBUT_BODY_WEIGHT["牡"]
           : null;
-        const jockeyKey = resolveJockey(entry?.jockey, ml.store, raceInput.date);
-        const trainerKey = resolveTrainer(entry?.trainer, ml.store, raceInput.date, horse.name);
-        const features = runnerFeatures(ml.store, raceInput, {
-          horse: horse.name, jockeyKey, trainerKey,
+        // 外国馬（海外の厩舎）。成績表の馬名「カランダガン（Calandagan（IRE））（仏）」とつなぐ（storeHorseKey）
+        const foreign = /^海外/.test(entry?.trainer ?? "");
+        const horseKey = storeHorseKey(ml.store, horse.name);
+        const jockeyKey = (foreign ? resolveCareerJockey(entry?.jockey, ml.store, raceInput.date) : null) ?? resolveJockey(entry?.jockey, ml.store, raceInput.date);
+        const trainerKey = resolveTrainer(entry?.trainer, ml.store, raceInput.date, horseKey);
+        const runner: RunnerInput = {
+          horse: horseKey, jockeyKey, trainerKey, foreign,
+          wbrr: (ml.store as Store & { wbrr?: Record<string, { elom: number; elos: [number, number] }> | null }).wbrr?.[horse.horseId] ?? null,
           waku: entry?.frameNumber ?? null, umaban: entry?.horseNumber ?? null,
           weight: entry?.carriedWeight ?? null,
           age: sexAge ? Number(sexAge[2]) : null, sex: sexAge?.[1] ?? null,
@@ -1148,13 +1363,23 @@ async function getRace(
           // 馬主・生産者（netkeiba の馬のプロフィール。名前は features.ts の normOwner で成績表の書き方にそろえる）
           owner: (results[index] as { profile?: { label: string; value: string }[] | null }).profile?.find((p) => p.label === "馬主")?.value ?? null,
           breeder: (results[index] as { profile?: { label: string; value: string }[] | null }).profile?.find((p) => p.label.startsWith("生産者"))?.value ?? null,
-        });
-        return { jockeyKey, trainerKey, features, bodyWeightAssumed: assumedBodyWeight !== null, overseasRuns: overseas.length };
+        };
+        const features = runnerFeatures(ml.store, raceInput, runner);
+        return { jockeyKey, trainerKey, features, runner, horseKey, foreign, estimated: [] as string[], bodyWeightAssumed: assumedBodyWeight !== null, overseasRuns: overseas.length };
       });
+      // JRA で乗ったことがない外国人騎手：JRA-VAN Ver.World の海外主要G1の成績（runnerFeatures が _jockey_missing を付けた馬だけ）
+      await Promise.all(rows.map(async (row, i) => {
+        if (row.foreign && row.features._jockey_missing) row.runner.jockeyWorldTarget = await jockeyWorldTarget(entryByHorseId.get(horses[i].horseId)?.jockey, raceInput.date.slice(0, 4));
+      }));
+      // 外国馬の調教師・馬主・生産者などを、同じレースの日本馬の中央値で埋める（埋めた項目は画面で「推定」）
+      fillForeignPeople(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].runner))
+        .forEach((keys, k) => { rows[activeIdx[k]].estimated = keys; });
       addFormDeviation(activeIdx.map((i) => rows[i].features));
       addFieldFeatures(activeIdx.map((i) => rows[i].features));
-      addOpponentFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
-      addSimilarCondFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => horses[i].name));
+      addOpponentFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].horseKey));
+      fillForeignLevel(activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].runner))
+        .forEach((keys, k) => { rows[activeIdx[k]].estimated.push(...keys); });
+      addSimilarCondFeatures(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].horseKey));
       timing.features += performance.now() - tFeat;
       // メリハリの補正（案 10）：モデルの log-odds に T を掛ける。この後、合計を 3・2・1 にそろえる
       const temper = (p: number, T: number | undefined) => {
@@ -1212,6 +1437,9 @@ async function getRace(
           winProbability: winProbs[i], top2Probability: top2Probs[i], baseWinProbability: baseWinProbs[i],
           heavyNote: heavyNotes[i],
           modelFormDeviation: num(f.form_dev), priorRuns: f.n_prior, overseasRuns: rows[i].overseasRuns,
+          // 外国馬：学習データの外国馬の走の数（注意の表示）と、日本馬の中央値などで埋めた項目（補足の表の「推定」）
+          foreign: rows[i].foreign ? { estimated: rows[i].estimated, trainingRuns: ml.store.foreignTrainingRuns ?? null, values: Object.fromEntries(
+            ["elom", "elos", "jockey_n", "jockey_top3", "trainer_n", "trainer_top3", "owner_n_y", "owner_top3_y", "breeder_n_y", "breeder_top3_y"].map((k) => [k, num(f[k])])) } : null,
           training: (() => { const n = entryByHorseId.get(horses[i].horseId)?.horseNumber; return n != null ? training.get(n) ?? null : null; })(),
           jockeyName: rows[i].jockeyKey,
           pace: {

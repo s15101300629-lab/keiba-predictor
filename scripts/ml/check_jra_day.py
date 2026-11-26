@@ -319,8 +319,19 @@ def netkeiba_performances(horse_id: str) -> list[dict]:
     return rows
 
 
-def overseas_runs(perf: list[dict]) -> list[dict]:
-    """海外のレースを、features.History.add_race の過去走と同じ形にする（アプリの overseasRuns と同じ値）."""
+VENUE_MAP = json.loads((Path(__file__).resolve().parents[2] / "data/overseas/venue_map.json").read_text(encoding="utf-8"))
+
+
+def overseas_course(venue_text: str, surface: int) -> dict:
+    """海外の競馬場 → 近い JRA のコース（data/overseas/venue_map.json）。競馬場・回り・直線の区分・直線・高低差."""
+    v, layout = next(((c, o) for pat, c, o in VENUE_MAP["map"] if pat in venue_text), VENUE_MAP["default"])
+    c = features.COURSE.get((v, surface, layout if surface == 0 else 0)) or features.COURSE.get((v, surface, 0))
+    return {"venue": v, "turn": 1 if v in (4, 5, 7) else 0, "sband": features.straight_band(c[0]), "c_straight": c[0], "c_elev": c[1]}
+
+
+def overseas_runs(perf: list[dict], venue_map: bool = True) -> list[dict]:
+    """海外のレースを、features.History.add_race の過去走と同じ形にする（アプリの overseasRuns と同じ値）.
+    venue_map：競馬場を近い JRA のコースに読み替える（2026-11-26。False は前の形＝競馬場不明。overseas_eval.py の比べる基準）."""
     out = []
     for v in perf:
         if not is_overseas_venue(v.get("開催", "")):
@@ -349,7 +360,10 @@ def overseas_runs(perf: list[dict]) -> list[dict]:
             "jockey": None, "tidx": None, "trainer": None, "victim": 0, "ab": None, **{k: None for k in features.AGARI_KEYS},
             "turn": None, "sband": None, "race_id": None, "c_straight": None, "c_elev": None, "form_at": None, "tm5_at": None,
             "ov_venue": v.get("開催", ""), "ov_name": name,  # 見積もり（overseas.improve）で使う
+            "ov_r": v.get("R", ""), "ov_umaban": v.get("馬番", ""), "ov_finish": fin,  # 香港の区間タイム（hkjc.py）で使う
         })
+        if venue_map:
+            out[-1].update(overseas_course(v.get("開催", ""), out[-1]["surface"]))
     return out
 
 
@@ -372,7 +386,7 @@ def overseas_runs_for(days: list[dict], date: str) -> dict[str, list[dict]]:
                     continue
                 perf = netkeiba_performances(h["horse_id"])
                 # 見積もり（overseas.py。racedb の1着賞金・着差、主要国以外は格を1つ下げる、能力指数・タイム指数の式）
-                runs = [overseas.improve(r, r["ov_venue"], r["ov_name"], h["horse_id"]) for r in overseas_runs(perf)]
+                runs = [overseas.improve(r, r["ov_venue"], r["ov_name"], h["horse_id"], h.get("sex")) for r in overseas_runs(perf)]
                 if runs:
                     out[h["horse"]] = runs
     print(f"海外の走を足した馬: {len(out)} 頭（{sum(len(v) for v in out.values())} 走）", file=sys.stderr, flush=True)
@@ -429,6 +443,15 @@ def save_raw(date: str, days: list[dict]) -> None:
                                 ensure_ascii=False, separators=(",", ":")) + "\n")
 
 
+def store_run(r: dict) -> list:
+    """海外の走（overseas_runs・overseas.improve の形）→ store.horses の1走（アプリの overseasRuns と同じ並び）."""
+    return [r["date"], r["venue"], r["surface"], r["distance"], -1 if r["going"] is None else r["going"], r["field"],
+            -1 if r["finish"] is None else r["finish"], -1 if r["time_diff"] is None else r["time_diff"],
+            -1, r["pos_first"] or -1, r["pos_last"] or -1, r["prize"], r["weight"], -1, -1, r["tidx"], 0, r["ab"],
+            r["ag_dev"], r["ag_rank"], r["early_gap"], r["fade"],
+            r["turn"], r["sband"], None, r["c_straight"], r["c_elev"]]
+
+
 def save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath) -> None:
     """data/ml/day_check/inputs/日付.json.gz：レースごとに、各馬の着順・確定オッズ・モデルの生の確率・本体の入力と、払戻."""
     import gzip
@@ -447,7 +470,11 @@ def save_bet_inputs(date, days, rows, rid, raw3, extra_raw, model, mpath) -> Non
                            "win": float(extra_raw["win"][i]) if "win" in extra_raw else None,
                            "x": [None if (v is None or (isinstance(v, float) and math.isnan(v))) else float(v) for v in x],
                            # 一致テスト（parity_day.ts）用：アプリと同じ入力から TS で計算し直して、項目ごとに比べる
-                           "meta": {k: rows[i].get(k) for k in ("jockey", "trainer", "owner", "breeder")}})
+                           "meta": {k: rows[i].get(k) for k in ("jockey", "trainer", "owner", "breeder")},
+                           # 外国馬（海外の厩舎）と、足した海外の走（store.horses と同じ形）。アプリと同じ扱いを TS で確かめるため
+                           **({"foreign": True} if features.is_foreign_trainer(rows[i].get("trainer")) else {}),
+                           **({"extra": [store_run(x) for x in features.EXTRA_RUNS[rows[i]["horse"]] if x["date"] < date]}
+                              if features.EXTRA_RUNS.get(rows[i]["horse"]) else {})})
         r0 = rows[int(np.flatnonzero(rid == race_id)[0])]
         races.append({"race_id": race_id, "date": date, "turn": r0.get("turn"), "sband": r0.get("sband"), "venue": d["venue_name"], "race_no": info["race_no"], "race_name": info["race_name"],
                       "course": f'{info["surface"]}{info["distance"]}', "payouts": info.get("payouts") or {}, "horses": horses})
@@ -541,6 +568,29 @@ def build_rows(by_date: dict[str, list[dict]]) -> list[dict]:
             have = {json.dumps(x, sort_keys=True, ensure_ascii=False) for x in runs.get(horse, [])}
             runs.setdefault(horse, []).extend(x for x in xs if json.dumps(x, sort_keys=True, ensure_ascii=False) not in have)
     features.EXTRA_RUNS = runs
+    features.EXTRA_RUNS_RACES = {r["race_id"] for d in all_days for r in d["races"]}  # 足すのは対象の日のレースだけ（アプリと同じ）
+    # 外国馬の扱い（2026-11-26。アプリと同じ）：レーティングの初めの値、騎手（短期免許は通算）・調教師・馬主・生産者（日本馬の中央値）
+    features.FOREIGN_FIX = {"rating": True, "people": True}
+    ri = DATA.parent / "overseas" / "rating_init.json"
+    features.RATING_INIT = json.loads(ri.read_text(encoding="utf-8"))["coef"] if ri.exists() else None
+    wb = DATA.parent / "overseas" / "wbrr.json"
+    features.WBRR = json.loads(wb.read_text(encoding="utf-8"))["foreign"] if wb.exists() else None
+    # 外国人騎手の海外主要G1の成績（ファイルにない外国馬の騎手は JRA-VAN Ver.World をその場で検索する）
+    jw = DATA.parent / "overseas" / "jockey_world.json"
+    features.JOCKEY_WORLD = json.loads(jw.read_text(encoding="utf-8")) if jw.exists() else None
+    if features.JOCKEY_WORLD:
+        import jockey_world  # noqa: PLC0415
+        for d in all_days:
+            for r in d["races"]:
+                for h in r["results"]:
+                    k = features.norm_jockey(h.get("jockey"))
+                    if features.is_foreign_trainer(h.get("trainer")) and k and k not in features.JOCKEY_WORLD["jockeys"]:
+                        try:
+                            e = jockey_world.lookup(h["jockey"])
+                        except Exception:  # noqa: BLE001
+                            e = None
+                        if e:
+                            features.JOCKEY_WORLD["jockeys"][k] = e
     flat = [r for d in all_days for r in d["races"] if r["surface"] in ("芝", "ダート")]
     for date, ds in sorted(by_date.items()):
         print(f"{date}: {sum(1 for d in ds for r in d['races'] if r['surface'] in ('芝', 'ダート'))} races", file=sys.stderr, flush=True)

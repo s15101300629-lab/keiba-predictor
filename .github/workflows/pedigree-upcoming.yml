@@ -37,9 +37,17 @@ jobs:
       - name: Collect
         run: npx tsx scripts/ml/collect_upcoming_pedigree.ts ${{ github.event.inputs.dates }} | tee -a "$GITHUB_STEP_SUMMARY"
 
+      # 出走予定の重賞の馬・外国馬のフランスの走の区間タイム（France Galop。アプリは data/overseas/francegalop.json を読む。2026-11-26）
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: France Galop sectionals
+        working-directory: scripts/ml
+        run: pip install -q pypdf==6.17.0 requests && python francegalop.py upcoming || true; pip install -q -r requirements.txt && python wbrr.py || true
+
       - name: Commit
         run: |
-          git add data/pedigree/stallions.json data/pedigree/all/horses.json
+          git add data/pedigree/stallions.json data/pedigree/all/horses.json data/overseas/francegalop.json data/overseas/upcoming_overseas.json data/overseas/wbrr.json
           if git diff --cached --quiet; then
             echo "no changes"
             exit 0

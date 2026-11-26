@@ -251,6 +251,16 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
   - 地方（交流重賞など）の走はまだ入れていない
   - マイルCS：エルデナリ 3.0%（18位）→ 29.4%（4位）。エンブロイダリー（香港マイル11着）49.5%→40.5%
 
+## 外国馬の扱い（2026-11-26、main に反映）
+
+- 原因：外国馬は学習データの「新馬・転入馬の形」（レーティング 1500、騎手などの成績 0、前走レベル不明）に見え、低く出ていた（JC の SHAP で確認）
+- 馬名：成績表の「カランダガン（Calandagan（IRE））（仏）」をカナだけにする（`clean_horse_name`・`cleanHorseName`、二重名も直す）。アプリは `storeHorseKey` で前の形の store ともつなぐ
+- 海外の走の1着賞金は IFHA の格どおり（2026-11-26、依頼者の判断。`scripts/ml/ifha.py` → `data/overseas/ifha.json`、`overseas.ifha_prize`／TS の `ifhaPrize`）：国際格付け基準（ICS 2026）の Part I の国の G1 は「世界のトップ100 G1」のレースレーティングを JRA の G1 の式で賞金に直す（トップ100外は JRA のトップ100外 G1 の中央値 11,000万円）、G2〜OP は JRA の同じ格、Part II の重賞はリステッド相当（2,400）、Part III・載っていない国は格なし。チリ・ペルーは Part I。競馬場は近い JRA のコースに読み替え（`data/overseas/venue_map.json`）
+- 外国馬（netkeiba の厩舎が「海外」、成績表では調教師が「F．グラファール」の形）だけ：JRA の走がなければレーティングの初めの値を能力指数から（`rating_init.json`）、短期免許の騎手は JRA での通算（`jockey_career.json`、`foreign_jockeys.py`）、JRA で乗ったことのない騎手は日本馬の中央値、調教師・馬主・生産者・前走レベルは日本馬の「その馬の強さ（能力指数の順位）の位置」の値。画面は「推定」と市場と合わせた確率を出す（注意の文は出さない）
+- 学習データには使わない（`features.FOREIGN_FIX` は答え合わせ・アプリだけ）。海外の走を足すのは予測するレースだけ（`EXTRA_RUNS_RACES`）
+- 検証（`overseas_eval.py`、外国馬25走・遠征帰り839走。少ないので目安）：外国馬の3着以内の順位 5.3→4.3位、logloss は 0.299→0.331（高く見すぎ）。一致テスト `parity_foreign.py`/`.ts` は一致
+- 調教師の略記（「手塚久」＝手塚貴久）をつなぐようにした（`resolveTrainer`）
+
 ## 全馬の血統取得（2026-11-20 に完了）
 
 - 目的：父・母父・母母父の成績（産駒勝率、芝ダ別・距離別・馬場別）と、父×競馬場の成績を本体モデルに入れること
@@ -579,8 +589,8 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
 
 - 調教ページ（race.netkeiba.com/race/oikiri.html）は 2017年のレースでも短評と A〜D 評価が見える（2017・2018・2019・2020・2023・2024年の東京11Rで確認）。今あるのは 2025・2026年だけで、学習の 2018〜2024年の行は欠損
   - 依頼者の判断（2026-11-25）：2020〜2024年（16,676レース）を取る。`training-backfill.yml`（作業ブランチへの push で起動。1本ずつ・2秒間隔、約5時間半のジョブを順に最大4回、15分ごとに commit）。見込み約12時間
-  - `collect_training.py` の User-Agent を「Mozilla/5.0」（ブラウザのふり）から「data-collector/1.0」に変えた（requests の既定の名前は 400 になる）。`check_jra_day.py` の調教の取得も同じ。間隔は環境変数 `TRAINING_WAIT_SECONDS`（既定5秒）
-  - 取れたら `compare_training_past.py` → `data/ml/training_past.json`（今の形＝2025年より前は欠損 対 全年）。main に入れるのは結果を見て依頼者が判断
+  - `collect_training.py` の User-Agent を「Mozilla/5.0」（ブラウザのふり）から「data-collector/1.0」に変えた（requests の既定の名前は 400 になる）。`check_jra_day.py` の調教の取得も同じ。間隔は環境変数 `TRAINING_WAIT_SECONDS`（既定5秒）。この変更は作業ブランチだけで、main はまだ「Mozilla/5.0」
+  - 取れたら `compare_training_past.py` → `data/ml/training_past.json`（今の形＝2025年より前は欠損 対 全年）。依頼者の判断（2026-11-26）で 2020〜2024年の分を main に入れて再学習する。兄弟の成績は見送り、2018・2019年の調教評価は取らない
 - 兄弟の成績：成績表に母がなく、全馬の血統（horses.json）も父・母父・母母父だけで母を保存していない
   - 依頼者の判断（2026-11-25）：母は取らず、取得している範囲でやる。`compare_siblings.py` → `data/ml/siblings.json`（ml-matrix）
   - 「母系」＝母父・母母父・生産者が同じ馬（同じ母の兄弟と、ごく近い母系がまざる）、「全兄弟に近い」＝さらに父も同じ。本人を除き、レースの日より前の走で、頭数・出走数・勝率・3着内率・勝った馬の割合・勝ったレースの1着賞金の最高・走ったレースの1着賞金の平均

@@ -28,6 +28,12 @@ export type Store = {
   ratings?: Record<string, [number, number, number, number, number, number]>;
   // 含水率の平均："競馬場コード-芝ダ" → 年 → その年より前（2020年〜）の平均（scripts/ml/features.py の BABA_MEAN）
   babaMean?: Record<string, Record<string, number>>;
+  // 外国馬の扱い（2026-11-26。applyForeign*）。store.json にはなく、data/overseas の別のファイルから足す
+  // 短期免許の外国人騎手（成績表で「R.ムーア(英)」の形）の JRA での全部の騎乗 [date, venue, surface, distance, top3]（jockey_career.json）
+  jockeyCareer?: Record<string, [string, number, number, number | null, number][]>;
+  // 能力指数 → レーティングの初めの値の式（芝ダ別。rating_init.json）
+  ratingInit?: Record<string, { elom: [number, number]; elos: [number, number] }> | null;
+  foreignTrainingRuns?: number; // 学習データの外国馬の走の数（画面の注意。jockey_career.json）
 };
 
 export type RaceInput = {
@@ -87,9 +93,60 @@ export type RunnerInput = {
   trainRank?: number | null; // 調教評価 A=4〜D=1（netkeiba の調教ページ）。なければ null
   // 血統（app/lib/pedigree.ts の pedigreeModelValues。父・母父・母母父の産駒成績の 50:25:12.5 平均）
   pedigree?: Partial<Record<(typeof PEDIGREE_KEYS)[number], number | null>> | null;
+  // 海外の厩舎の馬（netkeiba の厩舎が「海外…」）。レーティングの初めの値・短期免許の騎手の通算成績（runnerFeatures）と、
+  // 調教師・馬主・生産者などを日本馬の中央値で埋める（fillForeignPeople）に使う。scripts/ml/features.py の FOREIGN_FIX と同じ
+  foreign?: boolean;
+  // JRA で乗ったことがない外国人騎手の、海外主要G1の成績から式で出した3着内率（jockey_world.json。features.py の jockey_world_target）
+  jockeyWorldTarget?: number | null;
+  // ロンジンワールドベストレースホースランキングに載っている外国馬のレーティング（wbrr.json。features.py の WBRR）
+  wbrr?: { elom: number; elos: [number, number] } | null;
   owner?: string | null; // 馬主（netkeiba のプロフィール）
   breeder?: string | null; // 生産者（netkeiba のプロフィール「生産者(産地)」。産地の括弧は normOwner で取る）
 };
+
+const HEAD_COUNT_NOTE = /[（(][0-9０-９]+頭[）)]/g;
+const FOREIGN_NAME = /^([^（(]+)[（(]+[A-Za-z]/;
+
+/** 馬名をそろえる。scripts/ml/features.py の clean_horse_name と同じ規則：「（12頭）」を外し、外国馬の
+ * 「カランダガン（Calandagan（IRE））（仏）」はカナだけにする。カナが2回続く変換の誤りは1回にする. */
+export function cleanHorseName(name: string): string {
+  let s = name.replace(HEAD_COUNT_NOTE, "").trim();
+  const m = s.match(FOREIGN_NAME);
+  if (m) {
+    const ch = [...m[1].trim()];
+    const h = Math.floor(ch.length / 2);
+    s = ch.length % 2 === 0 && ch.slice(0, h).join("") === ch.slice(h).join("") ? ch.slice(0, h).join("") : ch.join("");
+  }
+  return s;
+}
+
+const horseAlias = new WeakMap<Store, Map<string, string>>();
+/** netkeiba・JRA の馬名 → store.horses のキー。store が前の規則（英字名・国の付いた馬名）で作られていてもつなぐ. */
+export function storeHorseKey(store: Store, name: string): string {
+  if (store.horses[name]) return name;
+  let alias = horseAlias.get(store);
+  if (!alias) {
+    alias = new Map();
+    for (const k of Object.keys(store.horses)) { const c = cleanHorseName(k); if (c !== k && !store.horses[c]) alias.set(c, k); }
+    horseAlias.set(store, alias);
+  }
+  return alias.get(cleanHorseName(name)) ?? name;
+}
+
+/** 外国馬の騎手（netkeiba の略記「バルザロー」「ムーア」など）を、短期免許の騎手の通算の表（jockeyCareer）のキーに対応付ける. */
+export function resolveCareerJockey(name: string | null | undefined, store: Store, raceDate: string): string | null {
+  const n = normJockey(name);
+  const career = store.jockeyCareer;
+  if (!n || !career) return null;
+  if (career[n]) return n;
+  // 「Ｌトーレス」のように頭文字があれば頭文字も合わせる（C.トーレスと分ける）。「ムーア」「バルザロー」は名前の頭で合わせる
+  const bare = (x: string) => x.replace(/^[A-Za-z]/, "");
+  const cands = Object.keys(career).filter((k) => (/^[A-Za-z]/.test(n) ? k.startsWith(n) : bare(k).startsWith(n)))
+    .map((k) => ({ k, last: career[k].filter((r) => r[0] < raceDate).at(-1)?.[0] ?? "" }))
+    .sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : 0));
+  if (!cands.length || (cands.length > 1 && cands[0].last === cands[1].last)) return null;
+  return cands[0].k;
+}
 
 /** 馬主・生産牧場の名前をそろえる。scripts/ml/features.py の norm_owner と同じ. */
 export function normOwner(name: string | null | undefined): string {
@@ -301,9 +358,20 @@ export function resolveTrainer(name: string | null | undefined, store: Store, ra
   const n = normJockey((name ?? "").replace(/^(美浦|栗東|地方|海外)/, ""));
   if (!n) return null;
   const runs = (store.horses[horse] ?? []).filter((r) => r[0] < raceDate);
+  // netkeiba は名前の途中を略すことがある（「手塚久」＝手塚貴久）。頭の文字が同じで、略した名前の文字が順に全部入っていれば同じ人とみる（2026-11-26）
+  const abbrevOf = (full: string) => {
+    if (!full || full[0] !== n[0]) return false;
+    let j = 0;
+    for (const ch of full) if (ch === n[j]) j++;
+    return j === n.length;
+  };
   for (let i = runs.length - 1; i >= 0; i--) {
     const t = store.names?.[runs[i][14]] ?? "";
     if (t && (t === n || t.startsWith(n))) return t;
+  }
+  for (let i = runs.length - 1; i >= 0; i--) {
+    const t = store.names?.[runs[i][14]] ?? "";
+    if (abbrevOf(t)) return t;
   }
   const trainers = store.trainers ?? {};
   if (trainers[n]) return n;
@@ -684,6 +752,18 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
   const rt = store.ratings?.[runner.horse];
   f.elom = rt?.[0] ?? 1500; f.elom_n = rt?.[1] ?? 0;
   f.elos = rt?.[race.surface === 0 ? 2 : 4] ?? 1500; f.elos_n = rt?.[race.surface === 0 ? 3 : 5] ?? 0;
+  // 外国馬で JRA の走がない（レーティングがない）：海外の走から見積もった能力指数から初めの値（features.py の foreign_rating）
+  const ri = store.ratingInit?.[String(race.surface)];
+  if (runner.foreign && !rt && ri && !Number.isNaN(f.ab_wmean)) {
+    f.elom = ri.elom[0] + ri.elom[1] * f.ab_wmean;
+    f.elos = ri.elos[0] + ri.elos[1] * f.ab_wmean;
+    f._est_rating = 1;
+  }
+  if (runner.foreign && runner.wbrr) {
+    f.elom = runner.wbrr.elom;
+    f.elos = runner.wbrr.elos[race.surface === 0 ? 0 : 1];
+    f._est_rating = 2;
+  }
   const tr = trainerStats(store, race, runner.trainerKey);
   Object.assign(f, {
     trainer_n: tr.n, trainer_top3: rate(tr.top3, tr.n), trainer_venue_n: tr.venueN, trainer_venue_top3: rate(tr.venueTop3, tr.venueN),
@@ -718,18 +798,21 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
     jockey_course_n: j.courseN, jockey_course_top3: rate(j.courseTop3, j.courseN),
     jockey_n_py: j.pyN, jockey_top3_py: rate(j.pyTop3, j.pyN),
   });
-  // 乗り替わりの向き（features.py の jockey_dir_features）：前走の騎手の3着内率（前の年・今年）と、今回の騎手との差
-  if (last && lastJockey && runner.jockeyKey) {
-    const pj = jockeyStats(store, race, lastJockey);
-    const pPy = rate(pj.pyTop3, pj.pyN);
-    const pTy = rate(pj.top3, pj.n);
-    const same = runner.jockeyKey === lastJockey;
-    f.jc_prev_top3_py = pPy;
-    f.jc_delta_py = same ? 0 : f.jockey_top3_py - pPy;
-    f.jc_delta_ty = same ? 0 : f.jockey_top3 - pTy;
-  } else {
-    f.jc_prev_top3_py = NaN; f.jc_delta_py = NaN; f.jc_delta_ty = NaN;
+  if (runner.foreign) {
+    // 外国馬：短期免許の騎手は今年のかわりに JRA での通算（features.py の jockey_career_features）。JRA での騎乗がなければ後で中央値（fillForeignPeople）
+    const career = (runner.jockeyKey ? store.jockeyCareer?.[runner.jockeyKey] ?? [] : []).filter((r) => r[0] < race.date);
+    if (career.length) {
+      const cnt = (cond: (r: (typeof career)[number]) => boolean) => { const sel = career.filter(cond); return [sel.length, sel.reduce((a, r) => a + r[4], 0)]; };
+      const [n, t] = cnt(() => true);
+      const [vn, vt] = cnt((r) => r[1] === race.venue);
+      const [cn, ct] = cnt((r) => r[1] === race.venue && r[2] === race.surface && r[3] === race.distance);
+      Object.assign(f, { jockey_n: n, jockey_top3: rate(t, n), jockey_venue_n: vn, jockey_venue_top3: rate(vt, vn), jockey_course_n: cn, jockey_course_top3: rate(ct, cn) });
+      f._est_jockey_career = 1;
+    } else if (!(runner.jockeyKey ? store.jockeys[runner.jockeyKey] ?? [] : []).some((r) => r[0] < race.date)) {
+      f._jockey_missing = 1;
+    }
   }
+  jockeyDir(store, race, f, lastJockey, runner.jockeyKey);
   // 馬場の細かい値（features.py の baba_features）
   const b = race.baba;
   const turf = race.surface === 0;
@@ -740,6 +823,91 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
   f.baba_moist_rel = moist != null && mean != null ? moist - mean : NaN;
   f.course_letter = turf && b?.course != null ? b.course : NaN;
   return f;
+}
+
+/** 乗り替わりの向き（features.py の jockey_dir_features）：前走の騎手の3着内率（前の年・今年）と、今回の騎手との差. */
+function jockeyDir(store: Store, race: RaceInput, f: Features, lastJockey: string, jockeyKey: string | null): void {
+  if (lastJockey && jockeyKey) {
+    const pj = jockeyStats(store, race, lastJockey);
+    const pPy = rate(pj.pyTop3, pj.pyN);
+    const pTy = rate(pj.top3, pj.n);
+    const same = jockeyKey === lastJockey;
+    f.jc_prev_top3_py = pPy;
+    f.jc_delta_py = same ? 0 : f.jockey_top3_py - pPy;
+    f.jc_delta_ty = same ? 0 : f.jockey_top3 - pTy;
+  } else {
+    f.jc_prev_top3_py = NaN; f.jc_delta_py = NaN; f.jc_delta_ty = NaN;
+  }
+}
+
+const TRAINER_FILL = ["trainer_n", "trainer_top3", "trainer_venue_n", "trainer_venue_top3", "trainer_n_py", "trainer_top3_py"];
+const OWNER_FILL = ["owner", "breeder"].flatMap((k) => ["y", "py"].flatMap((y) => [`${k}_n_${y}`, `${k}_top3_${y}`]));
+const JOCKEY_FILL = ["jockey_n", "jockey_top3", "jockey_venue_n", "jockey_venue_top3", "jockey_course_n", "jockey_course_top3", "jockey_n_py", "jockey_top3_py"];
+
+const LEVEL_FILL = ["lv_field_form", "lv_field_tidx", "lv_after_n", "lv_after_top3", "lv_beaten_form", "lv_lost_form"];
+/** 外国馬の能力指数が、同じレースの日本馬の中で下から何割か（features.py の strength_q）. */
+function strengthQ(rows: Features[], runners: RunnerInput[], f: Features): number {
+  const a = f.ab_wmean;
+  const xs = rows.filter((x, i) => !runners[i].foreign && !Number.isNaN(x.ab_wmean)).map((x) => x.ab_wmean);
+  if (Number.isNaN(a) || !xs.length) return 0.5;
+  let below = 0;
+  for (const x of xs) below += x < a ? 1 : x === a ? 0.5 : 0;
+  return below / xs.length;
+}
+/** 小さい順に並べた割合 q の位置の値（features.py の quantile_of）. */
+function quantileOf(vals: number[], q: number): number {
+  const xs = vals.filter((v) => !Number.isNaN(v)).sort((a, b) => a - b);
+  if (!xs.length) return NaN;
+  const pos = q * (xs.length - 1);
+  const lo = Math.floor(pos);
+  const hi = Math.min(lo + 1, xs.length - 1);
+  return xs[lo] + (xs[hi] - xs[lo]) * (pos - lo);
+}
+
+/**
+ * 外国馬の調教師・馬主・生産者（と、JRA での騎乗がない騎手）の成績を、同じレースの日本馬の、その外国馬の強さの位置の値で埋める
+ * （features.py の fill_foreign_people。2026-11-26 に中央値から変えた）。runnerFeatures のあと、addFormDeviation などの前に呼ぶ。
+ * 埋めた項目の名前を馬ごとに返す（画面の「推定」用）
+ */
+export function fillForeignPeople(store: Store, race: RaceInput, rows: Features[], runners: RunnerInput[]): string[][] {
+  const est = rows.map((f) => [...(f._est_rating ? ["elom", "elos"] : []), ...(f._est_rating === 2 ? ["wbrr"] : []), ...(f._est_jockey_career ? ["jockey_career"] : [])]);
+  const japanese = rows.filter((_, i) => !runners[i].foreign);
+  if (!japanese.length || !runners.some((r) => r.foreign)) return est;
+  const qs = rows.map((f, i) => (runners[i].foreign ? strengthQ(rows, runners, f) : 0.5));
+  const jtop = japanese.map((x) => x.jockey_top3).filter((v) => !Number.isNaN(v));
+  rows.forEach((f, i) => {
+    const r = runners[i];
+    if (!r.foreign) return;
+    const keys = [...TRAINER_FILL, ...OWNER_FILL, ...(f._jockey_missing ? JOCKEY_FILL : [])];
+    // JRA で乗ったことがない騎手は中央値。JRA-VAN Ver.World に載っていれば、式で出した3着内率の日本馬の騎手の中での位置（features.py と同じ）
+    const tg = f._jockey_missing ? r.jockeyWorldTarget ?? null : null;
+    let jq = 0.5;
+    if (tg !== null && jtop.length) {
+      let below = 0;
+      for (const x of jtop) below += x < tg ? 1 : x === tg ? 0.5 : 0;
+      jq = below / jtop.length;
+    }
+    if (tg !== null) est[i].push("jockey_world");
+    for (const k of keys) f[k] = quantileOf(japanese.map((x) => x[k]), JOCKEY_FILL.includes(k) ? jq : qs[i]);
+    f._q = qs[i];
+    est[i].push(...keys);
+    const prior = horseRuns(store, r.horse, r.extraRuns).filter((x) => x[0] < race.date);
+    const last = prior.length ? prior[prior.length - 1] : null;
+    jockeyDir(store, race, f, last ? store.names?.[last[13]] ?? "" : "", r.jockeyKey);
+  });
+  return est;
+}
+
+/** 外国馬の前走レベル（海外の走は相手の成績がないので欠ける）を、同じレースの日本馬の、強さの位置の値で埋める
+ * （features.py の fill_foreign_level）。addOpponentFeatures のあとに呼ぶ。埋めた項目の名前を返す. */
+export function fillForeignLevel(rows: Features[], runners: RunnerInput[]): string[][] {
+  const japanese = rows.filter((_, i) => !runners[i].foreign);
+  return rows.map((f, i) => {
+    if (!runners[i].foreign || !japanese.length) return [];
+    const keys = LEVEL_FILL.filter((k) => Number.isNaN(f[k]));
+    for (const k of keys) f[k] = quantileOf(japanese.map((x) => x[k]), f._q ?? 0.5);
+    return keys;
+  });
 }
 
 /** レーティングの、出走馬の中での順位÷頭数・偏差・最高との差（scripts/ml/features.py の add_rating_field と同じ。足す前に小さい順に並べる）. */
