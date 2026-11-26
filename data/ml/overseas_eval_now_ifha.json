@@ -5,31 +5,31 @@
  "coef": {
   "0": {
    "ab": [
-    -4.54248802936461,
-    0.5620975649925829,
-    -0.6966792306025835,
-    0.25648029142803264
+    -4.542488029364608,
+    0.5620975649925828,
+    -0.6966792306025824,
+    0.2564802914280324
    ],
    "tidx": [
-    -4.420987389950508,
-    0.5414744167173606,
-    -0.7081506037259565,
-    0.26643292923354756
+    -4.420987389950506,
+    0.5414744167173604,
+    -0.7081506037259556,
+    0.2664329292335478
    ],
    "n": 223288
   },
   "1": {
    "ab": [
-    -8.475418047547569,
-    1.3237311301262717,
-    -0.7995355398513406,
-    -0.09633121382042419
+    -8.475418047547572,
+    1.3237311301262713,
+    -0.7995355398513412,
+    -0.09633121382042148
    ],
    "tidx": [
-    -8.351854574001852,
-    1.311179464809173,
-    -0.7918180917426969,
-    -0.11637251736808996
+    -8.351854574001848,
+    1.3111794648091717,
+    -0.7918180917426973,
+    -0.11637251736808862
    ],
    "n": 233346
   }
@@ -109,8 +109,8 @@
     "rank": 6
    },
    "新": {
-    "prob": 0.1779,
-    "rank": 6
+    "prob": 0.246,
+    "rank": 3
    }
   },
   {
@@ -154,7 +154,7 @@
     "rank": 10
    },
    "新": {
-    "prob": 0.1421,
+    "prob": 0.1378,
     "rank": 8
    }
   },
@@ -200,8 +200,8 @@
     "rank": 11
    },
    "新": {
-    "prob": 0.2156,
-    "rank": 4
+    "prob": 0.2063,
+    "rank": 5
    }
   },
   {
@@ -284,8 +284,8 @@
     "rank": 11
    },
    "新": {
-    "prob": 0.1035,
-    "rank": 11
+    "prob": 0.1408,
+    "rank": 10
    }
   },
   {
@@ -329,8 +329,8 @@
     "rank": 4
    },
    "新": {
-    "prob": 0.44,
-    "rank": 1
+    "prob": 0.3911,
+    "rank": 2
    }
   },
   {
@@ -375,8 +375,8 @@
     "rank": 14
    },
    "新": {
-    "prob": 0.1104,
-    "rank": 10
+    "prob": 0.1137,
+    "rank": 11
    }
   },
   {
@@ -421,7 +421,7 @@
     "rank": 9
    },
    "新": {
-    "prob": 0.1593,
+    "prob": 0.1658,
     "rank": 6
    }
   },
@@ -513,8 +513,8 @@
     "rank": 11
    },
    "新": {
-    "prob": 0.1034,
-    "rank": 9
+    "prob": 0.171,
+    "rank": 6
    }
   },
   {
@@ -559,7 +559,7 @@
     "rank": 8
    },
    "新": {
-    "prob": 0.1601,
+    "prob": 0.1673,
     "rank": 8
    }
   },
@@ -612,8 +612,8 @@
     "rank": 3
    },
    "新": {
-    "prob": 0.4533,
-    "rank": 2
+    "prob": 0.5015,
+    "rank": 1
    }
   },
   {
@@ -658,8 +658,8 @@
     "rank": 8
    },
    "新": {
-    "prob": 0.1731,
-    "rank": 7
+    "prob": 0.1794,
+    "rank": 6
    }
   },
   {
@@ -696,8 +696,8 @@
     "rank": 5
    },
    "新": {
-    "prob": 0.2197,
-    "rank": 5
+    "prob": 0.2129,
+    "rank": 6
    }
   },
   {
@@ -742,8 +742,8 @@
     "rank": 13
    },
    "新": {
-    "prob": 0.0728,
-    "rank": 15
+    "prob": 0.0847,
+    "rank": 14
    }
   },
   {
@@ -788,7 +788,7 @@
     "rank": 7
    },
    "新": {
-    "prob": 0.4085,
+    "prob": 0.3585,
     "rank": 3
    }
   },
@@ -834,7 +834,7 @@
     "rank": 18
    },
    "新": {
-    "prob": 0.0139,
+    "prob": 0.0069,
     "rank": 18
    }
   },
@@ -880,7 +880,7 @@
     "rank": 11
    },
    "新": {
-    "prob": 0.1864,
+    "prob": 0.1831,
     "rank": 8
    }
   },
@@ -926,7 +926,7 @@
     "rank": 10
    },
    "新": {
-    "prob": 0.1994,
+    "prob": 0.2034,
     "rank": 7
    }
   },
@@ -972,8 +972,8 @@
     "rank": 13
    },
    "新": {
-    "prob": 0.0483,
-    "rank": 13
+    "prob": 0.052,
+    "rank": 12
    }
   },
   {
@@ -1064,7 +1064,7 @@
     "rank": 11
    },
    "新": {
-    "prob": 0.0685,
+    "prob": 0.0686,
     "rank": 13
    }
   },
@@ -1117,8 +1117,8 @@
     "rank": 12
    },
    "新": {
-    "prob": 0.1935,
-    "rank": 6
+    "prob": 0.1292,
+    "rank": 10
    }
   },
   {
@@ -1163,7 +1163,7 @@
     "rank": 5
    },
    "新": {
-    "prob": 0.4277,
+    "prob": 0.416,
     "rank": 2
    }
   },
@@ -1209,69 +1209,100 @@
     "rank": 5
    },
    "新": {
-    "prob": 0.2126,
+    "prob": 0.1982,
     "rank": 5
    }
   }
  ],
  "japanese_changed": {
   "新": {
+   "form_raw": 130,
+   "form_dev": 1519,
+   "last1_time_c": 35,
+   "form_time_mean": 130,
    "venue_n": 218,
    "venue_top3": 176,
+   "pos_first_mean": 164,
+   "pos_last_mean": 164,
+   "nige_rate": 31,
+   "senko_rate": 96,
+   "field_nige_cands": 53,
+   "field_front": 293,
+   "field_front_ratio": 293,
+   "rel_pos_rank": 286,
    "prize_ratio_last": 204,
    "prize_ratio_mean5": 610,
    "tidx_mean5": 601,
-   "tidx_best5": 270,
+   "tidx_best5": 280,
    "tidx_last1": 199,
    "rel_tidx_mean5": 5363,
-   "rank_tidx_mean5": 1100,
-   "rel_tidx_best5": 3305,
-   "rank_tidx_best5": 721,
+   "rank_tidx_mean5": 1127,
+   "rel_tidx_best5": 3439,
+   "rank_tidx_best5": 763,
    "rel_prize_ratio_mean5": 5380,
    "rank_prize_ratio_mean5": 788,
+   "field_form_mean": 1523,
    "ab_wmean": 569,
-   "ab_best": 279,
+   "ab_best": 288,
    "ab_last": 197,
-   "ab_trend": 503,
+   "ab_trend": 502,
    "ab_std": 565,
-   "ab_wmean_rank": 943,
+   "ab_wmean_rank": 1004,
    "ab_wmean_z": 4921,
    "ab_wmean_dmean": 4921,
-   "ab_wmean_dmax": 2398,
-   "ab_best_rank": 638,
-   "ab_best_z": 3132,
-   "ab_best_dmean": 3132,
-   "ab_best_dmax": 1944,
+   "ab_wmean_dmax": 2443,
+   "ab_best_rank": 696,
+   "ab_best_z": 3280,
+   "ab_best_dmean": 3280,
+   "ab_best_dmax": 1954,
    "ab_wmean_fstd": 5010,
+   "ag_dev_wmean": 206,
+   "ag_dev_best": 25,
+   "ag_rank_wmean": 206,
+   "ag_rank_best": 17,
+   "early_gap_wmean": 206,
+   "early_gap_best": 94,
+   "fade_wmean": 206,
+   "fade_best": 8,
+   "ag_dev_wmean_rank": 518,
+   "ag_dev_wmean_z": 1993,
+   "ag_dev_wmean_dmean": 1993,
+   "ag_dev_wmean_dmax": 444,
+   "ag_dev_wmean_fstd": 2003,
    "g_last2": 333,
    "g_m3_m10": 678,
-   "g_last_best": 368,
-   "g_up_streak": 88,
-   "g_layoff": 502,
-   "fit_dist": 684,
+   "g_last_best": 374,
+   "g_up_streak": 93,
+   "g_layoff": 504,
+   "fit_dist": 682,
    "fit_venue": 615,
    "fit_venue_n": 215,
    "fit_shape": 715,
    "fit_shape_n": 425,
-   "fit_going": 694,
+   "fit_going": 695,
    "fit_turn": 735,
    "fit_turn_n": 434,
    "fit_change": 699,
-   "fit_surface": 578,
+   "fit_surface": 575,
    "cond_ab": 733,
    "pace_hi": 688,
    "pace_sl": 697,
-   "ab_wmean_d3": 2006,
-   "ab_wmean_dtop3": 3424,
+   "pos_std": 162,
+   "ab_wmean_d3": 2056,
+   "ab_wmean_dtop3": 3461,
    "ab_wmean_top3_gap": 5010,
-   "ab_wmean_close": 1914,
-   "cond_ab_d3": 2158,
+   "ab_wmean_close": 1969,
+   "cond_ab_d3": 2184,
    "cond_ab_dtop3": 3737,
    "cond_ab_top3_gap": 6103,
-   "cond_ab_close": 1610,
-   "cond_ab_rank": 748,
-   "cond_ab_dmax": 2180,
-   "lv_field_tidx": 4445,
+   "cond_ab_close": 1674,
+   "cond_ab_rank": 759,
+   "cond_ab_dmax": 2182,
+   "lv_field_form": 1230,
+   "lv_field_tidx": 4446,
+   "lv_beaten_form": 540,
+   "lv_lost_form": 828,
+   "h2h_adj": 499,
    "sim_straight_n": 275,
    "sim_straight_top3": 224,
    "band_straight_n": 430,
@@ -1280,20 +1311,28 @@
    "band_elev_top3": 375,
    "band_both_n": 306,
    "band_both_top3": 257,
-   "elom_rank": 175,
+   "sc_strong": 153,
+   "sc_strong_ab": 2117,
+   "scp_n": 34,
+   "scp_top3": 33,
+   "scp_ab_best": 39,
+   "c4_rate": 59,
+   "c4_adv": 59,
+   "c4_n": 59,
+   "elom_rank": 174,
    "elom_z": 334,
    "elom_dmax": 58,
-   "elos_rank": 190,
+   "elos_rank": 191,
    "elos_z": 334,
    "elos_dmax": 58,
    "abd_w": 690,
-   "abd_w_rank": 934,
-   "abd_w_dmax": 2440,
-   "abd_w_d3": 2298,
+   "abd_w_rank": 969,
+   "abd_w_dmax": 2475,
+   "abd_w_d3": 2341,
    "abn_w": 505,
-   "abn_w_rank": 842,
-   "abn_w_dmax": 2276,
-   "abn_w_d3": 1847
+   "abn_w_rank": 910,
+   "abn_w_dmax": 2312,
+   "abn_w_d3": 1861
   }
  },
  "all": {
@@ -1312,10 +1351,10 @@
    "top3_rank_mean": 3.84
   },
   "新": {
-   "logloss": 0.49571,
-   "mean_prob": 0.2456,
-   "mean_rank": 6.91,
-   "top3_rank_mean": 4.12
+   "logloss": 0.4973,
+   "mean_prob": 0.2439,
+   "mean_rank": 6.95,
+   "top3_rank_mean": 4.2
   }
  },
  "foreign": {
@@ -1334,10 +1373,10 @@
    "top3_rank_mean": 5.33
   },
   "新": {
-   "logloss": 0.33338,
-   "mean_prob": 0.206,
-   "mean_rank": 7.24,
-   "top3_rank_mean": 4.0
+   "logloss": 0.32679,
+   "mean_prob": 0.2078,
+   "mean_rank": 7.12,
+   "top3_rank_mean": 3.67
   }
  },
  "japanese": {
@@ -1356,10 +1395,10 @@
    "top3_rank_mean": 3.82
   },
   "新": {
-   "logloss": 0.50055,
-   "mean_prob": 0.2468,
-   "mean_rank": 6.9,
-   "top3_rank_mean": 4.12
+   "logloss": 0.50239,
+   "mean_prob": 0.245,
+   "mean_rank": 6.95,
+   "top3_rank_mean": 4.2
   }
  },
  "japanese_in_foreign_races": {
@@ -1378,10 +1417,10 @@
    "top3_rank_mean": 4.8
   },
   "新": {
-   "logloss": 0.37449,
-   "mean_prob": 0.1721,
-   "mean_rank": 9.29,
-   "top3_rank_mean": 5.02
+   "logloss": 0.37624,
+   "mean_prob": 0.1719,
+   "mean_rank": 9.3,
+   "top3_rank_mean": 5.07
   }
  }
 }
