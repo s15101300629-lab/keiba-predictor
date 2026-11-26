@@ -248,14 +248,14 @@ async function fgRun(v: Record<string, string>, distance: number) {
     const me = race.horses.find((h) => h.no === Number(v["馬番"]));
     if (!me || me.finish !== Number(v["着順"])) continue;
     const fin = race.horses.filter((h) => h.finish);
-    if (fin.length < 3) return null;
+    if (fin.length < 3 || race.race_last600 === null) return null; // francegalop.py と同じ
     const last = fin.map((h) => h.arr - h.c600);
     const a = me.arr - me.c600;
     const srt = [...last].sort((x, y) => x - y);
     const r4 = (x: number) => Math.round(x * 1e4) / 1e4;
     return {
       agDev: r4(last.reduce((s, x) => s + x, 0) / last.length - a), agRank: r4((1 + srt.indexOf(a)) / last.length),
-      earlyGap: r4(me.c600 - Math.min(...fin.map((h) => h.c600))), fade: race.race_last600 === null ? null : r4(a - race.race_last600),
+      earlyGap: r4(me.c600 - Math.min(...fin.map((h) => h.c600))), fade: r4(a - race.race_last600!),
       posFirst: null, posLast: me.pos400, timeDiff: Math.round((me.arr - Math.min(...fin.map((h) => h.arr))) * 10) / 10,
     };
   }
@@ -274,7 +274,7 @@ async function hkRun(v: Record<string, string>, distance: number) {
     const me = race.horses.find((h) => h.no === Number(v["馬番"]));
     if (!me || me.finish !== Number(v["着順"])) continue;
     const fin = race.horses.filter((h) => h.last600 !== null && h.time !== null) as { no: number; pos: number[]; last600: number; time: number }[];
-    if (fin.length < 3 || !fin.includes(me as never)) return null;
+    if (fin.length < 3 || !fin.includes(me as never) || race.race_last600 === null) return null; // hkjc.py と同じ（レース全体の上がりがないときは使わない）
     const a = me.last600!;
     const mean = fin.reduce((s, h) => s + h.last600, 0) / fin.length;
     const srt = fin.map((h) => h.last600).sort((x, y) => x - y);
@@ -282,7 +282,7 @@ async function hkRun(v: Record<string, string>, distance: number) {
     return {
       agDev: r4(mean - a), agRank: r4((1 + srt.indexOf(a)) / fin.length),
       earlyGap: r4(me.time! - a - Math.min(...fin.map((h) => h.time - h.last600))),
-      fade: race.race_last600 === null ? null : r4(a - race.race_last600),
+      fade: r4(a - race.race_last600!),
       posFirst: me.pos[0] ?? null, posLast: me.pos.length >= 2 ? me.pos[me.pos.length - 2] : null,
       timeDiff: Math.round((me.time! - Math.min(...fin.map((h) => h.time))) * 10) / 10,
     };

@@ -100,6 +100,8 @@ def save() -> None:
 
 def metrics(race: dict, umaban: int) -> dict | None:
     """そのレースの、馬番 umaban の馬の上がり・位置取り・タイム差."""
+    if race["race_last600"] is None:  # レース全体の上がりがないと fade が出せないので、このレースの区間タイムは使わない
+        return None
     fin = [h for h in race["horses"] if h["last600"] is not None and h["time"] is not None]
     me = next((h for h in race["horses"] if h["no"] == umaban), None)
     if not me or len(fin) < 3 or me not in fin:
@@ -110,7 +112,7 @@ def metrics(race: dict, umaban: int) -> dict | None:
     srt = sorted(h["last600"] for h in fin)
     win = min(h["time"] for h in fin)
     return {"ag_dev": round(m - a, 4), "ag_rank": round((1 + srt.index(a)) / len(fin), 4), "early_gap": round(me["time"] - a - min(cum), 4),
-            "fade": None if race["race_last600"] is None else round(a - race["race_last600"], 4),
+            "fade": round(a - race["race_last600"], 4),
             "pos_first": me["pos"][0] if me["pos"] else None, "pos_last": me["pos"][-2] if len(me["pos"]) >= 2 else None,
             "time_diff": round(me["time"] - win, 1)}
 
