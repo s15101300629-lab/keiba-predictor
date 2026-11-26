@@ -935,10 +935,11 @@ function loadMlAssets() {
         .then((text) => (JSON.parse(text) as { features: string[] }).features).catch(() => null);
       // 外国馬の扱い（2026-11-26）：短期免許の騎手の JRA での通算（scripts/ml/foreign_jockeys.py）・レーティングの初めの値の式（overseas_eval.py）
       const ov = path.join(process.cwd(), "data", "overseas");
-      const [jockeyCareer, ratingInit] = await Promise.all(["jockey_career.json", "rating_init.json"].map((name) =>
+      const [jockeyCareer, ratingInit, wbrr] = await Promise.all(["jockey_career.json", "rating_init.json", "wbrr.json"].map((name) =>
         readFile(path.join(ov, name), "utf8").then((text) => JSON.parse(text)).catch(() => null)));
       (store as Store).jockeyCareer = jockeyCareer?.jockeys ?? undefined;
       (store as Store).ratingInit = ratingInit?.coef ?? null;
+      (store as Store & { wbrr?: unknown }).wbrr = wbrr?.foreign ?? null;
       (store as Store).foreignTrainingRuns = jockeyCareer?.foreign_training_runs ?? undefined;
       return { model, store, metrics, stack, heavy, winModel, top2Model, valueModel, marksEvidence, betsEvidence, betsSkipClasses, betsExtras, longshotFeatures, calibration };
     } catch {
@@ -1349,6 +1350,7 @@ async function getRace(
         const trainerKey = resolveTrainer(entry?.trainer, ml.store, raceInput.date, horseKey);
         const runner: RunnerInput = {
           horse: horseKey, jockeyKey, trainerKey, foreign,
+          wbrr: (ml.store as Store & { wbrr?: Record<string, { elom: number; elos: [number, number] }> | null }).wbrr?.[horse.horseId] ?? null,
           waku: entry?.frameNumber ?? null, umaban: entry?.horseNumber ?? null,
           weight: entry?.carriedWeight ?? null,
           age: sexAge ? Number(sexAge[2]) : null, sex: sexAge?.[1] ?? null,

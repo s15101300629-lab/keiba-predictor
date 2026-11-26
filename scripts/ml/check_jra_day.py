@@ -572,6 +572,8 @@ def main() -> None:
     features.FOREIGN_FIX = {"rating": True, "people": True}
     ri = DATA.parent / "overseas" / "rating_init.json"
     features.RATING_INIT = json.loads(ri.read_text(encoding="utf-8"))["coef"] if ri.exists() else None
+    wb = DATA.parent / "overseas" / "wbrr.json"
+    features.WBRR = json.loads(wb.read_text(encoding="utf-8"))["foreign"] if wb.exists() else None
     # 外国人騎手の海外主要G1の成績（ファイルにない外国馬の騎手は JRA-VAN Ver.World をその場で検索する）
     jw = DATA.parent / "overseas" / "jockey_world.json"
     features.JOCKEY_WORLD = json.loads(jw.read_text(encoding="utf-8")) if jw.exists() else None
