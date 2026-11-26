@@ -259,6 +259,12 @@ def main() -> None:
             if x and x.get("lengths") is not None and run["finish"]:
                 td = round(min(x["lengths"] * spl, 9.9), 1)
             run = {**run, "prize": prize, "time_diff": td}
+            if mode == "ifha":  # 香港の走は公式の区間タイムから（hkjc.py）
+                hk = overseas.hk_fields(run, run["ov_venue"])
+                if hk:
+                    run.update({k: hk[k] for k in ("ag_dev", "ag_rank", "early_gap", "fade", "pos_first", "pos_last")})
+                    if run["finish"]:
+                        run["time_diff"] = td = hk["time_diff"]
             if run["finish"] and td is not None:
                 c = coef[run["surface"]]
                 z = [1.0, math.log(max(prize, 100)), min(td, 3.0), math.log(run["field"])]

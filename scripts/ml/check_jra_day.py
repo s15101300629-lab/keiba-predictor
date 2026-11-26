@@ -359,6 +359,7 @@ def overseas_runs(perf: list[dict], venue_map: bool = True) -> list[dict]:
             "jockey": None, "tidx": None, "trainer": None, "victim": 0, "ab": None, **{k: None for k in features.AGARI_KEYS},
             "turn": None, "sband": None, "race_id": None, "c_straight": None, "c_elev": None, "form_at": None, "tm5_at": None,
             "ov_venue": v.get("開催", ""), "ov_name": name,  # 見積もり（overseas.improve）で使う
+            "ov_r": v.get("R", ""), "ov_umaban": v.get("馬番", ""), "ov_finish": fin,  # 香港の区間タイム（hkjc.py）で使う
         })
         if venue_map:
             out[-1].update(overseas_course(v.get("開催", ""), out[-1]["surface"]))
@@ -445,7 +446,8 @@ def store_run(r: dict) -> list:
     """海外の走（overseas_runs・overseas.improve の形）→ store.horses の1走（アプリの overseasRuns と同じ並び）."""
     return [r["date"], r["venue"], r["surface"], r["distance"], -1 if r["going"] is None else r["going"], r["field"],
             -1 if r["finish"] is None else r["finish"], -1 if r["time_diff"] is None else r["time_diff"],
-            -1, -1, -1, r["prize"], r["weight"], -1, -1, r["tidx"], 0, r["ab"], None, None, None, None,
+            -1, r["pos_first"] or -1, r["pos_last"] or -1, r["prize"], r["weight"], -1, -1, r["tidx"], 0, r["ab"],
+            r["ag_dev"], r["ag_rank"], r["early_gap"], r["fade"],
             r["turn"], r["sband"], None, r["c_straight"], r["c_elev"]]
 
 

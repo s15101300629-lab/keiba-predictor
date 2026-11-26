@@ -1,0 +1,1387 @@
+{
+ "note": "海外の走の扱いの比較。学習は海外の走なし、予測のときだけ足す。logloss は合計3にそろえた後。1＝JRA の走がない外国馬のレーティングの初めの値、2＝外国馬の騎手（短期免許は通算）・調教師・馬主・生産者（日本馬の中央値）",
+ "sec_per_length": 0.17259272122321667,
+ "length_pairs": 1154,
+ "coef": {
+  "0": {
+   "ab": [
+    -4.54248802936461,
+    0.5620975649925829,
+    -0.6966792306025835,
+    0.25648029142803264
+   ],
+   "tidx": [
+    -4.420987389950508,
+    0.5414744167173606,
+    -0.7081506037259565,
+    0.26643292923354756
+   ],
+   "n": 223288
+  },
+  "1": {
+   "ab": [
+    -8.475418047547569,
+    1.3237311301262717,
+    -0.7995355398513406,
+    -0.09633121382042419
+   ],
+   "tidx": [
+    -8.351854574001852,
+    1.311179464809173,
+    -0.7918180917426969,
+    -0.11637251736808996
+   ],
+   "n": 233346
+  }
+ },
+ "rating_init": {
+  "0": {
+   "elom": [
+    1548.8721,
+    40.9401
+   ],
+   "elom_n": 108807,
+   "elom_r": 0.6221,
+   "elos": [
+    1549.8662,
+    43.9418
+   ],
+   "elos_n": 97893,
+   "elos_r": 0.6319
+  },
+  "1": {
+   "elom": [
+    1554.9681,
+    35.3668
+   ],
+   "elom_n": 118207,
+   "elom_r": 0.7111,
+   "elos": [
+    1557.9821,
+    36.0889
+   ],
+   "elos_n": 98199,
+   "elos_r": 0.7041
+  }
+ },
+ "racedb_races": 311,
+ "years": {},
+ "foreign_runs": [
+  {
+   "date": "2021-11-28",
+   "race_id": "202105050812",
+   "horse": "グランドグローリー",
+   "finish": 5,
+   "popularity": 8,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0354,
+    "rank": 17
+   },
+   "今": {
+    "prob": 0.1675,
+    "rank": 6
+   },
+   "新": {
+    "prob": 0.1779,
+    "rank": 6
+   }
+  },
+  {
+   "date": "2021-11-28",
+   "race_id": "202105050812",
+   "horse": "ジャパン",
+   "finish": 8,
+   "popularity": 9,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0828,
+    "rank": 11
+   },
+   "今": {
+    "prob": 0.1195,
+    "rank": 10
+   },
+   "新": {
+    "prob": 0.1421,
+    "rank": 8
+   }
+  },
+  {
+   "date": "2021-11-28",
+   "race_id": "202105050812",
+   "horse": "ブルーム",
+   "finish": 11,
+   "popularity": 6,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0232,
+    "rank": 18
+   },
+   "今": {
+    "prob": 0.0881,
+    "rank": 11
+   },
+   "新": {
+    "prob": 0.2156,
+    "rank": 4
+   }
+  },
+  {
+   "date": "2022-11-13",
+   "race_id": "202209050411",
+   "horse": "マジカルラグーン",
+   "finish": 18,
+   "popularity": 8,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0251,
+    "rank": 18
+   },
+   "今": {
+    "prob": 0.0657,
+    "rank": 15
+   },
+   "新": {
+    "prob": 0.129,
+    "rank": 8
+   }
+  },
+  {
+   "date": "2022-11-27",
+   "race_id": "202205050812",
+   "horse": "グランドグローリー",
+   "finish": 6,
+   "popularity": 14,
+   "estimated": {
+    "新": [
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py"
+    ]
+   },
+   "なし": {
+    "prob": 0.0239,
+    "rank": 16
+   },
+   "今": {
+    "prob": 0.0892,
+    "rank": 11
+   },
+   "新": {
+    "prob": 0.1035,
+    "rank": 11
+   }
+  },
+  {
+   "date": "2022-11-27",
+   "race_id": "202205050812",
+   "horse": "オネスト",
+   "finish": 7,
+   "popularity": 6,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.1361,
+    "rank": 8
+   },
+   "今": {
+    "prob": 0.2175,
+    "rank": 4
+   },
+   "新": {
+    "prob": 0.44,
+    "rank": 1
+   }
+  },
+  {
+   "date": "2022-11-27",
+   "race_id": "202205050812",
+   "horse": "テュネス",
+   "finish": 9,
+   "popularity": 7,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0696,
+    "rank": 14
+   },
+   "今": {
+    "prob": 0.0855,
+    "rank": 14
+   },
+   "新": {
+    "prob": 0.1104,
+    "rank": 10
+   }
+  },
+  {
+   "date": "2022-11-27",
+   "race_id": "202205050812",
+   "horse": "シムカミル",
+   "finish": 15,
+   "popularity": 11,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0808,
+    "rank": 13
+   },
+   "今": {
+    "prob": 0.1341,
+    "rank": 9
+   },
+   "新": {
+    "prob": 0.1593,
+    "rank": 6
+   }
+  },
+  {
+   "date": "2023-02-19",
+   "race_id": "202305010811",
+   "horse": "シャールズスパイト",
+   "finish": 9,
+   "popularity": 5,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0899,
+    "rank": 12
+   },
+   "今": {
+    "prob": 0.1693,
+    "rank": 6
+   },
+   "新": {
+    "prob": 0.1924,
+    "rank": 5
+   }
+  },
+  {
+   "date": "2023-11-26",
+   "race_id": "202305050812",
+   "horse": "イレジン",
+   "finish": 9,
+   "popularity": 10,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0191,
+    "rank": 12
+   },
+   "今": {
+    "prob": 0.0607,
+    "rank": 11
+   },
+   "新": {
+    "prob": 0.1034,
+    "rank": 9
+   }
+  },
+  {
+   "date": "2024-03-24",
+   "race_id": "202407010611",
+   "horse": "ビクターザウィナー",
+   "finish": 3,
+   "popularity": 5,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.032,
+    "rank": 17
+   },
+   "今": {
+    "prob": 0.161,
+    "rank": 8
+   },
+   "新": {
+    "prob": 0.1601,
+    "rank": 8
+   }
+  },
+  {
+   "date": "2024-06-02",
+   "race_id": "202405030211",
+   "horse": "ロマンチックウォリアー",
+   "finish": 1,
+   "popularity": 1,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "jockey_n",
+     "jockey_top3",
+     "jockey_venue_n",
+     "jockey_venue_top3",
+     "jockey_course_n",
+     "jockey_course_top3",
+     "jockey_n_py",
+     "jockey_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0411,
+    "rank": 17
+   },
+   "今": {
+    "prob": 0.3261,
+    "rank": 3
+   },
+   "新": {
+    "prob": 0.4533,
+    "rank": 2
+   }
+  },
+  {
+   "date": "2024-06-02",
+   "race_id": "202405030211",
+   "horse": "ヴォイッジバブル",
+   "finish": 17,
+   "popularity": 8,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0417,
+    "rank": 16
+   },
+   "今": {
+    "prob": 0.1392,
+    "rank": 8
+   },
+   "新": {
+    "prob": 0.1731,
+    "rank": 7
+   }
+  },
+  {
+   "date": "2024-09-29",
+   "race_id": "202406040911",
+   "horse": "ビクターザウィナー",
+   "finish": 6,
+   "popularity": 6,
+   "estimated": {
+    "新": [
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py"
+    ]
+   },
+   "なし": {
+    "prob": 0.2814,
+    "rank": 4
+   },
+   "今": {
+    "prob": 0.2475,
+    "rank": 5
+   },
+   "新": {
+    "prob": 0.2197,
+    "rank": 5
+   }
+  },
+  {
+   "date": "2024-09-29",
+   "race_id": "202406040911",
+   "horse": "ムゲン",
+   "finish": 13,
+   "popularity": 13,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0309,
+    "rank": 16
+   },
+   "今": {
+    "prob": 0.0902,
+    "rank": 13
+   },
+   "新": {
+    "prob": 0.0728,
+    "rank": 15
+   }
+  },
+  {
+   "date": "2024-11-17",
+   "race_id": "202408060611",
+   "horse": "チャリン",
+   "finish": 5,
+   "popularity": 3,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0884,
+    "rank": 11
+   },
+   "今": {
+    "prob": 0.1728,
+    "rank": 7
+   },
+   "新": {
+    "prob": 0.4085,
+    "rank": 3
+   }
+  },
+  {
+   "date": "2024-11-23",
+   "race_id": "202405050711",
+   "horse": "ルノマド",
+   "finish": 13,
+   "popularity": 16,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0265,
+    "rank": 17
+   },
+   "今": {
+    "prob": 0.0166,
+    "rank": 18
+   },
+   "新": {
+    "prob": 0.0139,
+    "rank": 18
+   }
+  },
+  {
+   "date": "2024-11-24",
+   "race_id": "202405050812",
+   "horse": "ゴリアット",
+   "finish": 6,
+   "popularity": 6,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0351,
+    "rank": 13
+   },
+   "今": {
+    "prob": 0.0632,
+    "rank": 11
+   },
+   "新": {
+    "prob": 0.1864,
+    "rank": 8
+   }
+  },
+  {
+   "date": "2024-11-24",
+   "race_id": "202405050812",
+   "horse": "オーギュストロダン",
+   "finish": 8,
+   "popularity": 4,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.1216,
+    "rank": 9
+   },
+   "今": {
+    "prob": 0.0699,
+    "rank": 10
+   },
+   "新": {
+    "prob": 0.1994,
+    "rank": 7
+   }
+  },
+  {
+   "date": "2024-11-24",
+   "race_id": "202405050812",
+   "horse": "ファンタスティックムーン",
+   "finish": 11,
+   "popularity": 12,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0361,
+    "rank": 12
+   },
+   "今": {
+    "prob": 0.0178,
+    "rank": 13
+   },
+   "新": {
+    "prob": 0.0483,
+    "rank": 13
+   }
+  },
+  {
+   "date": "2024-12-08",
+   "race_id": "202408070411",
+   "horse": "メイデイレディ",
+   "finish": 13,
+   "popularity": 4,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.055,
+    "rank": 16
+   },
+   "今": {
+    "prob": 0.2796,
+    "rank": 4
+   },
+   "新": {
+    "prob": 0.5388,
+    "rank": 1
+   }
+  },
+  {
+   "date": "2025-09-28",
+   "race_id": "202506040911",
+   "horse": "ラッキースワイネス",
+   "finish": 11,
+   "popularity": 10,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.1028,
+    "rank": 11
+   },
+   "今": {
+    "prob": 0.1052,
+    "rank": 11
+   },
+   "新": {
+    "prob": 0.0685,
+    "rank": 13
+   }
+  },
+  {
+   "date": "2025-11-23",
+   "race_id": "202508040611",
+   "horse": "ドックランズ",
+   "finish": 9,
+   "popularity": 13,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "jockey_n",
+     "jockey_top3",
+     "jockey_venue_n",
+     "jockey_venue_top3",
+     "jockey_course_n",
+     "jockey_course_top3",
+     "jockey_n_py",
+     "jockey_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0502,
+    "rank": 15
+   },
+   "今": {
+    "prob": 0.0726,
+    "rank": 12
+   },
+   "新": {
+    "prob": 0.1935,
+    "rank": 6
+   }
+  },
+  {
+   "date": "2025-11-30",
+   "race_id": "202505050812",
+   "horse": "カランダガン",
+   "finish": 1,
+   "popularity": 4,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.0608,
+    "rank": 15
+   },
+   "今": {
+    "prob": 0.2031,
+    "rank": 5
+   },
+   "新": {
+    "prob": 0.4277,
+    "rank": 2
+   }
+  },
+  {
+   "date": "2026-09-06",
+   "race_id": "202609040211",
+   "horse": "ファストネットワーク",
+   "finish": 15,
+   "popularity": 3,
+   "estimated": {
+    "新": [
+     "elom",
+     "elos",
+     "jockey_career",
+     "trainer_n",
+     "trainer_top3",
+     "trainer_venue_n",
+     "trainer_venue_top3",
+     "trainer_n_py",
+     "trainer_top3_py",
+     "owner_n_y",
+     "owner_top3_y",
+     "owner_n_py",
+     "owner_top3_py",
+     "breeder_n_y",
+     "breeder_top3_y",
+     "breeder_n_py",
+     "breeder_top3_py",
+     "lv_field_form",
+     "lv_field_tidx",
+     "lv_after_n",
+     "lv_after_top3",
+     "lv_beaten_form",
+     "lv_lost_form"
+    ]
+   },
+   "なし": {
+    "prob": 0.1642,
+    "rank": 7
+   },
+   "今": {
+    "prob": 0.219,
+    "rank": 5
+   },
+   "新": {
+    "prob": 0.2126,
+    "rank": 5
+   }
+  }
+ ],
+ "japanese_changed": {
+  "新": {
+   "venue_n": 218,
+   "venue_top3": 176,
+   "prize_ratio_last": 204,
+   "prize_ratio_mean5": 610,
+   "tidx_mean5": 601,
+   "tidx_best5": 270,
+   "tidx_last1": 199,
+   "rel_tidx_mean5": 5363,
+   "rank_tidx_mean5": 1100,
+   "rel_tidx_best5": 3305,
+   "rank_tidx_best5": 721,
+   "rel_prize_ratio_mean5": 5380,
+   "rank_prize_ratio_mean5": 788,
+   "ab_wmean": 569,
+   "ab_best": 279,
+   "ab_last": 197,
+   "ab_trend": 503,
+   "ab_std": 565,
+   "ab_wmean_rank": 943,
+   "ab_wmean_z": 4921,
+   "ab_wmean_dmean": 4921,
+   "ab_wmean_dmax": 2398,
+   "ab_best_rank": 638,
+   "ab_best_z": 3132,
+   "ab_best_dmean": 3132,
+   "ab_best_dmax": 1944,
+   "ab_wmean_fstd": 5010,
+   "g_last2": 333,
+   "g_m3_m10": 678,
+   "g_last_best": 368,
+   "g_up_streak": 88,
+   "g_layoff": 502,
+   "fit_dist": 684,
+   "fit_venue": 615,
+   "fit_venue_n": 215,
+   "fit_shape": 715,
+   "fit_shape_n": 425,
+   "fit_going": 694,
+   "fit_turn": 735,
+   "fit_turn_n": 434,
+   "fit_change": 699,
+   "fit_surface": 578,
+   "cond_ab": 733,
+   "pace_hi": 688,
+   "pace_sl": 697,
+   "ab_wmean_d3": 2006,
+   "ab_wmean_dtop3": 3424,
+   "ab_wmean_top3_gap": 5010,
+   "ab_wmean_close": 1914,
+   "cond_ab_d3": 2158,
+   "cond_ab_dtop3": 3737,
+   "cond_ab_top3_gap": 6103,
+   "cond_ab_close": 1610,
+   "cond_ab_rank": 748,
+   "cond_ab_dmax": 2180,
+   "lv_field_tidx": 4445,
+   "sim_straight_n": 275,
+   "sim_straight_top3": 224,
+   "band_straight_n": 430,
+   "band_straight_top3": 400,
+   "band_elev_n": 425,
+   "band_elev_top3": 375,
+   "band_both_n": 306,
+   "band_both_top3": 257,
+   "elom_rank": 175,
+   "elom_z": 334,
+   "elom_dmax": 58,
+   "elos_rank": 190,
+   "elos_z": 334,
+   "elos_dmax": 58,
+   "abd_w": 690,
+   "abd_w_rank": 934,
+   "abd_w_dmax": 2440,
+   "abd_w_d3": 2298,
+   "abn_w": 505,
+   "abn_w_rank": 842,
+   "abn_w_dmax": 2276,
+   "abn_w_d3": 1847
+  }
+ },
+ "all": {
+  "runs": 864,
+  "top3": 229,
+  "なし": {
+   "logloss": 0.51473,
+   "mean_prob": 0.2388,
+   "mean_rank": 7.08,
+   "top3_rank_mean": 4.53
+  },
+  "今": {
+   "logloss": 0.49442,
+   "mean_prob": 0.2606,
+   "mean_rank": 6.57,
+   "top3_rank_mean": 3.84
+  },
+  "新": {
+   "logloss": 0.49571,
+   "mean_prob": 0.2456,
+   "mean_rank": 6.91,
+   "top3_rank_mean": 4.12
+  }
+ },
+ "foreign": {
+  "runs": 25,
+  "top3": 3,
+  "なし": {
+   "logloss": 0.44669,
+   "mean_prob": 0.0702,
+   "mean_rank": 13.4,
+   "top3_rank_mean": 16.33
+  },
+  "今": {
+   "logloss": 0.29935,
+   "mean_prob": 0.1352,
+   "mean_rank": 9.2,
+   "top3_rank_mean": 5.33
+  },
+  "新": {
+   "logloss": 0.33338,
+   "mean_prob": 0.206,
+   "mean_rank": 7.24,
+   "top3_rank_mean": 4.0
+  }
+ },
+ "japanese": {
+  "runs": 839,
+  "top3": 226,
+  "なし": {
+   "logloss": 0.51676,
+   "mean_prob": 0.2438,
+   "mean_rank": 6.89,
+   "top3_rank_mean": 4.37
+  },
+  "今": {
+   "logloss": 0.50023,
+   "mean_prob": 0.2643,
+   "mean_rank": 6.49,
+   "top3_rank_mean": 3.82
+  },
+  "新": {
+   "logloss": 0.50055,
+   "mean_prob": 0.2468,
+   "mean_rank": 6.9,
+   "top3_rank_mean": 4.12
+  }
+ },
+ "japanese_in_foreign_races": {
+  "runs": 249,
+  "top3": 45,
+  "なし": {
+   "logloss": 0.38507,
+   "mean_prob": 0.1857,
+   "mean_rank": 8.67,
+   "top3_rank_mean": 4.78
+  },
+  "今": {
+   "logloss": 0.37533,
+   "mean_prob": 0.1792,
+   "mean_rank": 9.09,
+   "top3_rank_mean": 4.8
+  },
+  "新": {
+   "logloss": 0.37449,
+   "mean_prob": 0.1721,
+   "mean_rank": 9.29,
+   "top3_rank_mean": 5.02
+  }
+ }
+}
