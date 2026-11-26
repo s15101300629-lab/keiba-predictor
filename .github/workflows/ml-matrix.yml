@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: ml-matrix
+  group: ml-matrix-${{ github.ref_name }}   # ブランチごと（別のブランチの実行に待ち中の分を取り消されないように）
   cancel-in-progress: false
 
 jobs:
