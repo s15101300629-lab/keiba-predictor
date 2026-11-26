@@ -66,20 +66,38 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
       <button type="button" className={mode === "ev" ? "active" : ""} onClick={() => setMode("ev")}>期待値順</button>
       <button type="button" className={skip ? "active" : ""} onClick={() => setSkip(!skip)}>新馬を除く</button>
     </div>
-    <table className="check-table bet-stats">
-      <thead><tr><th>印から作る買い目</th><th>点数</th><th>的中したレース</th><th>回収率</th></tr></thead>
-      <tbody>{rows.map((r) => line(r, ""))}
-        <tr className="total"><th>合計</th><td>{total.points}点</td><td>–</td><td>{total.points ? pct(total.ret / (total.points * 100)) : "–"}<small>{yen(total.ret)}</small></td></tr></tbody>
-    </table>
-    <table className="check-table bet-stats">
-      <thead><tr><th>☆の買い目</th><th>点数</th><th>的中</th><th>回収率</th></tr></thead>
-      <tbody>{stars.map((r) => line(r, "点"))}</tbody>
-    </table>
-    <table className="check-table bet-stats">
-      <thead><tr><th>AI印</th><th>頭数</th><th>勝率・3着内率</th><th>単勝・複勝回収率</th></tr></thead>
-      <tbody>{markStats(rs).map((r) => <tr key={r.m}><th>{r.m}</th><td>{r.n}頭</td>
-        <td>{pct(r.win)}<small>{pct(r.in3)}</small></td><td>{pct(r.winRoi)}<small>{pct(r.placeRoi)}</small></td></tr>)}</tbody>
-    </table>
+    <section className="bet-result-section">
+      <h4 className="bet-result-heading">印から作る買い目</h4>
+      <p className="bet-result-description">ワイド・馬連・馬単・3連複・3連単</p>
+      <div className="bet-table-wrap">
+        <table className="check-table bet-stats">
+          <thead><tr><th>券種</th><th>点数</th><th>的中したレース</th><th>回収率</th></tr></thead>
+          <tbody>{rows.map((r) => line(r, ""))}
+            <tr className="total"><th>合計</th><td>{total.points}点</td><td>–</td><td>{total.points ? pct(total.ret / (total.points * 100)) : "–"}<small>{yen(total.ret)}</small></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <section className="bet-result-section">
+      <h4 className="bet-result-heading">☆の買い目</h4>
+      <p className="bet-result-description">複勝☆・ワイド◎-☆・ワイド○-☆</p>
+      <div className="bet-table-wrap">
+        <table className="check-table bet-stats">
+          <thead><tr><th>買い目</th><th>点数</th><th>的中</th><th>回収率</th></tr></thead>
+          <tbody>{stars.map((r) => line(r, "点"))}</tbody>
+        </table>
+      </div>
+    </section>
+    <section className="bet-result-section">
+      <h4 className="bet-result-heading">AI印別の成績</h4>
+      <p className="bet-result-description">各印を付けた馬の勝率・3着内率・回収率</p>
+      <div className="bet-table-wrap">
+        <table className="check-table bet-stats">
+          <thead><tr><th>AI印</th><th>頭数</th><th>勝率・3着内率</th><th>単勝・複勝回収率</th></tr></thead>
+          <tbody>{markStats(rs).map((r) => <tr key={r.m}><th>{r.m}</th><td>{r.n}頭</td>
+            <td>{pct(r.win)}<small>{pct(r.in3)}</small></td><td>{pct(r.winRoi)}<small>{pct(r.placeRoi)}</small></td></tr>)}</tbody>
+        </table>
+      </div>
+    </section>
     <p className="check-note">1点100円・確定の払戻。印と買い目は画面と同じ計算だが、オッズは確定オッズで決めた（レース前に見た印・買い目と違うことがある）。
       期待値順もオッズは確定オッズ。的中したレース＝その券種の買い目のどれかが当たったレースの割合</p>
   </div>;
