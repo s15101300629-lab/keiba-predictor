@@ -1289,7 +1289,27 @@ def quantile_of(vals: list[float], q: float) -> float:
     return xs[lo] + (xs[hi] - xs[lo]) * (pos - lo)
 
 
-def fill_foreign_people(rows: list[dict], foreign: list[bool], jockey_missing: list[bool]) -> None:
+JOCKEY_WORLD: dict | None = None  # data/overseas/jockey_world.json（scripts/ml/jockey_world.py）。答え合わせが読む
+
+
+def jockey_world_target(jockey: str | None, year: str) -> float | None:
+    """JRA で乗ったことがない外国人騎手の、海外主要G1の成績から式で出した3着内率（載っていなければ None）."""
+    d = JOCKEY_WORLD
+    e = d["jockeys"].get(norm_jockey(jockey)) if d else None
+    if not e:
+        return None
+    n = t = 0
+    for y, v in e["years"].items():
+        if y <= year:
+            n += v[0] + v[1] + v[2] + v[3]
+            t += v[0] + v[1] + v[2]
+    if n == 0:
+        return None
+    r = (t + d["shrink"] * d["prior"]) / (n + d["shrink"])
+    return d["fit"]["intercept"] + d["fit"]["slope"] * r
+
+
+def fill_foreign_people(rows: list[dict], foreign: list[bool], jockey_missing: list[bool], jockey_target: list | None = None) -> None:
     """外国馬の調教師・馬主・生産者（と、JRA での騎乗がない騎手）の成績を、同じレースの日本馬の値で埋める。
     中央値ではなく、その外国馬の強さの位置（strength_q）の値（2026-11-26、依頼者の指示「中央値だと低くなる」）。
     埋めた項目は行の "_estimated" に入れる（画面の「推定」用）."""
@@ -1297,13 +1317,17 @@ def fill_foreign_people(rows: list[dict], foreign: list[bool], jockey_missing: l
     if not japanese:
         return
     qs = [strength_q(rows, foreign, r) if fo else None for r, fo in zip(rows, foreign)]
-    for r, fo, jm, q in zip(rows, foreign, jockey_missing, qs):
+    jt = jockey_target or [None] * len(rows)
+    jtop = [x["jockey_top3"] for x in japanese if not math.isnan(x["jockey_top3"])]
+    for r, fo, jm, q, tg in zip(rows, foreign, jockey_missing, qs, jt):
         if not fo:
             continue
         keys = TRAINER_FILL + OWNER_FILL + (JOCKEY_FILL if jm else [])
+        # JRA で乗ったことがない騎手は、馬の強さと関係ないので中央値（2026-11-26。テアオの L.トーレスが上位騎手並みになったため）。
+        # JRA-VAN Ver.World に載っている騎手は、海外主要G1の成績から式で出した3着内率の、日本馬の騎手の中での位置（jockey_world.py）
+        jq = 0.5 if tg is None or not jtop else (sum(1 for x in jtop if x < tg) + 0.5 * sum(1 for x in jtop if x == tg)) / len(jtop)
         for k in keys:
-            # JRA で乗ったことがない騎手は、馬の強さと関係ないので中央値（2026-11-26。テアオの L.トーレスが上位騎手並みになったため）
-            r[k] = quantile_of([x[k] for x in japanese], 0.5 if k in JOCKEY_FILL else q)
+            r[k] = quantile_of([x[k] for x in japanese], jq if k in JOCKEY_FILL else q)
         r["_q"] = q
         r.setdefault("_estimated", []).extend(keys)
 
@@ -1350,6 +1374,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
             race_rows = []
             foreign: list[bool] = []
             jockey_missing: list[bool] = []
+            jockey_target: list = []
             ctx: list[tuple] = []
             for h in race["runners"]:
                 course = hist.course_waku.get((race["venue"], race["surface"], race["distance"]))
@@ -1380,6 +1405,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                     elif not rides:
                         jm = True
                 jockey_missing.append(jm)
+                jockey_target.append(jockey_world_target(h.get("jockey"), race["date"][:4]) if jm else None)
                 ctx.append((runs[-1] if runs else None, norm_jockey(h.get("jockey"))))
                 f.update({
                     "race_id": race["race_id"], "date": race["date"], "horse": h["horse"], "turn": race["turn"], "sband": race["sband"],
@@ -1388,7 +1414,7 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                 })
                 race_rows.append(f)
             if FOREIGN_FIX["people"] and any(foreign):
-                fill_foreign_people(race_rows, foreign, jockey_missing)
+                fill_foreign_people(race_rows, foreign, jockey_missing, jockey_target)
                 for f, fo, (last, jk) in zip(race_rows, foreign, ctx):
                     if fo:  # 乗り替わりの向きを、埋めた騎手の成績で計算し直す
                         f.update(jockey_dir_features(f, last, jk, race, hist.jockeys))

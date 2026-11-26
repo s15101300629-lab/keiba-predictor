@@ -96,6 +96,8 @@ export type RunnerInput = {
   // 海外の厩舎の馬（netkeiba の厩舎が「海外…」）。レーティングの初めの値・短期免許の騎手の通算成績（runnerFeatures）と、
   // 調教師・馬主・生産者などを日本馬の中央値で埋める（fillForeignPeople）に使う。scripts/ml/features.py の FOREIGN_FIX と同じ
   foreign?: boolean;
+  // JRA で乗ったことがない外国人騎手の、海外主要G1の成績から式で出した3着内率（jockey_world.json。features.py の jockey_world_target）
+  jockeyWorldTarget?: number | null;
   owner?: string | null; // 馬主（netkeiba のプロフィール）
   breeder?: string | null; // 生産者（netkeiba のプロフィール「生産者(産地)」。産地の括弧は normOwner で取る）
 };
@@ -865,12 +867,21 @@ export function fillForeignPeople(store: Store, race: RaceInput, rows: Features[
   const japanese = rows.filter((_, i) => !runners[i].foreign);
   if (!japanese.length || !runners.some((r) => r.foreign)) return est;
   const qs = rows.map((f, i) => (runners[i].foreign ? strengthQ(rows, runners, f) : 0.5));
+  const jtop = japanese.map((x) => x.jockey_top3).filter((v) => !Number.isNaN(v));
   rows.forEach((f, i) => {
     const r = runners[i];
     if (!r.foreign) return;
     const keys = [...TRAINER_FILL, ...OWNER_FILL, ...(f._jockey_missing ? JOCKEY_FILL : [])];
-    // JRA で乗ったことがない騎手は、馬の強さと関係ないので中央値（features.py と同じ）
-    for (const k of keys) f[k] = quantileOf(japanese.map((x) => x[k]), JOCKEY_FILL.includes(k) ? 0.5 : qs[i]);
+    // JRA で乗ったことがない騎手は中央値。JRA-VAN Ver.World に載っていれば、式で出した3着内率の日本馬の騎手の中での位置（features.py と同じ）
+    const tg = f._jockey_missing ? r.jockeyWorldTarget ?? null : null;
+    let jq = 0.5;
+    if (tg !== null && jtop.length) {
+      let below = 0;
+      for (const x of jtop) below += x < tg ? 1 : x === tg ? 0.5 : 0;
+      jq = below / jtop.length;
+    }
+    if (tg !== null) est[i].push("jockey_world");
+    for (const k of keys) f[k] = quantileOf(japanese.map((x) => x[k]), JOCKEY_FILL.includes(k) ? jq : qs[i]);
     f._q = qs[i];
     est[i].push(...keys);
     const prior = horseRuns(store, r.horse, r.extraRuns).filter((x) => x[0] < race.date);

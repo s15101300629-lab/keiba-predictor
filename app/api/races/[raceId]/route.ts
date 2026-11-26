@@ -5,7 +5,7 @@ import path from "node:path";
 import { cleanText, decodeEntities, extractPedigree, extractTables } from "@/app/lib/netkeiba";
 import { fetchJraBaba, fetchJraBabaDetail } from "@/app/lib/jraBaba";
 import { addDisplayDeviation, formFromHistory, heavyRunsInHistory, type FormDisplay } from "@/app/lib/form";
-import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, fillForeignLevel, fillForeignPeople, jockeyStats, resolveCareerJockey, resolveTrainer, runningStyle, storeHorseKey, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type RunnerInput, type Store } from "@/app/lib/ml/features";
+import { addFieldFeatures, addFormDeviation, addOpponentFeatures, addSimilarCondFeatures, courseInfo, expectedPace, fillForeignLevel, fillForeignPeople, normJockey, jockeyStats, resolveCareerJockey, resolveTrainer, runningStyle, storeHorseKey, trainerStats, resolveJockey, runnerFeatures, TRAIN_RANK, type RunnerInput, type Store } from "@/app/lib/ml/features";
 import { normalizeSum, predictProbability, type Model } from "@/app/lib/ml/model";
 import {
   PEDIGREE_SOURCES, parseStallionPages, pedigreeAptitudes, pedigreeModelValues, stackFeatures, stackProbability, stallionNeedsRefresh, stallionRecord,
@@ -124,6 +124,53 @@ function ifhaPrize(d: IfhaData, venue: string, raceName: string, date: string, s
   const c = d.races.filter((r) => r.year === y && r.country === country && (!tracks.length || tracks.includes(r.track)) && r.surface === surface
     && Math.abs(r.distance - distance) <= 60 && ageOk(r.age) && !((sex === "牡" || sex === "セ") && (r.sex ?? "").includes("F")));
   return c.length ? c.reduce((a, r) => a + r.prize, 0) / c.length : d.unrated_g1;
+}
+
+// 外国人騎手の海外主要G1の成績（JRA-VAN Ver.World。scripts/ml/jockey_world.py。2026-11-26）。ファイルにない騎手はその場で検索し、メモリにためる
+type JockeyWorld = { prior: number; shrink: number; fit: { intercept: number; slope: number }; jockeys: Record<string, { name: string; years: Record<string, number[]> }> };
+let jockeyWorldFile: Promise<JockeyWorld | null> | null = null;
+const jockeyWorldLive = new Map<string, Promise<{ name: string; years: Record<string, number[]> } | null>>();
+function splitJockeyName(name: string): [string, string] {
+  const s = name.normalize("NFKC").split("(")[0].replace(/[.・ ]/g, "");
+  const m = s.match(/^([A-Za-z])(.*)$/);
+  return m ? [m[1].toUpperCase(), m[2]] : ["", s];
+}
+async function lookupJockeyWorld(name: string) {
+  const [ini, kana] = splitJockeyName(name);
+  if (!kana) return null;
+  const ua = { headers: { "User-Agent": "keiba-predictor (personal research)" } };
+  const t = await fetch(`https://world.jra-van.jp/db/search?category=2&keywords=${encodeURIComponent(kana)}`, ua).then((r) => r.text());
+  const cands = [...t.matchAll(/href="(\/db\/jockey\/[^"]+\/)"[^>]*>([\s\S]*?)<\/a>/g)]
+    .map((m) => [m[1], m[2].replace(/<[^>]+>/g, "").replace(/\s+/g, "").normalize("NFKC").replace(/\./g, "")] as [string, string])
+    .filter(([, x]) => x.includes(kana) && (!ini || x.startsWith(ini)));
+  if (new Set(cands.map(([h]) => h)).size !== 1) return null;
+  const page = await fetch("https://world.jra-van.jp" + cands[0][0], ua).then((r) => r.text());
+  const i = page.indexOf("海外主要G1レースの成績");
+  const years: Record<string, number[]> = {};
+  for (const tr of page.slice(i, i + 20000).matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
+    const c = [...tr[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map((x) => x[1].replace(/<[^>]+>/g, "").replace(/\s+/g, ""));
+    if (c.length >= 5 && /^\d{4}$/.test(c[0]) && c.slice(1, 5).every((x) => /^\d+$/.test(x))) years[c[0]] = c.slice(1, 5).map(Number);
+  }
+  return { name: cands[0][1], years };
+}
+/** JRA で乗ったことがない外国人騎手の、海外主要G1の成績から式で出した3着内率（features.py の jockey_world_target と同じ）. */
+async function jockeyWorldTarget(name: string | null | undefined, year: string): Promise<number | null> {
+  if (!name) return null;
+  jockeyWorldFile ??= readFile(path.join(process.cwd(), "data", "overseas", "jockey_world.json"), "utf8").then((t) => JSON.parse(t) as JockeyWorld).catch(() => null);
+  const d = await jockeyWorldFile;
+  if (!d) return null;
+  const key = normJockey(name);
+  let e: { years: Record<string, number[]> } | null = d.jockeys[key] ?? null;
+  if (!e) {
+    if (!jockeyWorldLive.has(key)) jockeyWorldLive.set(key, lookupJockeyWorld(name).catch(() => null));
+    e = await jockeyWorldLive.get(key)!;
+  }
+  if (!e) return null;
+  let n = 0;
+  let t = 0;
+  for (const [y, v] of Object.entries(e.years)) if (y <= year) { n += v[0] + v[1] + v[2] + v[3]; t += v[0] + v[1] + v[2]; }
+  if (!n) return null;
+  return d.fit.intercept + d.fit.slope * ((t + d.shrink * d.prior) / (n + d.shrink));
 }
 
 function overseasRuns(performances: { values: Record<string, string> }[], horseId = "", od: OverseasData | null = null, sex: string | null = null): Store["horses"][string] {
@@ -1194,6 +1241,10 @@ async function getRace(
         const features = runnerFeatures(ml.store, raceInput, runner);
         return { jockeyKey, trainerKey, features, runner, horseKey, foreign, estimated: [] as string[], bodyWeightAssumed: assumedBodyWeight !== null, overseasRuns: overseas.length };
       });
+      // JRA で乗ったことがない外国人騎手：JRA-VAN Ver.World の海外主要G1の成績（runnerFeatures が _jockey_missing を付けた馬だけ）
+      await Promise.all(rows.map(async (row, i) => {
+        if (row.foreign && row.features._jockey_missing) row.runner.jockeyWorldTarget = await jockeyWorldTarget(entryByHorseId.get(horses[i].horseId)?.jockey, raceInput.date.slice(0, 4));
+      }));
       // 外国馬の調教師・馬主・生産者などを、同じレースの日本馬の中央値で埋める（埋めた項目は画面で「推定」）
       fillForeignPeople(ml.store, raceInput, activeIdx.map((i) => rows[i].features), activeIdx.map((i) => rows[i].runner))
         .forEach((keys, k) => { rows[activeIdx[k]].estimated = keys; });
