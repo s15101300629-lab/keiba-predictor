@@ -66,10 +66,17 @@ async function main() {
 
   // 2) 出馬表 → 馬
   const horseIds: string[] = [];
+  const overseasCheck: string[] = []; // 海外の走（フランスの区間タイム）を調べる馬：重賞（G1〜G3）の出走馬と、海外の厩舎の馬（francegalop.py upcoming が読む）
   for (const id of uniq(raceIds)) {
     const html = await get(`https://race.netkeiba.com/race/shutuba.html?race_id=${id}`);
     horseIds.push(...[...(html ?? "").matchAll(/\/horse\/(\d{10})/g)].map((m) => m[1]));
+    const graded = /Icon_GradeType[123]\b/.test(html ?? "");
+    for (const row of (html ?? "").split(/<tr/)) {
+      const h = row.match(/\/horse\/(\d{10})/);
+      if (h && (graded || row.includes("海外"))) overseasCheck.push(h[1]);
+    }
   }
+  writeJson(path.join(ROOT, "data/overseas/upcoming_overseas.json"), { dates, horses: uniq(overseasCheck) });
   const runners = uniq(horseIds);
   const horseTodo = runners.filter((id) => !horses[id]);
   console.log(`horses: ${runners.length} runners, ${horseTodo.length} pedigrees to fetch`);

@@ -230,6 +230,38 @@ async function hkFetch(date: string, no: number): Promise<HkRace> {
   }
   return hkLive.get(key)!;
 }
+// フランス（France Galop の区間タイム。scripts/ml/francegalop.py が PDF を読んで data/overseas/francegalop.json にためる。アプリはファイルだけ読む）
+type FgRace = { distance: number; race_last600: number | null; horses: { no: number; finish: number | null; pos400: number; c600: number; arr: number }[] } | null;
+let fgFile: Promise<Record<string, FgRace>> | null = null;
+const FG_TRACKS: [string, string][] = [["パリロンシャン", "LON"], ["ロンシャン", "LON"], ["シャンティイ", "CHA"], ["ドーヴィル", "DEA"]];
+/** netkeiba のフランスの走1つ → 上がり・位置取り・タイム差（francegalop.py の fg_run・metrics と同じ）. */
+async function fgRun(v: Record<string, string>, distance: number) {
+  const track = FG_TRACKS.find(([k]) => (v["開催"] ?? "").includes(k))?.[1];
+  const date = (v["日付"] ?? "").replace(/\//g, "-");
+  if (!track || date < "2020-01-01" || !/^\d+$/.test(v["馬番"] ?? "") || !/^\d+$/.test(v["着順"] ?? "")) return null;
+  fgFile ??= readFile(path.join(process.cwd(), "data", "overseas", "francegalop.json"), "utf8").then((t) => JSON.parse(t)).catch(() => ({}));
+  const f = await fgFile;
+  const nos = /^\d+$/.test(v["R"] ?? "") ? [Number(v["R"])] : Array.from({ length: 10 }, (_, i) => i + 1);
+  for (const no of nos) {
+    const race = f[`${date}|${track}|${no}`];
+    if (!race || Math.abs(race.distance - distance) > 10) continue;
+    const me = race.horses.find((h) => h.no === Number(v["馬番"]));
+    if (!me || me.finish !== Number(v["着順"])) continue;
+    const fin = race.horses.filter((h) => h.finish);
+    if (fin.length < 3) return null;
+    const last = fin.map((h) => h.arr - h.c600);
+    const a = me.arr - me.c600;
+    const srt = [...last].sort((x, y) => x - y);
+    const r4 = (x: number) => Math.round(x * 1e4) / 1e4;
+    return {
+      agDev: r4(last.reduce((s, x) => s + x, 0) / last.length - a), agRank: r4((1 + srt.indexOf(a)) / last.length),
+      earlyGap: r4(me.c600 - Math.min(...fin.map((h) => h.c600))), fade: race.race_last600 === null ? null : r4(a - race.race_last600),
+      posFirst: null, posLast: me.pos400, timeDiff: Math.round((me.arr - Math.min(...fin.map((h) => h.arr))) * 10) / 10,
+    };
+  }
+  return null;
+}
+
 /** netkeiba の香港の走1つ → 上がり・位置取り・タイム差（hkjc.py の hk_run・metrics と同じ）. */
 async function hkRun(v: Record<string, string>, distance: number) {
   const venue = v["開催"] ?? "";
@@ -275,14 +307,14 @@ async function overseasRuns(performances: { values: Record<string, string> }[], 
     let timeDiff = ok ? TIME_DIFF_BY_FINISH[Math.min(finish, TIME_DIFF_BY_FINISH.length - 1)] : -1;
     let tidx: number | null = null;
     let ab: number | null = null;
-    let hk: Awaited<ReturnType<typeof hkRun>> = null;
+    let hk: Awaited<ReturnType<typeof hkRun>> | Awaited<ReturnType<typeof fgRun>> = null;
     const imp = od?.imp;
     if (imp) {
       const x = od.runs[horseId]?.[date];
       // 1着賞金は IFHA の格で決める（2026-11-26。scripts/ml/overseas.py の ifha_prize と同じ。ifha.json がなければ元のまま）
       if (od.ifha) prize = Math.round(ifhaPrize(od.ifha, v["開催"] ?? "", name, date, course[1] === "芝" ? 0 : 1, Number(course[2]), horseId, prize, sex) * 10) / 10;
       if (x?.time_diff != null && ok) timeDiff = x.time_diff;
-      hk = await hkRun(v, Number(course[2]));
+      hk = (await hkRun(v, Number(course[2]))) ?? (await fgRun(v, Number(course[2])));
       if (hk && ok) timeDiff = hk.timeDiff;
       if (ok && timeDiff >= 0) {
         const c = imp.coef[course[1] === "芝" ? "0" : "1"];

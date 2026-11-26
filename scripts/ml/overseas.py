@@ -76,8 +76,11 @@ def ifha_prize(venue: str, race_name: str, date: str, surface: int, distance: in
 
 
 def hk_fields(run: dict, venue: str) -> dict | None:
+    """香港（hkjc.py）・フランス（francegalop.py）の公式の区間タイムからの上がり・位置取り・タイム差."""
+    import francegalop  # noqa: PLC0415
     import hkjc  # noqa: PLC0415
-    return hkjc.hk_run(venue, run["date"], run.get("ov_r", ""), run["distance"], run.get("ov_umaban", ""), str(run.get("ov_finish") or ""))
+    args = (venue, run["date"], run.get("ov_r", ""), run["distance"], run.get("ov_umaban", ""), str(run.get("ov_finish") or ""))
+    return hkjc.hk_run(*args) or francegalop.fg_run(*args)
 
 
 def improve(run: dict, venue: str, race_name: str, horse_id: str | None, sex: str | None = None) -> dict:
