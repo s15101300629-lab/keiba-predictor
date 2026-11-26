@@ -173,7 +173,92 @@ async function jockeyWorldTarget(name: string | null | undefined, year: string):
   return d.fit.intercept + d.fit.slope * ((t + d.shrink * d.prior) / (n + d.shrink));
 }
 
-function overseasRuns(performances: { values: Record<string, string> }[], horseId = "", od: OverseasData | null = null, sex: string | null = null): Store["horses"][string] {
+// 香港の走の上がり・位置取り・タイム差（HKJC の区間タイム。scripts/ml/hkjc.py と同じ計算。2026-11-26）。
+// data/overseas/hkjc.json（取ったページの中身）にないレースはその場で取り、メモリにためる
+type HkRace = { distance: number; race_last600: number | null; horses: { no: number; finish: number; pos: number[]; last600: number | null; time: number | null }[] } | null;
+let hkFile: Promise<Record<string, HkRace>> | null = null;
+const hkLive = new Map<string, Promise<HkRace>>();
+const hkNum = (s: string) => { const m = s.trim().match(/^(?:(\d+):)?(\d+\.\d+)$/); return m ? Number(m[1] ?? 0) * 60 + Number(m[2]) : null; };
+const stripTags = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
+function parseHk(page: string): HkRace {
+  const dm = stripTags(page).replace(/\s+/g, " ").match(/Race\s+\d+\s.{0,80}?-\s*(\d{3,4})M\s*-/);
+  if (!dm) return null;
+  let race: number | null = null;
+  const rs = page.indexOf("Sectional Time:");
+  if (rs >= 0) {
+    const cells = [...page.slice(rs, rs + 4000).matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]).slice(1);
+    const secs: number[][] = [];
+    for (const c of cells) {
+      const t = stripTags(c).split(/\s+/).filter(Boolean);
+      if (!t.length || hkNum(t[0]) === null) break;
+      secs.push(t.map(hkNum).filter((x): x is number => x !== null));
+    }
+    if (secs.length >= 2 && secs[secs.length - 2].length >= 3) race = secs[secs.length - 2][2] + secs[secs.length - 1][0];
+  }
+  const horses: NonNullable<HkRace>["horses"] = [];
+  for (const tr of page.matchAll(/<tr>([\s\S]*?)<\/tr>/g)) {
+    if (!tr[1].includes("horseid=")) continue;
+    const cells = [...tr[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
+    const fin = cells[0].replace(/<[^>]+>|\s/g, "");
+    const no = cells[1].replace(/<[^>]+>|\s/g, "");
+    if (!/^\d+$/.test(fin) || !/^\d+$/.test(no)) continue;
+    const pos: number[] = [];
+    const secs: number[][] = [];
+    for (const c of cells.slice(3)) {
+      const p = c.match(/class="f_fl">\s*(\d+)\s*</);
+      if (!p) continue;
+      pos.push(Number(p[1]));
+      const body = c.includes("</p>") ? c.slice(c.indexOf("</p>") + 4) : c;
+      secs.push(stripTags(body).split(/\s+/).filter(Boolean).map(hkNum).filter((x): x is number => x !== null));
+    }
+    const total = hkNum(cells[cells.length - 1].replace(/<[^>]+>|\s/g, ""));
+    const n = secs.length;
+    const last600 = n >= 2 && secs[n - 2].length >= 3 && secs[n - 1].length ? secs[n - 2][2] + secs[n - 1][0] : null;
+    horses.push({ no: Number(no), finish: Number(fin), pos, last600, time: total });
+  }
+  return horses.length ? { distance: Number(dm[1]), race_last600: race, horses } : null;
+}
+async function hkFetch(date: string, no: number): Promise<HkRace> {
+  hkFile ??= readFile(path.join(process.cwd(), "data", "overseas", "hkjc.json"), "utf8").then((t) => JSON.parse(t)).catch(() => ({}));
+  const key = `${date}|${no}`;
+  const f = await hkFile;
+  if (key in f) return f[key];
+  if (!hkLive.has(key)) {
+    const [y, m, d] = date.split("-");
+    hkLive.set(key, fetch(`https://racing.hkjc.com/racing/information/English/Racing/DisplaySectionalTime.aspx?RaceDate=${d}/${m}/${y}&RaceNo=${no}`,
+      { headers: { "User-Agent": "keiba-predictor (personal research)" } }).then((r) => r.text()).then(parseHk).catch(() => null));
+  }
+  return hkLive.get(key)!;
+}
+/** netkeiba の香港の走1つ → 上がり・位置取り・タイム差（hkjc.py の hk_run・metrics と同じ）. */
+async function hkRun(v: Record<string, string>, distance: number) {
+  const venue = v["開催"] ?? "";
+  if (!["シャティン", "ハッピーヴァレー", "ハッピーバレー", "香港"].some((x) => venue.includes(x)) || !/^\d+$/.test(v["馬番"] ?? "") || !/^\d+$/.test(v["着順"] ?? "")) return null;
+  const date = (v["日付"] ?? "").replace(/\//g, "-");
+  const nos = /^\d+$/.test(v["R"] ?? "") ? [Number(v["R"])] : Array.from({ length: 11 }, (_, i) => i + 1);
+  for (const no of nos) {
+    const race = await hkFetch(date, no);
+    if (!race || Math.abs(race.distance - distance) > 10) continue;
+    const me = race.horses.find((h) => h.no === Number(v["馬番"]));
+    if (!me || me.finish !== Number(v["着順"])) continue;
+    const fin = race.horses.filter((h) => h.last600 !== null && h.time !== null) as { no: number; pos: number[]; last600: number; time: number }[];
+    if (fin.length < 3 || !fin.includes(me as never)) return null;
+    const a = me.last600!;
+    const mean = fin.reduce((s, h) => s + h.last600, 0) / fin.length;
+    const srt = fin.map((h) => h.last600).sort((x, y) => x - y);
+    const r4 = (x: number) => Math.round(x * 1e4) / 1e4;
+    return {
+      agDev: r4(mean - a), agRank: r4((1 + srt.indexOf(a)) / fin.length),
+      earlyGap: r4(me.time! - a - Math.min(...fin.map((h) => h.time - h.last600))),
+      fade: race.race_last600 === null ? null : r4(a - race.race_last600),
+      posFirst: me.pos[0] ?? null, posLast: me.pos.length >= 2 ? me.pos[me.pos.length - 2] : null,
+      timeDiff: Math.round((me.time! - Math.min(...fin.map((h) => h.time))) * 10) / 10,
+    };
+  }
+  return null;
+}
+
+async function overseasRuns(performances: { values: Record<string, string> }[], horseId = "", od: OverseasData | null = null, sex: string | null = null): Promise<Store["horses"][string]> {
   const runs: Store["horses"][string] = [];
   for (const p of performances) {
     const v = p.values;
@@ -190,12 +275,15 @@ function overseasRuns(performances: { values: Record<string, string> }[], horseI
     let timeDiff = ok ? TIME_DIFF_BY_FINISH[Math.min(finish, TIME_DIFF_BY_FINISH.length - 1)] : -1;
     let tidx: number | null = null;
     let ab: number | null = null;
+    let hk: Awaited<ReturnType<typeof hkRun>> = null;
     const imp = od?.imp;
     if (imp) {
       const x = od.runs[horseId]?.[date];
       // 1着賞金は IFHA の格で決める（2026-11-26。scripts/ml/overseas.py の ifha_prize と同じ。ifha.json がなければ元のまま）
       if (od.ifha) prize = Math.round(ifhaPrize(od.ifha, v["開催"] ?? "", name, date, course[1] === "芝" ? 0 : 1, Number(course[2]), horseId, prize, sex) * 10) / 10;
       if (x?.time_diff != null && ok) timeDiff = x.time_diff;
+      hk = await hkRun(v, Number(course[2]));
+      if (hk && ok) timeDiff = hk.timeDiff;
       if (ok && timeDiff >= 0) {
         const c = imp.coef[course[1] === "芝" ? "0" : "1"];
         const z = [1, Math.log(Math.max(prize, 100)), Math.min(timeDiff, 3), Math.log(field)];
@@ -212,8 +300,8 @@ function overseasRuns(performances: { values: Record<string, string> }[], horseI
     runs.push([
       date, jv, surf, Number(course[2]), OVERSEAS_GOING[(v["馬場"] ?? "").slice(0, 1)] ?? -1, field,
       ok ? finish : -1, timeDiff,
-      -1, -1, -1, prize, Number.isFinite(weight) && weight > 0 ? weight : null, -1, -1, tidx, 0, ab,
-      null, null, null, null, ci?.turn ?? null, ci?.sband ?? null, null, ci?.cStraight ?? null, ci?.cElev ?? null,
+      -1, hk?.posFirst ?? -1, hk?.posLast ?? -1, prize, Number.isFinite(weight) && weight > 0 ? weight : null, -1, -1, tidx, 0, ab,
+      hk?.agDev ?? null, hk?.agRank ?? null, hk?.earlyGap ?? null, hk?.fade ?? null, ci?.turn ?? null, ci?.sband ?? null, null, ci?.cStraight ?? null, ci?.cElev ?? null,
     ]);
   }
   return runs;
@@ -1208,13 +1296,17 @@ async function getRace(
       };
       const overseasInfo = await loadOverseas();
       const tFeat = performance.now();
+      // 海外の走（香港の区間タイムをその場で取ることがあるので、先にまとめて作る）
+      const overseasList = await Promise.all(horses.map((horse, index) => overseasRuns(
+        (results[index] as { performances?: { values: Record<string, string> }[] }).performances ?? [], horse.horseId, overseasInfo,
+        entryByHorseId.get(horse.horseId)?.sexAge?.match(/^([牡牝セ])/)?.[1] ?? null)));
       const rows = horses.map((horse, index) => {
         const entry = entryByHorseId.get(horse.horseId) ?? null;
         const sexAge = entry?.sexAge?.match(/^([牡牝セ])(\d+)$/);
         // 馬体重は当日の発表。学習データには欠けがないので、発表前は前走の馬体重・増減0 で計算する
         // （前走の馬体重がない馬は、学習データの初出走馬の性別ごとの中央値。scripts/ml/eval_body_weight.py で検証）
         const performances = (results[index] as { performances?: { values: Record<string, string> }[] }).performances ?? [];
-        const overseas = overseasRuns(performances, horse.horseId, overseasInfo, sexAge?.[1] ?? null);
+        const overseas = overseasList[index];
         const assumedBodyWeight = entry?.bodyWeight == null
           ? previousBodyWeight(performances, raceConditions.date!) ?? DEBUT_BODY_WEIGHT[sexAge?.[1] ?? ""] ?? DEBUT_BODY_WEIGHT["牡"]
           : null;

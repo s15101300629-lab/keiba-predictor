@@ -75,6 +75,11 @@ def ifha_prize(venue: str, race_name: str, date: str, surface: int, distance: in
     return sum(cands) / len(cands) if cands else float(d["unrated_g1"])
 
 
+def hk_fields(run: dict, venue: str) -> dict | None:
+    import hkjc  # noqa: PLC0415
+    return hkjc.hk_run(venue, run["date"], run.get("ov_r", ""), run["distance"], run.get("ov_umaban", ""), str(run.get("ov_finish") or ""))
+
+
 def improve(run: dict, venue: str, race_name: str, horse_id: str | None, sex: str | None = None) -> dict:
     """check_jra_day.overseas_runs の1走（History.add_race の形）を見積もりの形にする."""
     imp, runs = load()
@@ -87,6 +92,12 @@ def improve(run: dict, venue: str, race_name: str, horse_id: str | None, sex: st
     if x and x.get("time_diff") is not None and run["finish"]:
         td = x["time_diff"]
     out = {**run, "prize": prize, "time_diff": td}
+    # 香港の走：公式の区間タイムから上がり・位置取り・タイム差（hkjc.py。2026-11-26、依頼者の指示）
+    hk = hk_fields(run, venue)
+    if hk:
+        out.update({k: hk[k] for k in ("ag_dev", "ag_rank", "early_gap", "fade", "pos_first", "pos_last")})
+        if run["finish"]:
+            out["time_diff"] = td = hk["time_diff"]
     if run["finish"] and td is not None:
         c = imp["coef"][str(run["surface"])]
         z = [1.0, math.log(max(prize, 100)), min(td, 3.0), math.log(run["field"])]
