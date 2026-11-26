@@ -35,7 +35,7 @@ function betStats(races: BetRace[], mode: "prob" | "ev") {
   });
   const stars = STAR_KINDS.map((k) => {
     const ts = races.flatMap((r) => r.stars.filter((x) => x.kind === k));
-    return { label: k.replace("☆", " ☆").replace("複勝 ☆", "☆の複勝"), racesN: ts.length, points: ts.length, hitRaces: ts.filter((x) => x.hit).length,
+    return { type: k.startsWith("複勝") ? "複勝" : "ワイド", label: k.replace("☆", " ☆").replace("複勝 ☆", "☆の複勝"), racesN: ts.length, points: ts.length, hitRaces: ts.filter((x) => x.hit).length,
       ret: ts.reduce((s, x) => s + x.pay, 0) };
   });
   return { rows, stars };
@@ -66,20 +66,42 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
       <button type="button" className={mode === "ev" ? "active" : ""} onClick={() => setMode("ev")}>期待値順</button>
       <button type="button" className={skip ? "active" : ""} onClick={() => setSkip(!skip)}>新馬を除く</button>
     </div>
-    <table className="check-table bet-stats">
-      <thead><tr><th>印から作る買い目</th><th>点数</th><th>的中したレース</th><th>回収率</th></tr></thead>
-      <tbody>{rows.map((r) => line(r, ""))}
-        <tr className="total"><th>合計</th><td>{total.points}点</td><td>–</td><td>{total.points ? pct(total.ret / (total.points * 100)) : "–"}<small>{yen(total.ret)}</small></td></tr></tbody>
-    </table>
-    <table className="check-table bet-stats">
-      <thead><tr><th>☆の買い目</th><th>点数</th><th>的中</th><th>回収率</th></tr></thead>
-      <tbody>{stars.map((r) => line(r, "点"))}</tbody>
-    </table>
-    <table className="check-table bet-stats">
-      <thead><tr><th>AI印</th><th>頭数</th><th>勝率・3着内率</th><th>単勝・複勝回収率</th></tr></thead>
-      <tbody>{markStats(rs).map((r) => <tr key={r.m}><th>{r.m}</th><td>{r.n}頭</td>
-        <td>{pct(r.win)}<small>{pct(r.in3)}</small></td><td>{pct(r.winRoi)}<small>{pct(r.placeRoi)}</small></td></tr>)}</tbody>
-    </table>
+    <section className="bet-result-section">
+      <h4 className="bet-result-heading">印から作る買い目</h4>
+      <p className="bet-result-description">ワイド・馬連・馬単・3連複・3連単</p>
+      <div className="bet-table-wrap">
+        <table className="check-table bet-stats">
+          <thead><tr><th>券種</th><th>点数</th><th>的中したレース</th><th>回収率</th></tr></thead>
+          <tbody>{rows.map((r) => line(r, ""))}
+            <tr className="total"><th>合計</th><td>{total.points}点</td><td>–</td><td>{total.points ? pct(total.ret / (total.points * 100)) : "–"}<small>{yen(total.ret)}</small></td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <section className="bet-result-section">
+      <h4 className="bet-result-heading">☆の買い目</h4>
+      <p className="bet-result-description">複勝☆・ワイド◎-☆・ワイド○-☆</p>
+      <div className="bet-table-wrap">
+        <table className="check-table bet-stats star-bet-stats">
+          <thead><tr><th>券種</th><th>買い目</th><th>購入点数</th><th>的中点数</th><th>的中率</th><th>回収率</th></tr></thead>
+          <tbody>{stars.map((r) => <tr key={r.label}>
+            <th>{r.type}</th><td>{r.label}</td><td>{r.points}点</td><td>{r.hitRaces}点</td>
+            <td>{r.points ? pct(r.hitRaces / r.points) : "–"}</td>
+            <td className={r.points && r.ret >= r.points * 100 ? "strong" : ""}>{r.points ? pct(r.ret / (r.points * 100)) : "–"}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+    </section>
+    <section className="bet-result-section">
+      <h4 className="bet-result-heading">AI印別の成績</h4>
+      <p className="bet-result-description">各印を付けた馬の勝率・3着内率・回収率</p>
+      <div className="bet-table-wrap">
+        <table className="check-table bet-stats mark-bet-stats">
+          <thead><tr><th>AI印</th><th>頭数</th><th>勝率</th><th>3着内率</th><th>単勝回収率</th><th>複勝回収率</th></tr></thead>
+          <tbody>{markStats(rs).map((r) => <tr key={r.m}><th>{r.m}</th><td>{r.n}頭</td>
+            <td>{pct(r.win)}</td><td>{pct(r.in3)}</td><td>{pct(r.winRoi)}</td><td>{pct(r.placeRoi)}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </section>
     <p className="check-note">1点100円・確定の払戻。印と買い目は画面と同じ計算だが、オッズは確定オッズで決めた（レース前に見た印・買い目と違うことがある）。
       期待値順もオッズは確定オッズ。的中したレース＝その券種の買い目のどれかが当たったレースの割合</p>
   </div>;
@@ -166,7 +188,7 @@ function RaceCard({ race, bets }: { race: RaceDetail; bets?: BetRace }) {
   </article>;
 }
 
-export default function ResultsView({ days, betDays = [] }: { days: Day[]; betDays?: BetDay[] }) {
+export default function ResultsView({ days, betDays = [], view = "daily" }: { days: Day[]; betDays?: BetDay[]; view?: "daily" | "cumulative" }) {
   const [date, setDate] = useState(days[0]?.date ?? "");
   const day = days.find((d) => d.date === date) ?? days[0];
   const venues = useMemo(() => [...new Set((day?.detail ?? []).map((r) => r.venue))]
@@ -185,9 +207,11 @@ export default function ResultsView({ days, betDays = [] }: { days: Day[]; betDa
     <p className="check-lead">各レースで、AI 予想の順位（AIスコアの順）と実際の着順を並べたもの。
       AI が3位以内に予想して3着以内に来た馬は「的中」、来なかった馬は「外れ」、AI が4位以下に予想したのに3着以内に来た馬は「見逃し」。
       予想はレース前の情報だけで、レースの後に出し直したもの。毎日 17:30 ごろに更新</p>
-    {days.length === 0 ? <p className="notice">まだデータがない。</p> : <>
+    {days.length === 0 ? <p className="notice">まだデータがない。</p> : view === "cumulative" ? <>
+      <p className="check-lead">全開催日の成績を集計。</p>
       <Summary races={all} label="累計" />
       {betAll.length > 0 && <BetSummary races={betAll} label="累計" />}
+    </> : <>
       <div className="date-tabs" role="tablist" aria-label="開催日">
         {days.map((d) => <button key={d.date} type="button" role="tab" aria-selected={d.date === day.date}
           className={d.date === day.date ? "date-tab active" : "date-tab"} onClick={() => setDate(d.date)}>{fmtDate(d.date)}</button>)}

@@ -450,10 +450,10 @@ footer span { letter-spacing:0; }
 .bet-group.off { opacity: .45; }
 .bet-names small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; white-space: normal; }
 .bet-warn { color: #f0b860; font-weight: 700; }
-.bet-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; margin: 4px 0 8px; }
-.bet-summary div { padding: 6px 8px; border-radius: 9px; background: var(--panel-2); }
-.bet-summary small { display: block; color: var(--muted); font-size: 10px; }
-.bet-summary b { color: var(--accent); font-size: 16px; font-variant-numeric: tabular-nums; }
+.bet-summary:not(.check-summary) { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.bet-summary:not(.check-summary) div { padding: 6px 8px; border-radius: 9px; background: var(--panel-2); }
+.bet-summary:not(.check-summary) small { display: block; color: var(--muted); font-size: 10px; }
+.bet-summary:not(.check-summary) b { color: var(--accent); font-size: 16px; font-variant-numeric: tabular-nums; }
 .bet-type { margin-right: 4px; padding: 1px 5px; border-radius: 5px; background: var(--panel); color: var(--muted); font-size: 10px; font-style: normal; white-space: nowrap; }
 
 /* ===== 共通ヘッダー・フッター（2026-11 黒＋金の配色） ===== */
@@ -770,6 +770,29 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .tier-top .ai-score-num strong { color: #ff6b5e; }
 
 /* AI成績：買い方の成績（2026-11-24） */
+/* ☆の買い目・AI印別の成績は指標を独立列で表示 */
+.bet-summary .star-bet-stats { min-width: 520px; }
+.bet-summary .mark-bet-stats { min-width: 560px; }
+.bet-summary .star-bet-stats th, .bet-summary .mark-bet-stats th { white-space: nowrap; }
+.bet-summary .star-bet-stats td, .bet-summary .mark-bet-stats td { white-space: nowrap; }
+
+/* 買い方の成績を「通常の買い目」「☆の買い目」「AI印別」に分けて表示 */
+.bet-summary .bet-result-section { min-width: 0; margin-top: 14px; padding: 12px 10px; border: 1px solid var(--line); border-radius: 11px; background: #100e09; }
+.bet-summary .bet-result-section:first-of-type { margin-top: 10px; }
+.bet-summary .bet-result-heading { margin: 0; color: var(--accent-strong); font-size: 13px; font-weight: 700; }
+.bet-summary .bet-result-description { margin: 4px 0 8px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.bet-summary .bet-table-wrap { width: 100%; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.bet-summary .bet-stats { min-width: 410px; margin-top: 0; }
+.bet-summary .bet-stats th, .bet-summary .bet-stats td { padding: 8px 7px; }
+.bet-summary .bet-stats th { white-space: nowrap; }
+.bet-summary .bet-stats td { white-space: nowrap; }
+@media (min-width: 640px) {
+  .bet-summary .bet-result-section { padding: 14px; }
+  .bet-summary .bet-stats { min-width: 0; }
+}
+/* 買い方の成績は .bet-summary のカード用グリッドを継承せず、通常の縦積みで表示する */
+.check-summary.bet-summary { display: block; min-width: 0; }
+.check-summary.bet-summary .bet-stats { width: 100%; }
 .bet-summary .sort-toggle { margin: 6px 0 8px; }
 .bet-stats { margin-top: 8px; }
 .bet-stats th, .bet-stats td { font-size: 12px; }
