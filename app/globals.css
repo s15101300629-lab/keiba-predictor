@@ -450,10 +450,10 @@ footer span { letter-spacing:0; }
 .bet-group.off { opacity: .45; }
 .bet-names small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; white-space: normal; }
 .bet-warn { color: #f0b860; font-weight: 700; }
-.bet-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; margin: 4px 0 8px; }
-.bet-summary div { padding: 6px 8px; border-radius: 9px; background: var(--panel-2); }
-.bet-summary small { display: block; color: var(--muted); font-size: 10px; }
-.bet-summary b { color: var(--accent); font-size: 16px; font-variant-numeric: tabular-nums; }
+.bet-summary:not(.check-summary) { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.bet-summary:not(.check-summary) div { padding: 6px 8px; border-radius: 9px; background: var(--panel-2); }
+.bet-summary:not(.check-summary) small { display: block; color: var(--muted); font-size: 10px; }
+.bet-summary:not(.check-summary) b { color: var(--accent); font-size: 16px; font-variant-numeric: tabular-nums; }
 .bet-type { margin-right: 4px; padding: 1px 5px; border-radius: 5px; background: var(--panel); color: var(--muted); font-size: 10px; font-style: normal; white-space: nowrap; }
 
 /* ===== 共通ヘッダー・フッター（2026-11 黒＋金の配色） ===== */
@@ -770,6 +770,9 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .tier-top .ai-score-num strong { color: #ff6b5e; }
 
 /* AI成績：買い方の成績（2026-11-24） */
+/* 買い方の成績は .bet-summary のカード用グリッドを継承せず、通常の縦積みで表示する */
+.check-summary.bet-summary { display: block; min-width: 0; }
+.check-summary.bet-summary .bet-stats { width: 100%; }
 .bet-summary .sort-toggle { margin: 6px 0 8px; }
 .bet-stats { margin-top: 8px; }
 .bet-stats th, .bet-stats td { font-size: 12px; }
