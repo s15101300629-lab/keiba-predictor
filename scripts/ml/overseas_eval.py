@@ -28,6 +28,7 @@ from sklearn.metrics import log_loss
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import features  # noqa: E402
+import overseas  # noqa: E402
 from check_jra_day import OVERSEAS_PRIZE, overseas_runs  # noqa: E402
 from train import DATA, OUT, PARAMS, TRAIN_FROM  # noqa: E402
 from tune_params import normalize_sum  # noqa: E402
@@ -174,13 +175,9 @@ def calibrate_length(rdb: dict, races: dict, td_jra: dict) -> tuple[float, int]:
 
 
 VARIANTS = {  # 名前 → (1着賞金の決め方, 競馬場の読み替え, 1 レーティングの初めの値, 2 騎手・調教師・馬主・生産者)
-    # 1着賞金 old：racedb の値、なければ格（主要国以外は1つ下げる）。major：主要国の格のあるレースは JRA の同じ格の値（2026-11-26、依頼者の指示）
-    # rating "all"：JRA の走がある外国馬も、初めの値＋JRA での増減
+    # 1着賞金 old：racedb の値、なければ格（主要国以外は1つ下げる）。ifha：IFHA の格（overseas.ifha_prize。2026-11-26、依頼者の指示）
     "今": ("old", False, False, False),
-    "新": ("major", True, True, True),
-    "新・読み替えなし": ("major", False, True, True),
-    "新・賞金は前のまま": ("old", True, True, True),
-    "新・JRAの走ありも": ("major", True, "all", True),
+    "新": ("ifha", True, True, True),
 }
 RATING_INIT_PATH = ROOT / "data" / "overseas" / "rating_init.json"
 
@@ -250,8 +247,8 @@ def main() -> None:
             major = any(m in run["ov_venue"] for m in MAJOR_VENUES)
             graded = next((p for pat, p in OVERSEAS_PRIZE[:5] if re.search(pat, run["ov_name"])), None)  # G1〜OP
             lower = {17000: 5700, 5700: 4100, 4100: 2400}
-            if mode == "major" and major and graded is not None:
-                prize = graded
+            if mode == "ifha":
+                prize = round(overseas.ifha_prize(run["ov_venue"], run["ov_name"], run["date"], run["surface"], run["distance"], hid, run["prize"]), 1)
             elif rp is not None:
                 prize = rp
             elif not major and graded is not None:
@@ -355,7 +352,7 @@ def main() -> None:
     print(json.dumps({k: out[k] for k in ("all", "foreign", "japanese", "japanese_in_foreign_races")}, ensure_ascii=False), file=sys.stderr)
 
 
-VARIANTS_TAG = {"今": "now", "新": "new", "新・読み替えなし": "new_novenue", "新・賞金は前のまま": "new_oldprize", "新・JRAの走ありも": "new_ratingall"}
+VARIANTS_TAG = {"今": "now", "新": "ifha"}
 
 
 if __name__ == "__main__":

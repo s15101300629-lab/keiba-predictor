@@ -85,20 +85,48 @@ function isOverseasVenue(venue: string): boolean {
 // racedb.com で分かった馬ごとの1着賞金（万円）・タイム差（data/overseas/runs.json）と、主要国以外は格を1つ下げる決まり・能力指数の式（impute.json）
 type OverseasImpute = { coef: Record<string, { ab: number[]; tidx: number[] }>; major_venues: string[]; grade_prize: [string, number][]; lower: Record<string, number>; equal_venues?: string[] };
 type OverseasData = { imp: OverseasImpute | null; runs: Record<string, Record<string, { prize?: number; time_diff?: number }>>;
-  venueMap: { map: [string, number, number][]; default: [number, number] } | null };
+  venueMap: { map: [string, number, number][]; default: [number, number] } | null; ifha: IfhaData | null };
 let overseasData: Promise<OverseasData> | null = null;
 function loadOverseas(): Promise<OverseasData> {
   overseasData ??= (async () => {
     const dir = path.join(process.cwd(), "data", "overseas");
     const read = (n: string) => readFile(path.join(dir, n), "utf8").then((t) => JSON.parse(t)).catch(() => null);
-    const [imp, runs, venueMap] = await Promise.all([read("impute.json"), read("runs.json"), read("venue_map.json")]);
-    return { imp, runs: runs ?? {}, venueMap };
+    const [imp, runs, venueMap, ifha] = await Promise.all([read("impute.json"), read("runs.json"), read("venue_map.json"), read("ifha.json")]);
+    return { imp, runs: runs ?? {}, venueMap, ifha };
   })();
   return overseasData;
 }
 
 /** netkeiba の戦績のうち海外のレースを、store.horses と同じ形の過去走にする（見積もりのデータがあれば overseas.py と同じ見積もり）. */
-function overseasRuns(performances: { values: Record<string, string> }[], horseId = "", od: OverseasData | null = null): Store["horses"][string] {
+type IfhaData = { parts: Record<string, number>; venues: [string, string, string[]][]; unrated_g1: number;
+  races: { year: string; country: string; track: string; surface: number; distance: number; age: string; sex?: string; prize: number }[] };
+const IFHA_GRADES: [RegExp, number][] = [[/\((?:GI|G1)\)/, 1], [/\((?:GII|G2)\)/, 2], [/\((?:GIII|G3)\)/, 3], [/\(L\)/, 4], [/\(OP\)/, 5]];
+const JRA_GRADE_PRIZE: Record<number, number> = { 2: 5700, 3: 4100, 4: 2400, 5: 2200 };
+/** IFHA の格で海外の走の1着賞金（万円）を決める（scripts/ml/overseas.py の ifha_prize と同じ）. */
+function ifhaPrize(d: IfhaData, venue: string, raceName: string, date: string, surface: number, distance: number, horseId: string, fallback: number, sex: string | null): number {
+  const hit = d.venues.find(([pat]) => venue.includes(pat));
+  const country = hit?.[1] ?? null;
+  const tracks = hit?.[2] ?? [];
+  const part = country ? d.parts[country] ?? 3 : 3;
+  const grade = IFHA_GRADES.find(([re]) => re.test(raceName))?.[1] ?? null;
+  if (grade === null || part === 3) return fallback;
+  if (part === 2) return 2400;
+  if (grade !== 1) return JRA_GRADE_PRIZE[grade];
+  const years = [...new Set(d.races.map((r) => r.year))].sort();
+  const y0 = date.slice(0, 4);
+  const y = y0 < years[0] ? years[0] : y0 > years[years.length - 1] ? years[years.length - 1] : y0;
+  const age = /^\d{4}/.test(horseId) ? Number(date.slice(0, 4)) - Number(horseId.slice(0, 4)) : null;
+  const ageOk = (rule: string) => {
+    const m = (rule ?? "").match(/^(\d)(yo)?(\+)?/);
+    if (!m || age === null) return true;
+    return m[3] ? age >= Number(m[1]) : age === Number(m[1]);
+  };
+  const c = d.races.filter((r) => r.year === y && r.country === country && (!tracks.length || tracks.includes(r.track)) && r.surface === surface
+    && Math.abs(r.distance - distance) <= 60 && ageOk(r.age) && !((sex === "牡" || sex === "セ") && (r.sex ?? "").includes("F")));
+  return c.length ? c.reduce((a, r) => a + r.prize, 0) / c.length : d.unrated_g1;
+}
+
+function overseasRuns(performances: { values: Record<string, string> }[], horseId = "", od: OverseasData | null = null, sex: string | null = null): Store["horses"][string] {
   const runs: Store["horses"][string] = [];
   for (const p of performances) {
     const v = p.values;
@@ -118,12 +146,8 @@ function overseasRuns(performances: { values: Record<string, string> }[], horseI
     const imp = od?.imp;
     if (imp) {
       const x = od.runs[horseId]?.[date];
-      const major = imp.major_venues.some((m) => (v["開催"] ?? "").includes(m));
-      const g = imp.grade_prize.slice(0, 5).find(([pat]) => new RegExp(pat).test(name)); // G1〜OP
-      // 欧州・香港・ドバイの格のあるレースは JRA の同じ格の値（impute.json の equal_venues）（2026-11-26。scripts/ml/overseas.py の improve と同じ）
-      if (g && (imp.equal_venues ?? []).some((m) => (v["開催"] ?? "").includes(m))) prize = g[1];
-      else if (x?.prize != null) prize = x.prize;
-      else if (!major && g) prize = imp.lower[String(g[1])] ?? g[1];
+      // 1着賞金は IFHA の格で決める（2026-11-26。scripts/ml/overseas.py の ifha_prize と同じ。ifha.json がなければ元のまま）
+      if (od.ifha) prize = Math.round(ifhaPrize(od.ifha, v["開催"] ?? "", name, date, course[1] === "芝" ? 0 : 1, Number(course[2]), horseId, prize, sex) * 10) / 10;
       if (x?.time_diff != null && ok) timeDiff = x.time_diff;
       if (ok && timeDiff >= 0) {
         const c = imp.coef[course[1] === "芝" ? "0" : "1"];
@@ -1143,7 +1167,7 @@ async function getRace(
         // 馬体重は当日の発表。学習データには欠けがないので、発表前は前走の馬体重・増減0 で計算する
         // （前走の馬体重がない馬は、学習データの初出走馬の性別ごとの中央値。scripts/ml/eval_body_weight.py で検証）
         const performances = (results[index] as { performances?: { values: Record<string, string> }[] }).performances ?? [];
-        const overseas = overseasRuns(performances, horse.horseId, overseasInfo);
+        const overseas = overseasRuns(performances, horse.horseId, overseasInfo, sexAge?.[1] ?? null);
         const assumedBodyWeight = entry?.bodyWeight == null
           ? previousBodyWeight(performances, raceConditions.date!) ?? DEBUT_BODY_WEIGHT[sexAge?.[1] ?? ""] ?? DEBUT_BODY_WEIGHT["牡"]
           : null;

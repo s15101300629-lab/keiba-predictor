@@ -384,7 +384,7 @@ def overseas_runs_for(days: list[dict], date: str) -> dict[str, list[dict]]:
                     continue
                 perf = netkeiba_performances(h["horse_id"])
                 # 見積もり（overseas.py。racedb の1着賞金・着差、主要国以外は格を1つ下げる、能力指数・タイム指数の式）
-                runs = [overseas.improve(r, r["ov_venue"], r["ov_name"], h["horse_id"]) for r in overseas_runs(perf)]
+                runs = [overseas.improve(r, r["ov_venue"], r["ov_name"], h["horse_id"], h.get("sex")) for r in overseas_runs(perf)]
                 if runs:
                     out[h["horse"]] = runs
     print(f"海外の走を足した馬: {len(out)} 頭（{sum(len(v) for v in out.values())} 走）", file=sys.stderr, flush=True)
