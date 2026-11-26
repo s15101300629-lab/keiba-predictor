@@ -1,0 +1,411 @@
+{
+ "note": "ロンジンワールドベストレースホースランキング（scripts/ml/wbrr.py）。foreign＝外国馬の馬ID → 数字が一番近い日本馬の AI のレーティング",
+ "date": "20261113",
+ "store_last_date": "2026-11-23",
+ "anchors": [
+  {
+   "kana": "ダノンデサイル",
+   "rating": 124,
+   "elo": [
+    1635.3308143378704,
+    13,
+    1634.8480081624498,
+    13,
+    1500.0,
+    0
+   ]
+  },
+  {
+   "kana": "テーオーエルビス",
+   "rating": 124,
+   "elo": [
+    1603.8224154183736,
+    8,
+    1506.8383140579588,
+    1,
+    1598.8869229272846,
+    7
+   ]
+  },
+  {
+   "kana": "メイショウタバル",
+   "rating": 123,
+   "elo": [
+    1580.966408824337,
+    14,
+    1580.5988314050692,
+    14,
+    1500.0,
+    0
+   ]
+  },
+  {
+   "kana": "クロワデュノール",
+   "rating": 122,
+   "elo": [
+    1619.4532403572166,
+    10,
+    1619.0627422480973,
+    10,
+    1500.0,
+    0
+   ]
+  },
+  {
+   "kana": "マスカレードボール",
+   "rating": 122,
+   "elo": [
+    1585.7147942642152,
+    9,
+    1585.651754801748,
+    9,
+    1500.0,
+    0
+   ]
+  }
+ ],
+ "foreign": {
+  "2021190002": {
+   "name": "Ombudsman",
+   "rating": 131,
+   "anchors": [
+    "ダノンデサイル",
+    "テーオーエルビス"
+   ],
+   "elom": 1619.5766,
+   "elos": [
+    1570.8432,
+    1549.4435
+   ]
+  },
+  "2018190002": {
+   "name": "Romantic Warrior",
+   "rating": 126,
+   "anchors": [
+    "ダノンデサイル",
+    "テーオーエルビス"
+   ],
+   "elom": 1619.5766,
+   "elos": [
+    1570.8432,
+    1549.4435
+   ]
+  },
+  "2021190001": {
+   "name": "Calandagan",
+   "rating": 124,
+   "anchors": [
+    "ダノンデサイル",
+    "テーオーエルビス"
+   ],
+   "elom": 1619.5766,
+   "elos": [
+    1570.8432,
+    1549.4435
+   ]
+  },
+  "2023190001": {
+   "name": "Erdenali",
+   "rating": 124,
+   "anchors": [
+    "ダノンデサイル",
+    "テーオーエルビス"
+   ],
+   "elom": 1619.5766,
+   "elos": [
+    1570.8432,
+    1549.4435
+   ]
+  }
+ },
+ "horses": [
+  {
+   "name": "Ka Ying Rising",
+   "yof": "2020",
+   "trained": "HK",
+   "rating": 135,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Ombudsman",
+   "yof": "2021",
+   "trained": "GB",
+   "rating": 131,
+   "horse_id": "2021190002",
+   "kana": "オンブズマン"
+  },
+  {
+   "name": "Daryz",
+   "yof": "2022",
+   "trained": "FR",
+   "rating": 128,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Bow Echo",
+   "yof": "2023",
+   "trained": "GB",
+   "rating": 127,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Item",
+   "yof": "2023",
+   "trained": "GB",
+   "rating": 126,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Romantic Warrior",
+   "yof": "2018",
+   "trained": "HK",
+   "rating": 126,
+   "horse_id": "2018190002",
+   "kana": "ロマンチックウォリアー"
+  },
+  {
+   "name": "Almaqam",
+   "yof": "2021",
+   "trained": "GB",
+   "rating": 125,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Bay City Roller",
+   "yof": "2022",
+   "trained": "GB",
+   "rating": 125,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Gstaad",
+   "yof": "2023",
+   "trained": "IRE",
+   "rating": 125,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Notable Speech",
+   "yof": "2021",
+   "trained": "GB",
+   "rating": 125,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Nysos",
+   "yof": "2021",
+   "trained": "USA",
+   "rating": 125,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Scandinavia",
+   "yof": "2022",
+   "trained": "IRE",
+   "rating": 125,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Sovereignty",
+   "yof": "2022",
+   "trained": "USA",
+   "rating": 125,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Calandagan",
+   "yof": "2021",
+   "trained": "FR",
+   "rating": 124,
+   "horse_id": "2021190001",
+   "kana": "カランダガン"
+  },
+  {
+   "name": "Constitution River",
+   "yof": "2023",
+   "trained": "IRE",
+   "rating": 124,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Danon Decile",
+   "yof": "2021",
+   "trained": "JPN",
+   "rating": 124,
+   "horse_id": "2021105143",
+   "kana": "ダノンデサイル"
+  },
+  {
+   "name": "Erdenali",
+   "yof": "2023",
+   "trained": "FR",
+   "rating": 124,
+   "horse_id": "2023190001",
+   "kana": "エルデナリ"
+  },
+  {
+   "name": "Kalpana",
+   "yof": "2021",
+   "trained": "GB",
+   "rating": 124,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Magnitude",
+   "yof": "2022",
+   "trained": "USA",
+   "rating": 124,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Maltese Cross",
+   "yof": "2023",
+   "trained": "GB",
+   "rating": 124,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "T O Elvis",
+   "yof": "2022",
+   "trained": "JPN",
+   "rating": 124,
+   "horse_id": "2022110081",
+   "kana": "テーオーエルビス"
+  },
+  {
+   "name": "White Abarrio",
+   "yof": "2019",
+   "trained": "USA",
+   "rating": 124,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Almeraq",
+   "yof": "2022",
+   "trained": "GB",
+   "rating": 123,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Benvenuto Cellini",
+   "yof": "2023",
+   "trained": "IRE",
+   "rating": 123,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Forever Young",
+   "yof": "2021",
+   "trained": "JPN",
+   "rating": 123,
+   "horse_id": "2021105727",
+   "kana": "フォーエバーヤング"
+  },
+  {
+   "name": "Meisho Tabaru",
+   "yof": "2021",
+   "trained": "JPN",
+   "rating": 123,
+   "horse_id": "2021103272",
+   "kana": "メイショウタバル"
+  },
+  {
+   "name": "Opera Ballo",
+   "yof": "2022",
+   "trained": "GB",
+   "rating": 123,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Talk of New York",
+   "yof": "2023",
+   "trained": "GB",
+   "rating": 123,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Croix du Nord",
+   "yof": "2022",
+   "trained": "JPN",
+   "rating": 122,
+   "horse_id": "2022105102",
+   "kana": "クロワデュノール"
+  },
+  {
+   "name": "Deterministic",
+   "yof": "2021",
+   "trained": "USA",
+   "rating": 122,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Englishman",
+   "yof": "2023",
+   "trained": "USA",
+   "rating": 122,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Knightsbridge",
+   "yof": "2021",
+   "trained": "USA",
+   "rating": 122,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Masquerade Ball",
+   "yof": "2022",
+   "trained": "JPN",
+   "rating": 122,
+   "horse_id": "2022105519",
+   "kana": "マスカレードボール"
+  },
+  {
+   "name": "Royal Champion",
+   "yof": "2018",
+   "trained": "GB",
+   "rating": 122,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "The Puma",
+   "yof": "2023",
+   "trained": "USA",
+   "rating": 122,
+   "horse_id": null,
+   "kana": null
+  },
+  {
+   "name": "Trawlerman",
+   "yof": "2018",
+   "trained": "GB",
+   "rating": 122,
+   "horse_id": null,
+   "kana": null
+  }
+ ]
+}

@@ -1289,6 +1289,7 @@ def quantile_of(vals: list[float], q: float) -> float:
     return xs[lo] + (xs[hi] - xs[lo]) * (pos - lo)
 
 
+WBRR: dict | None = None  # data/overseas/wbrr.json の foreign（馬ID → レーティング）。答え合わせが読む
 JOCKEY_WORLD: dict | None = None  # data/overseas/jockey_world.json（scripts/ml/jockey_world.py）。答え合わせが読む
 
 
@@ -1396,6 +1397,10 @@ def build_dataset(data_root: Path) -> tuple[list[dict], History]:
                         # rating_all（比べる案。アプリには未実装）：JRA の走がある外国馬も、初めの値＋JRA での増減（1500 からの差）
                         f["elom"], f["elos"] = init[0] + f["elom"] - 1500.0, init[1] + f["elos"] - 1500.0
                         f["_estimated"] = ["elom", "elos"]
+                wb = (WBRR or {}).get(h.get("horse_id") or "")
+                if fo and FOREIGN_FIX["rating"] and wb:  # ワールドベストレースホースランキングに載っている外国馬（wbrr.py）
+                    f["elom"], f["elos"] = wb["elom"], wb["elos"][race["surface"]]
+                    f["_estimated"] = ["elom", "elos"]
                 if fo and FOREIGN_FIX["people"]:
                     jk = norm_jockey(h.get("jockey"))
                     rides = [r for r in hist.jockeys.get(jk, []) if r["date"] < race["date"]]

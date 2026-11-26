@@ -98,6 +98,8 @@ export type RunnerInput = {
   foreign?: boolean;
   // JRA で乗ったことがない外国人騎手の、海外主要G1の成績から式で出した3着内率（jockey_world.json。features.py の jockey_world_target）
   jockeyWorldTarget?: number | null;
+  // ロンジンワールドベストレースホースランキングに載っている外国馬のレーティング（wbrr.json。features.py の WBRR）
+  wbrr?: { elom: number; elos: [number, number] } | null;
   owner?: string | null; // 馬主（netkeiba のプロフィール）
   breeder?: string | null; // 生産者（netkeiba のプロフィール「生産者(産地)」。産地の括弧は normOwner で取る）
 };
@@ -757,6 +759,11 @@ export function runnerFeatures(store: Store, race: RaceInput, runner: RunnerInpu
     f.elos = ri.elos[0] + ri.elos[1] * f.ab_wmean;
     f._est_rating = 1;
   }
+  if (runner.foreign && runner.wbrr) {
+    f.elom = runner.wbrr.elom;
+    f.elos = runner.wbrr.elos[race.surface === 0 ? 0 : 1];
+    f._est_rating = 2;
+  }
   const tr = trainerStats(store, race, runner.trainerKey);
   Object.assign(f, {
     trainer_n: tr.n, trainer_top3: rate(tr.top3, tr.n), trainer_venue_n: tr.venueN, trainer_venue_top3: rate(tr.venueTop3, tr.venueN),
@@ -863,7 +870,7 @@ function quantileOf(vals: number[], q: number): number {
  * 埋めた項目の名前を馬ごとに返す（画面の「推定」用）
  */
 export function fillForeignPeople(store: Store, race: RaceInput, rows: Features[], runners: RunnerInput[]): string[][] {
-  const est = rows.map((f) => [...(f._est_rating ? ["elom", "elos"] : []), ...(f._est_jockey_career ? ["jockey_career"] : [])]);
+  const est = rows.map((f) => [...(f._est_rating ? ["elom", "elos"] : []), ...(f._est_rating === 2 ? ["wbrr"] : []), ...(f._est_jockey_career ? ["jockey_career"] : [])]);
   const japanese = rows.filter((_, i) => !runners[i].foreign);
   if (!japanese.length || !runners.some((r) => r.foreign)) return est;
   const qs = rows.map((f, i) => (runners[i].foreign ? strengthQ(rows, runners, f) : 0.5));

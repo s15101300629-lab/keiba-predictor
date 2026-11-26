@@ -660,7 +660,8 @@ function ForeignNote({ foreign, value }: { foreign: NonNullable<Prediction["fore
   const pct = (x: number | null | undefined) => (x == null ? "-" : (x * 100).toFixed(1) + "%");
   const est = new Set(foreign.estimated);
   const rows: [string, string][] = [];
-  if (est.has("elom")) rows.push(["レーティング", `${Math.round(v.elom ?? 0)}（海外の走から見積もった能力指数から。日本馬の能力指数とレーティングの関係の式）`]);
+  if (est.has("wbrr")) rows.push(["レーティング", `${Math.round(v.elom ?? 0)}（ロンジンワールドベストレースホースランキングの数字が近い日本馬と同じ）`]);
+  else if (est.has("elom")) rows.push(["レーティング", `${Math.round(v.elom ?? 0)}（海外の走から見積もった能力指数から。日本馬の能力指数とレーティングの関係の式）`]);
   if (est.has("jockey_career")) rows.push(["騎手", `JRA での通算 ${v.jockey_n ?? 0}騎乗・3着内率 ${pct(v.jockey_top3)}（短期免許なので今年のかわりに通算）`]);
   else if (est.has("jockey_world")) rows.push(["騎手", `JRA での騎乗がないので、海外主要G1の成績（JRA-VAN Ver.World）から見積もった値（3着内率 ${pct(v.jockey_top3)}）`]);
   else if (est.has("jockey_n")) rows.push(["騎手", `同じレースの日本馬の騎手の中央値（${v.jockey_n ?? "-"}騎乗・3着内率 ${pct(v.jockey_top3)}。JRA での騎乗がない）`]);
