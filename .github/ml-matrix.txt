@@ -1,4 +1,4 @@
 # 1行1コマンド（scripts/ml で動かす）。行ごとに別のジョブで同時に回す（.github/workflows/ml-matrix.yml）。
 # このファイルを変えて push すると起動する（書いてあるコマンドを全部回すので、済んだものは消す）
-# 2026-11-26：香港・フランスの公式の区間タイム（上がり）を入れた形の比較（IFHA の格・騎手も入り）
+# 2026-11-26：香港・フランスの公式の区間タイム（上がり）を入れた形の比較（IFHA の格・騎手も入り）。1回目はレースの上がりが空の走で止まったので直して回し直し
 python hkjc.py build && python francegalop.py build && python overseas_eval.py 今 新
