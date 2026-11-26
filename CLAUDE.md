@@ -255,7 +255,7 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
 
 - 原因：外国馬は学習データの「新馬・転入馬の形」（レーティング 1500、騎手などの成績 0、前走レベル不明）に見え、低く出ていた（JC の SHAP で確認）
 - 馬名：成績表の「カランダガン（Calandagan（IRE））（仏）」をカナだけにする（`clean_horse_name`・`cleanHorseName`、二重名も直す）。アプリは `storeHorseKey` で前の形の store ともつなぐ
-- 海外の走：欧州・香港・ドバイの G1〜OP は JRA の同じ格の1着賞金（`impute.json` の `equal_venues`。依頼者の判断）。ほかの主要国は racedb、主要国以外は格を1つ下げる。競馬場は近い JRA のコースに読み替え（`data/overseas/venue_map.json`）
+- 海外の走の1着賞金は IFHA の格どおり（2026-11-26、依頼者の判断。`scripts/ml/ifha.py` → `data/overseas/ifha.json`、`overseas.ifha_prize`／TS の `ifhaPrize`）：国際格付け基準（ICS 2026）の Part I の国の G1 は「世界のトップ100 G1」のレースレーティングを JRA の G1 の式で賞金に直す（トップ100外は JRA のトップ100外 G1 の中央値 11,000万円）、G2〜OP は JRA の同じ格、Part II の重賞はリステッド相当（2,400）、Part III・載っていない国は格なし。チリ・ペルーは Part I。競馬場は近い JRA のコースに読み替え（`data/overseas/venue_map.json`）
 - 外国馬（netkeiba の厩舎が「海外」、成績表では調教師が「F．グラファール」の形）だけ：JRA の走がなければレーティングの初めの値を能力指数から（`rating_init.json`）、短期免許の騎手は JRA での通算（`jockey_career.json`、`foreign_jockeys.py`）、JRA で乗ったことのない騎手は日本馬の中央値、調教師・馬主・生産者・前走レベルは日本馬の「その馬の強さ（能力指数の順位）の位置」の値。画面は「推定」と市場と合わせた確率を出す（注意の文は出さない）
 - 学習データには使わない（`features.FOREIGN_FIX` は答え合わせ・アプリだけ）。海外の走を足すのは予測するレースだけ（`EXTRA_RUNS_RACES`）
 - 検証（`overseas_eval.py`、外国馬25走・遠征帰り839走。少ないので目安）：外国馬の3着以内の順位 5.3→4.3位、logloss は 0.299→0.331（高く見すぎ）。一致テスト `parity_foreign.py`/`.ts` は一致
