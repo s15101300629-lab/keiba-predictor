@@ -589,7 +589,7 @@ netkeiba（`db.netkeiba.com` など）は UTF-8 で配信されている。`fetc
 
 - 調教ページ（race.netkeiba.com/race/oikiri.html）は 2017年のレースでも短評と A〜D 評価が見える（2017・2018・2019・2020・2023・2024年の東京11Rで確認）。今あるのは 2025・2026年だけで、学習の 2018〜2024年の行は欠損
   - 依頼者の判断（2026-11-25）：2020〜2024年（16,676レース）を取る。`training-backfill.yml`（作業ブランチへの push で起動。1本ずつ・2秒間隔、約5時間半のジョブを順に最大4回、15分ごとに commit）。見込み約12時間
-  - `collect_training.py` の User-Agent を「Mozilla/5.0」（ブラウザのふり）から「data-collector/1.0」に変えた（requests の既定の名前は 400 になる）。`check_jra_day.py` の調教の取得も同じ。間隔は環境変数 `TRAINING_WAIT_SECONDS`（既定5秒）。この変更は作業ブランチだけで、main はまだ「Mozilla/5.0」
+  - `collect_training.py` の User-Agent を「Mozilla/5.0」（ブラウザのふり）から「data-collector/1.0」に変えた（requests の既定の名前は 400 になる）。`check_jra_day.py` の調教の取得も同じ。間隔は環境変数 `TRAINING_WAIT_SECONDS`（既定5秒）（2026-11-26 に main にも入れた）
   - 取れたら `compare_training_past.py` → `data/ml/training_past.json`（今の形＝2025年より前は欠損 対 全年）。依頼者の判断（2026-11-26）で 2020〜2024年の分を main に入れて再学習する。兄弟の成績は見送り、2018・2019年の調教評価は取らない
 - 兄弟の成績：成績表に母がなく、全馬の血統（horses.json）も父・母父・母母父だけで母を保存していない
   - 依頼者の判断（2026-11-25）：母は取らず、取得している範囲でやる。`compare_siblings.py` → `data/ml/siblings.json`（ml-matrix）
