@@ -758,7 +758,10 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .bet-shobu { background: #3a2e10; color: var(--accent-strong); border: 1px solid var(--accent); }
 .star-bets { padding: 8px 12px; }
 .star-bets ul { padding: 0; }
-.star-ev { display: block; width: 100%; color: var(--muted); font-size: 11px; }
+.star-bets li { flex-wrap: wrap; }
+.star-bets li .mark-bet-combo { flex: 0 0 auto; white-space: nowrap; }
+.star-bets li .mark-bet-odds { flex: 0 0 84px; }
+.star-ev { flex: 1 1 100%; display: block; width: auto; color: var(--muted); font-size: 11px; }
 
 /* AIスコアの横に3着以内確率（案11） */
 .ai-score-num { flex: 0 0 30px; display: flex; flex-direction: column; align-items: flex-end; line-height: 1.05; }
