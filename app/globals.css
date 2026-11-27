@@ -782,7 +782,10 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .bet-summary .bet-result-heading { margin: 0; color: var(--accent-strong); font-size: 13px; font-weight: 700; }
 .bet-summary .bet-result-description { margin: 4px 0 8px; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .bet-summary .bet-table-wrap { width: 100%; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.bet-summary .bet-stats { min-width: 410px; margin-top: 0; }
+.bet-summary .bet-stats { min-width: 560px; margin-top: 0; }
+/* 6列の「印から作る買い目」表で券種列が圧縮され、文字が欠けるのを防ぐ */
+.bet-summary .bet-stats:not(.star-bet-stats):not(.mark-bet-stats) th:first-child,
+.bet-summary .bet-stats:not(.star-bet-stats):not(.mark-bet-stats) td:first-child { min-width: 104px; width: 104px; }
 .bet-summary .bet-stats th, .bet-summary .bet-stats td { padding: 8px 7px; }
 .bet-summary .bet-stats th { white-space: nowrap; }
 .bet-summary .bet-stats td { white-space: nowrap; }
