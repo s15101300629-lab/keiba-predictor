@@ -78,7 +78,7 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
     </section>
     <section className="bet-result-section">
       <h4 className="bet-result-heading">☆の買い目</h4>
-      <div className="bet-table-wrap">
+      <div className="bet-table-wrap compact-bet-table-wrap">
         <table className="check-table bet-stats star-bet-stats">
           <thead><tr><th>券種</th><th>購入点数</th><th>的中点数</th><th>的中率</th><th>回収率</th></tr></thead>
           <tbody>{stars.map((r) => <tr key={r.label}>
@@ -91,7 +91,7 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
     </section>
     <section className="bet-result-section">
       <h4 className="bet-result-heading">AI印別の成績</h4>
-      <div className="bet-table-wrap">
+      <div className="bet-table-wrap compact-bet-table-wrap">
         <table className="check-table bet-stats mark-bet-stats">
           <thead><tr><th>AI印</th><th>頭数</th><th>勝率</th><th>3着内率</th><th>単勝回収率</th><th>複勝回収率</th></tr></thead>
           <tbody>{markStats(rs).map((r) => <tr key={r.m}><th>{r.m}</th><td>{r.n}頭</td>
