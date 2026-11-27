@@ -68,7 +68,6 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
     </div>
     <section className="bet-result-section">
       <h4 className="bet-result-heading">印から作る買い目</h4>
-      <p className="bet-result-description">ワイド・馬連・馬単・3連複・3連単</p>
       <div className="bet-table-wrap">
         <table className="check-table bet-stats">
           <thead><tr><th>券種</th><th>点数</th><th>的中レース数</th><th>的中率</th><th>金額</th><th>回収率</th></tr></thead>
@@ -79,7 +78,6 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
     </section>
     <section className="bet-result-section">
       <h4 className="bet-result-heading">☆の買い目</h4>
-      <p className="bet-result-description">複勝☆・ワイド◎-☆・ワイド○-☆</p>
       <div className="bet-table-wrap">
         <table className="check-table bet-stats star-bet-stats">
           <thead><tr><th>券種</th><th>購入点数</th><th>的中点数</th><th>的中率</th><th>回収率</th></tr></thead>
@@ -93,7 +91,6 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
     </section>
     <section className="bet-result-section">
       <h4 className="bet-result-heading">AI印別の成績</h4>
-      <p className="bet-result-description">各印を付けた馬の勝率・3着内率・回収率</p>
       <div className="bet-table-wrap">
         <table className="check-table bet-stats mark-bet-stats">
           <thead><tr><th>AI印</th><th>頭数</th><th>勝率</th><th>3着内率</th><th>単勝回収率</th><th>複勝回収率</th></tr></thead>
