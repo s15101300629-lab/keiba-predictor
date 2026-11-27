@@ -57,7 +57,7 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
   const { rows, stars } = betStats(rs, mode);
   const total = rows.reduce((a, r) => ({ points: a.points + r.points, ret: a.ret + r.ret }), { points: 0, ret: 0 });
   const line = (r: { label: string; racesN: number; points: number; hitRaces: number; ret: number }, unit: string) => <tr key={r.label}>
-    <th>{r.label}</th><td>{r.points}点</td><td>{r.hitRaces}/{r.racesN}{unit}</td><td>{r.racesN ? pct(r.hitRaces / r.racesN) : "–"}</td>
+    <th>{r.label}</th><td>{r.points}点</td><td>{r.hitRaces}/{r.racesN}{unit}</td><td>{r.racesN ? pct(r.hitRaces / r.racesN) : "–"}</td><td>{yen(r.ret)}</td>
     <td className={r.points && r.ret >= r.points * 100 ? "strong" : ""}>{r.points ? pct(r.ret / (r.points * 100)) : "–"}</td></tr>;
   return <div className="check-summary bet-summary">
     <p className="check-summary-label">{label} 買い方の成績<span>{rs.length}レース</span></p>
@@ -71,9 +71,9 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
       <p className="bet-result-description">ワイド・馬連・馬単・3連複・3連単</p>
       <div className="bet-table-wrap">
         <table className="check-table bet-stats">
-          <thead><tr><th>券種</th><th>点数</th><th>的中レース数</th><th>的中率</th><th>回収率</th></tr></thead>
+          <thead><tr><th>券種</th><th>点数</th><th>的中レース数</th><th>的中率</th><th>金額</th><th>回収率</th></tr></thead>
           <tbody>{rows.map((r) => line(r, ""))}
-            <tr className="total"><th>合計</th><td>{total.points}点</td><td>–</td><td>–</td><td>{total.points ? pct(total.ret / (total.points * 100)) : "–"}<small>{yen(total.ret)}</small></td></tr></tbody>
+            <tr className="total"><th>合計</th><td>{total.points}点</td><td>–</td><td>–</td><td>{yen(total.ret)}</td><td>{total.points ? pct(total.ret / (total.points * 100)) : "–"}</td></tr></tbody>
         </table>
       </div>
     </section>
