@@ -194,8 +194,8 @@ function displayBodyWeight(horse: Horse, raceDate: string | null): number | null
   if (horse.raceEntry?.bodyWeight != null) return horse.raceEntry.bodyWeight;
   let best: { date: string; weight: number } | null = null;
   for (const run of horse.performances ?? []) {
-    const date = (run.values["日付"] ?? "").replace(/\\//g, "-");
-    const match = (run.values["馬体重"] ?? "").match(/^\\s*(\\d{3})/);
+    const date = (run.values["日付"] ?? "").replace(/\//g, "-");
+    const match = (run.values["馬体重"] ?? "").match(/^\s*(\d{3})/);
     if (!match || !date || !raceDate || date >= raceDate) continue;
     if (!best || date > best.date) best = { date, weight: Number(match[1]) };
   }
