@@ -818,15 +818,30 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .foreign-note p { margin: 0 0 4px; }
 .estimated-tag { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: #3a3220; color: #f0d27a; font-size: 0.7rem; font-weight: 400; }
 
-/* ☆買い目表：券種列が不必要に広がらないよう、先頭列の幅と左余白を固定 */
-.bet-summary .star-bet-stats { table-layout: fixed; }
+/* ☆買い目表：5列を画面幅内に収め、横スクロールを極力なくす */
+.bet-summary .star-bet-stats {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+.bet-summary .star-bet-stats th,
+.bet-summary .star-bet-stats td {
+  padding: 6px 3px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.bet-summary .star-bet-stats th:nth-child(1),
+.bet-summary .star-bet-stats td:nth-child(1) { width: 28%; }
+.bet-summary .star-bet-stats th:nth-child(2),
+.bet-summary .star-bet-stats td:nth-child(2) { width: 19%; }
+.bet-summary .star-bet-stats th:nth-child(3),
+.bet-summary .star-bet-stats td:nth-child(3) { width: 19%; }
+.bet-summary .star-bet-stats th:nth-child(4),
+.bet-summary .star-bet-stats td:nth-child(4) { width: 17%; }
+.bet-summary .star-bet-stats th:nth-child(5),
+.bet-summary .star-bet-stats td:nth-child(5) { width: 17%; }
 .bet-summary .star-bet-stats th:first-child,
 .bet-summary .star-bet-stats td:first-child {
-  width: 76px;
-  min-width: 76px;
-  max-width: 76px;
   padding-left: 0;
-  padding-right: 4px;
   text-align: left;
-  text-indent: 0;
 }
