@@ -705,9 +705,7 @@ function FactorView({ horses, categoryRanks, factor, onFactor, shapState, onRetr
 const ODDS_FIELD: Record<BetType, keyof OddsData> = { 単勝: "win", 複勝: "place", ワイド: "wide", 馬連: "umaren", "3連複": "trio" };
 const BET_TYPES: BetType[] = ["単勝", "複勝", "ワイド", "馬連", "3連複"];
 
-function OddsBar({ odds, state, error, onLoad, compact = false, weightNote = "", startAt = null }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; onLoad: () => void; compact?: boolean; weightNote?: string; startAt?: Date | null }) {
-  // 案9：取ったのが発走10分前より早いときは、取り直しをすすめる（過去の検証は確定オッズ）
-  const early = !!odds && !!startAt && odds.status !== "result" && new Date(odds.fetchedAt).getTime() < startAt.getTime() - 10 * 60 * 1000;
+function OddsBar({ odds, state, error, onLoad, compact = false }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; onLoad: () => void; compact?: boolean }) {
   const missing = odds ? BET_TYPES.filter((t) => !Object.keys((odds[ODDS_FIELD[t]] as OddsMap) ?? {}).length) : [];
   return <div className="odds-bar">
     <div className="bet-controls">
@@ -868,7 +866,6 @@ export default function RaceDetailPage() {
   const odds = storedOdds && (storedOdds.drawn ?? true) === drawnNow ? storedOdds : null;
   const [oddsState, setOddsState] = useState<"idle" | "loading" | "error">("idle");
   const [oddsError, setOddsError] = useState("");
-  const [weightNote, setWeightNote] = useState(""); // オッズ取得のあとの馬体重の反映の結果
   // 「オッズを取得」は押すたびに netkeiba から取り直す（ブラウザ・サーバーのキャッシュを使わない）
   const loadOdds = useCallback(async () => {
     setOddsState("loading"); setOddsError("");
@@ -880,9 +877,8 @@ export default function RaceDetailPage() {
       setOdds(json); saveCachedOdds(raceId, json); setOddsState("idle");
       // 馬体重がまだ入っていない（前走の馬体重で計算中の）ときは、出馬表を取り直して予想を計算し直す
       if (dataRef.current?.ml?.bodyWeightAssumed) {
-        setWeightNote("馬体重を確認中…");
         const fresh = await loadRef.current?.(false, true, assumedGoingRef.current, true);
-        setWeightNote(!fresh ? "" : fresh.ml?.bodyWeightAssumed ? "馬体重はまだ発表されていない（前走の馬体重で計算中）" : "発表された馬体重で予想を計算し直した");
+
       }
     } catch (err) {
       setOddsState("error"); setOddsError(err instanceof Error ? err.message : "取得に失敗した");
@@ -1006,7 +1002,7 @@ export default function RaceDetailPage() {
   const horseOdds = useMemo(() => horseOddsOf(horses.map((h) => ({ id: h.horseId, num: oddsNum(h.raceEntry) })), odds), [odds, horses]);
   // 発走時刻（日本時間）。オッズの取り直しのすすめ（案9）に使う
   const startAt = conditions?.date && conditions.startTime ? new Date(`${conditions.date}T${conditions.startTime.padStart(5, "0")}:00+09:00`) : null;
-  const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} weightNote={weightNote} startAt={startAt} />;
+  const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} />;
   // AI予想タブの目安（妙味あり・妥当・割高）。AI の確率（合計をそろえる前）と単勝オッズから（app/lib/market.ts の valueLabels）
   const values = useMemo(() => {
     const model = data?.ml?.valueModel;
@@ -1107,7 +1103,7 @@ export default function RaceDetailPage() {
           {data.ml.raceInTraining && <p className="heavy-note" role="note">
             ⚠ このレースの結果は、すでにAIの学習データに入っている（〜{data.ml.dataUntil}）。答えを見て学習した状態なので、参考として見ること。
           </p>}
-          <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} weightNote={weightNote} startAt={startAt} compact />
+          <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} compact />
           <section className="horse-results-section">
             <div className="results-toolbar">
               <div className="sort-toggle" role="group" aria-label="見方">
