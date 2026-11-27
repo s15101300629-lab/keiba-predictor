@@ -816,7 +816,7 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .bet-summary .bet-result-section { display: block; width: 100%; margin-top: 16px; }
 .bet-summary .bet-result-section + .bet-result-section { margin-top: 18px; }
 .bet-summary .bet-result-heading { display: block; margin: 0 0 8px; font-size: 14px; font-weight: 700; }
-.bet-summary .bet-result-section .bet-table-wrap { width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; }
+/* compact-bet-table-wrap の幅指定を優先し、section 側から上書きしない */
 .bet-summary .check-table th,
 .bet-summary .check-table td {
   color: var(--text);
