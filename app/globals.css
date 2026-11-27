@@ -507,11 +507,8 @@ footer span { letter-spacing:0; }
 .ai-conditions { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 4px; color: var(--muted); font-size: 12px; }
 .ai-conditions b { color: var(--text); margin-left: 4px; }
 .ai-conditions select { margin-left: 4px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--text); font: inherit; }
-.ai-row-head { display: grid; grid-template-columns: 1fr 52px 100px 56px; gap: 6px; padding: 6px 10px 4px 44px; color: var(--muted); font-size: 10px; }
-.ai-row-head span:nth-child(n+2) { text-align: center; }
-.ai-row-head i { display: inline-block; width: 10px; height: 2px; margin: 0 3px 2px 6px; background: #3fae5a; vertical-align: middle; }
-.prediction-horse-summary.ai-row { display: grid; grid-template-columns: 26px 1fr 52px 100px 56px; align-items: center; gap: 6px; min-height: 52px; padding: 8px 10px; }
-.ai-row .horse-main b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.prediction-horse-summary.ai-row { display: grid; grid-template-columns: 26px minmax(0, 1fr) 52px 100px; align-items: center; gap: 6px; min-height: 52px; padding: 8px 10px; }
+.ai-row .horse-main b { font-size: 14px; line-height: 1.25; white-space: normal; overflow: visible; text-overflow: clip; display: block; }
 .ai-row .horse-main small { margin-top: 2px; }
 .ai-odds { display: flex; flex-direction: column; align-items: center; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .ai-odds b { font-size: 14px; }
@@ -875,9 +872,6 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .check-drift summary { color: var(--accent-strong); font-weight: 700; }
 .check-drift ul { margin: 6px 0 0 16px; }
 
-/* 外国馬の注意（2026-11-26） */
+/* 外国馬の表示 */
 .foreign-tag { color: var(--accent, #d4af37); font-weight: 700; }
-.foreign-note { border: 1px solid var(--accent, #d4af37); border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 0.85rem; }
-.foreign-note p { margin: 0 0 4px; }
-.estimated-tag { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: #3a3220; color: #f0d27a; font-size: 0.7rem; font-weight: 400; }
 
