@@ -588,11 +588,9 @@ function probabilityTier(rank: number | undefined) {
   return rank <= 3 ? " tier-top" : rank <= 6 ? " tier-mid" : "";
 }
 
-const VALUE_CLASS: Record<string, string> = { 妙味あり: "good", 妥当: "even", 割高: "bad" };
-
-function OverallHorseCard({ horse, categories, mark, odds, value, score, onOpen, shapState }: {
+function OverallHorseCard({ horse, categories, mark, odds, score, onOpen, shapState }: {
   horse: Horse; total: number; categories: CategoryRank[]; mark: string;
-  odds: HorseOdds | null; value: ValueResult | null; score: number | null;
+  odds: HorseOdds | null; score: number | null;
   onOpen: () => void; shapState: ShapState;
 }) {
   const prediction = horse.prediction;
@@ -608,8 +606,7 @@ function OverallHorseCard({ horse, categories, mark, odds, value, score, onOpen,
       <span className="horse-main">
         <b>{mark && <span className="horse-mark">{mark}</span>}{horse.name}</b>
         <small>{entry?.jockey ?? ""}</small>
-        {/* 外国馬：市場（単勝オッズ）と合わせた3着以内確率も並べる（オッズがあるとき。詳しくは行を開いた中の注意） */}
-        {prediction?.foreign && <small><span className="foreign-tag">外国馬</span>{value && <> 市場込み {Math.round(value.combined * 100)}%</>}</small>}
+        {prediction?.foreign && <small><span className="foreign-tag">外国馬</span></small>}
       </span>
       <span className="ai-odds">
         {odds?.win != null ? <><b className={odds.popularity != null && odds.popularity <= 3 ? "fav" : ""}>{odds.win.toFixed(1)}</b><small>{odds.popularity}番人気</small></> : <small>-</small>}
@@ -622,7 +619,6 @@ function OverallHorseCard({ horse, categories, mark, odds, value, score, onOpen,
           <span className="ai-score-avg" style={{ left: scoreBar(50) + "%" }} />
         </span>
       </span>
-      <span className={"ai-value " + (value ? VALUE_CLASS[value.label] : "none")}>{value?.label ?? "-"}</span>
     </summary>
 
     <div className="horse-result-content ai-detail">
@@ -636,7 +632,6 @@ function OverallHorseCard({ horse, categories, mark, odds, value, score, onOpen,
         </div>
         <span className="ai-detail-score"><small>AIスコア</small><strong>{score === null ? "-" : Math.round(score)}</strong><small>3着内 {probability === null ? "-" : probability.toFixed(1) + "%"}</small></span>
       </div>
-      {prediction?.foreign && <ForeignNote foreign={prediction.foreign} value={value} />}
       {/* 各観点のスコア（AIスコアの内訳）の表は 2026-11-25 にやめた（依頼者の指示）。プラス・マイナス評価ポイントは、行を開いたときに /api/shap で計算して出す */}
       {!horse.prediction?.shapGroups && <ShapStatus state={shapState} onRetry={onOpen} />}
       {strong.length > 0 && <section className="ai-points plus">
@@ -652,29 +647,6 @@ function OverallHorseCard({ horse, categories, mark, odds, value, score, onOpen,
       </p>}
     </div>
   </details>;
-}
-
-/** 外国馬：市場と合わせた確率と、学習データにない形なので推定で埋めた値（注意の文は 2026-11-26 に依頼者の指示でやめた）（app/lib/ml/features.ts の fillForeignPeople など）. */
-function ForeignNote({ foreign, value }: { foreign: NonNullable<Prediction["foreign"]>; value: ValueResult | null }) {
-  const v = foreign.values;
-  const pct = (x: number | null | undefined) => (x == null ? "-" : (x * 100).toFixed(1) + "%");
-  const est = new Set(foreign.estimated);
-  const rows: [string, string][] = [];
-  if (est.has("wbrr")) rows.push(["レーティング", `${Math.round(v.elom ?? 0)}（ロンジンワールドベストレースホースランキングの数字が近い日本馬と同じ）`]);
-  else if (est.has("elom")) rows.push(["レーティング", `${Math.round(v.elom ?? 0)}（海外の走から見積もった能力指数から。日本馬の能力指数とレーティングの関係の式）`]);
-  if (est.has("jockey_career")) rows.push(["騎手", `JRA での通算 ${v.jockey_n ?? 0}騎乗・3着内率 ${pct(v.jockey_top3)}（短期免許なので今年のかわりに通算）`]);
-  else if (est.has("jockey_world")) rows.push(["騎手", `JRA での騎乗がないので、海外主要G1の成績（JRA-VAN Ver.World）から見積もった値（3着内率 ${pct(v.jockey_top3)}）`]);
-  else if (est.has("jockey_n")) rows.push(["騎手", `同じレースの日本馬の騎手の中央値（${v.jockey_n ?? "-"}騎乗・3着内率 ${pct(v.jockey_top3)}。JRA での騎乗がない）`]);
-  if (est.has("trainer_n")) rows.push(["調教師", `同じレースの日本馬の値（強さの位置。今年 ${v.trainer_n ?? "-"}頭・3着内率 ${pct(v.trainer_top3)}）`]);
-  if (est.has("lv_field_form") || est.has("lv_field_tidx")) rows.push(["出走レースレベル", "前走の相手の成績が海外の走なので分からない。同じレースの日本馬の値（強さの位置）"]);
-  if (est.has("owner_n_y")) rows.push(["馬主・生産者", `同じレースの日本馬の値（強さの位置。3着内率 馬主 ${pct(v.owner_top3_y)}・生産者 ${pct(v.breeder_top3_y)}）`]);
-  if (!rows.length && !value) return null;
-  return <section className="foreign-note" role="note">
-    {value && <p>市場（単勝オッズ）と合わせた3着以内確率：<b>{(value.combined * 100).toFixed(1)}%</b>（市場だけ {(value.market * 100).toFixed(1)}%）</p>}
-    {rows.length > 0 && <dl className="fact-list">
-      {rows.map(([label, text]) => <div key={label}><dt>{label}<small className="estimated-tag">推定</small></dt><dd>{text}</dd></div>)}
-    </dl>}
-  </section>;
 }
 
 // AIスコアの内訳（SHAP）は、内訳を開いたとき（馬の行を開く・観点別）に /api/shap で計算する（2026-11-25。レースを開くのを速くするため）
@@ -732,15 +704,19 @@ function OddsBar({ odds, state, error, onLoad, compact = false, weightNote = "",
         {state === "loading" ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} オッズを取得
       </button>
     </div>
-    <p className="bet-note">
+    {!compact && <p className="bet-note">
       {odds ? <>netkeiba {odds.officialTime ? odds.officialTime.replace(/^\d{4}-/, "").replace("-", "/") + " 時点" : ""}（取得 {new Date(odds.fetchedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}）
         {odds.status === "yoso" && <><br /><b className="bet-warn">発売前。netkeiba の予想で、実際のオッズではない</b></>}</>
-        : compact ? "取得すると、市場と比べた目安を出す" : "押すと netkeiba から今のオッズを取る（押すたびに取り直す。取ったオッズはこの端末に保存する）"}
-      {!compact && missing.length > 0 && <><br />まだ出ていない券種：{missing.join("・")}</>}
+        : "押すと netkeiba から今のオッズを取る（押すたびに取り直す。取ったオッズはこの端末に保存する）"}
+      {missing.length > 0 && <><br />まだ出ていない券種：{missing.join("・")}</>}
       {state === "error" && <><br /><b className="bet-warn">オッズを取得できなかった：{error}</b></>}
       {weightNote && <><br /><b>{weightNote}</b></>}
       {early && <><br /><b className="bet-warn">発走10分前以降に取り直すと、過去の検証（確定オッズ）と同じ条件に近くなります</b></>}
-    </p>
+    </p>}
+    {compact && (state === "error" || !!weightNote) && <p className="bet-note">
+      {state === "error" && <b className="bet-warn">オッズを取得できなかった：{error}</b>}
+      {weightNote && <b>{weightNote}</b>}
+    </p>}
   </div>;
 }
 
@@ -1136,28 +1112,17 @@ export default function RaceDetailPage() {
               </div>}
             </div>
             {predView === "factor" && <FactorView horses={horses} categoryRanks={categoryRanks} factor={factor} onFactor={setFactor} shapState={shapState} onRetry={() => void loadShap()} />}
-            {predView === "horse" && <><div className="ai-row-head" aria-hidden="true">
-              <span>馬</span><span>オッズ</span><span>AIスコア<i />平均</span><span>目安</span>
-            </div>
-            {sortedHorses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
+            {predView === "horse" && <>{sortedHorses.map((horse) => <OverallHorseCard key={horse.horseId} horse={horse}
               total={predictedCount}
               mark={marks[horse.horseId] ?? ""}
               odds={horseOdds.get(horse.horseId) ?? null}
-              value={oddsNum(horse.raceEntry) != null ? values?.get(oddsNum(horse.raceEntry)!) ?? null : null}
               score={scores.get(horse.horseId) ?? null}
               categories={categoryRanks.get(horse.horseId) ?? []}
-              onOpen={() => void loadShap()} shapState={shapState} />)}</>}
-            <div className="ai-legend">
-              <p><b>AIスコア</b>＝AIが出した3着以内に入る確率を、出走馬の中での偏差値にしたもの（平均50。差が大きいほど抜けている）。線は平均の50。確率（%）は行を押すと出る。</p>
-              <p><b>目安</b>＝AIと市場（単勝オッズ）を合わせた3着以内の確率が、オッズから見た確率より高いか。
-                <span className="ai-value good">妙味あり</span>1.1倍以上・<span className="ai-value even">妥当</span>・<span className="ai-value bad">割高</span>0.9倍以下。
-                {!odds && " オッズを取得すると出る。"}</p>
-              {evidence && evidenceYear && <p className="bet-warn">過去の検証（{evidenceYear}年、確定オッズ）：「妙味あり」の馬の複勝回収率は {Math.round((evidence[evidenceYear]["妙味あり"]?.roi ?? 0) * 100)}%（{evidence[evidenceYear]["妙味あり"]?.bets ?? 0}点）、
-                「割高」は {Math.round((evidence[evidenceYear]["割高"]?.roi ?? 0) * 100)}%。妙味ありでも長く買い続けて勝てるとは言えない。</p>}
-            </div>
+              onOpen={() => void loadShap()} shapState={shapState} />)}
+            <p className="ai-legend"><b>AIスコア</b>＝AIが出した3着以内に入る確率を、出走馬の中での偏差値にしたもの（平均50。差が大きいほど抜けている）。線は平均の50。確率（%）は行を押すと出る。</p></>}
             <details className="model-note">
               <summary>このAI予想について</summary>
-              <p>機械学習（LightGBM）で、3着以内に入る確率を出している。人気・オッズはAIスコアには使っていない（目安だけがオッズを使う）。
+              <p>機械学習（LightGBM）で、3着以内に入る確率を出している。人気・オッズはAIスコアには使っていない。
                 学習データ：JRA成績表 〜{data.ml?.dataUntil ?? "-"}。
                 {data.ml?.goingSource === "user" ? `想定馬場「${conditions.going}」で計算。` : data.ml?.goingAssumed ? "馬場状態が未発表のため「良」として計算。" : ""}
                 {data.ml?.bodyWeightAssumed ? "馬体重が未発表の馬は、前走の馬体重・増減0として計算。" : ""}
