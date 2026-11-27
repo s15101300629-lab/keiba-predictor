@@ -771,7 +771,7 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
 /* AI成績：買い方の成績（2026-11-24） */
 /* ☆の買い目・AI印別の成績は指標を独立列で表示 */
-/* 買い目成績表：列幅は各表の内容に合わせ、文字サイズは維持 */
+/* 買い目成績表：表ごとに幅を分離し、文字サイズは12pxを維持 */
 .bet-summary .bet-table-wrap {
   width: 100%;
   min-width: 0;
@@ -779,10 +779,9 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   -webkit-overflow-scrolling: touch;
 }
 .bet-summary .bet-stats {
-  width: max-content;
-  min-width: 100%;
   table-layout: auto;
   margin-top: 0;
+  font-size: 12px;
 }
 .bet-summary .bet-stats th,
 .bet-summary .bet-stats td {
@@ -790,9 +789,12 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   white-space: nowrap;
   font-size: 12px;
 }
-.bet-summary .bet-stats th:first-child,
-.bet-summary .bet-stats td:first-child {
-  width: auto;
+.bet-summary .bet-summary > .bet-table-wrap .bet-stats:not(.star-bet-stats):not(.mark-bet-stats) {
+  width: 100%;
+}
+.bet-summary .star-bet-stats,
+.bet-summary .mark-bet-stats {
+  width: max-content;
   min-width: 0;
 }
 .bet-summary .check-table th,
@@ -808,13 +810,11 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   border-top: 1px solid var(--line);
   font-weight: 700;
 }
-/* ☆買い目表は券種列だけ左余白を詰める */
 .bet-summary .star-bet-stats th:first-child,
 .bet-summary .star-bet-stats td:first-child {
   padding-left: 0;
   text-align: left;
 }
-/* AI印別成績は印列を読みやすく保ち、数値列は内容幅に任せる */
 .bet-summary .mark-bet-stats th:first-child,
 .bet-summary .mark-bet-stats td:first-child {
   padding-right: 10px;
@@ -840,31 +840,3 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .foreign-note { border: 1px solid var(--accent, #d4af37); border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 0.85rem; }
 .foreign-note p { margin: 0 0 4px; }
 .estimated-tag { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: #3a3220; color: #f0d27a; font-size: 0.7rem; font-weight: 400; }
-
-/* ☆買い目表：5列を画面幅内に収め、横スクロールを極力なくす */
-.bet-summary .star-bet-stats {
-  width: 100%;
-  min-width: 0;
-  table-layout: fixed;
-}
-.bet-summary .star-bet-stats th,
-.bet-summary .star-bet-stats td {
-  padding: 6px 3px;
-  font-size: 11px;
-  white-space: nowrap;
-}
-.bet-summary .star-bet-stats th:nth-child(1),
-.bet-summary .star-bet-stats td:nth-child(1) { width: 28%; }
-.bet-summary .star-bet-stats th:nth-child(2),
-.bet-summary .star-bet-stats td:nth-child(2) { width: 19%; }
-.bet-summary .star-bet-stats th:nth-child(3),
-.bet-summary .star-bet-stats td:nth-child(3) { width: 19%; }
-.bet-summary .star-bet-stats th:nth-child(4),
-.bet-summary .star-bet-stats td:nth-child(4) { width: 17%; }
-.bet-summary .star-bet-stats th:nth-child(5),
-.bet-summary .star-bet-stats td:nth-child(5) { width: 17%; }
-.bet-summary .star-bet-stats th:first-child,
-.bet-summary .star-bet-stats td:first-child {
-  padding-left: 0;
-  text-align: left;
-}
