@@ -771,31 +771,51 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
 /* AI成績：買い方の成績（2026-11-24） */
 /* ☆の買い目・AI印別の成績は指標を独立列で表示 */
-.bet-summary .star-bet-stats { min-width: 520px; }
-.bet-summary .mark-bet-stats { min-width: 560px; }
-.bet-summary .star-bet-stats th, .bet-summary .mark-bet-stats th { white-space: nowrap; }
-.bet-summary .star-bet-stats td, .bet-summary .mark-bet-stats td { white-space: nowrap; }
-
-/* 買い方の成績を「通常の買い目」「☆の買い目」「AI印別」に分けて表示 */
-.bet-summary .bet-result-section { min-width: 0; margin-top: 14px; padding: 12px 10px; border: 1px solid var(--line); border-radius: 11px; background: #100e09; }
-.bet-summary .bet-result-section:first-of-type { margin-top: 10px; }
-.bet-summary .bet-result-heading { margin: 0; color: var(--accent-strong); font-size: 13px; font-weight: 700; }
-.bet-summary .bet-result-description { margin: 4px 0 8px; color: var(--muted); font-size: 10px; line-height: 1.5; }
-.bet-summary .bet-table-wrap { width: 100%; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.bet-summary .bet-stats { min-width: 560px; margin-top: 0; }
-/* 6列の「印から作る買い目」表で券種列が圧縮され、文字が欠けるのを防ぐ */
-.bet-summary .bet-stats:not(.star-bet-stats):not(.mark-bet-stats) th:first-child,
-.bet-summary .bet-stats:not(.star-bet-stats):not(.mark-bet-stats) td:first-child { min-width: 104px; width: 104px; }
-.bet-summary .bet-stats th, .bet-summary .bet-stats td { padding: 8px 7px; }
-.bet-summary .bet-stats th { white-space: nowrap; }
-.bet-summary .bet-stats td { white-space: nowrap; }
-@media (min-width: 640px) {
-  .bet-summary .bet-result-section { padding: 14px; }
-  .bet-summary .bet-stats { min-width: 0; }
+/* 買い目成績表：全表で余白を整理。文字サイズは維持し、必要な場合のみ横スクロール */
+.bet-summary .star-bet-stats,
+.bet-summary .mark-bet-stats,
+.bet-summary .bet-stats {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+  margin-top: 0;
 }
-/* 買い方の成績は .bet-summary のカード用グリッドを継承せず、通常の縦積みで表示する */
-.check-summary.bet-summary { display: block; min-width: 0; }
-.check-summary.bet-summary .bet-stats { width: 100%; }
+.bet-summary .bet-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.bet-summary .bet-stats th,
+.bet-summary .bet-stats td {
+  padding: 6px 5px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.bet-summary .bet-stats th:first-child,
+.bet-summary .bet-stats td:first-child {
+  width: auto;
+  min-width: 0;
+}
+.bet-summary .check-table th,
+.bet-summary .check-table td {
+  color: var(--text);
+}
+.bet-summary .check-table td.strong {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+.bet-summary .bet-stats tr.total th,
+.bet-summary .bet-stats tr.total td {
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+}
+/* ☆買い目表：先頭列の左余白だけを詰め、フォントサイズは他表と統一 */
+.bet-summary .star-bet-stats th:first-child,
+.bet-summary .star-bet-stats td:first-child {
+  padding-left: 0;
+  text-align: left;
+}
 .bet-summary .sort-toggle { margin: 6px 0 8px; }
 .bet-stats { margin-top: 8px; }
 .bet-stats th, .bet-stats td { font-size: 12px; }
