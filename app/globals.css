@@ -812,36 +812,11 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   max-width: none;
   table-layout: auto;
 }
-/* 各集計表を独立した区画として視覚的にも分離する */
-.bet-summary .bet-result-section {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin-top: 16px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--bg);
-}
-.bet-summary .bet-result-heading {
-  display: block;
-  margin: 0 0 10px;
-  padding: 0;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.5;
-}
-.bet-summary .bet-result-section .bet-table-wrap {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-}
-.bet-summary .bet-result-section .bet-stats {
-  margin-top: 0;
-}
+/* bet-result-section の表示指定は section 本体でなく外側の bet-summary レイアウトとの干渉を避けて整理 */
+.bet-summary .bet-result-section { display: block; width: 100%; margin-top: 16px; }
+.bet-summary .bet-result-section + .bet-result-section { margin-top: 18px; }
+.bet-summary .bet-result-heading { display: block; margin: 0 0 8px; font-size: 14px; font-weight: 700; }
+.bet-summary .bet-result-section .bet-table-wrap { width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; }
 .bet-summary .check-table th,
 .bet-summary .check-table td {
   color: var(--text);
