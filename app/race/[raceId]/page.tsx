@@ -823,7 +823,7 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
             <table className="mark-table">
               <thead><tr><th>券種</th><th>買い目</th><th>オッズ</th><th>過去成績</th></tr></thead>
               <tbody>{stars.map((st) => <tr key={st.label}>
-                <td>{st.type}</td><td><b>{st.label.replace(/^(複勝|ワイド)\\s*/, "")}</b></td>
+                <td>{st.type}</td><td><b>{st.label.replace(/^(複勝|ワイド)\s*/, "")}</b></td>
                 <td>{st.odds ?? "-"}</td><td>{extraAvg(st.kind) ?? "-"}</td>
               </tr>)}</tbody>
             </table>
