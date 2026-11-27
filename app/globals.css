@@ -880,3 +880,35 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .foreign-note p { margin: 0 0 4px; }
 .estimated-tag { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: #3a3220; color: #f0d27a; font-size: 0.7rem; font-weight: 400; }
 
+
+/* 買い方の成績：選び方は左、新馬除外は右に独立配置 */
+.bet-summary .bet-summary-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 6px 0 8px;
+}
+.bet-summary .bet-summary-toolbar .sort-toggle {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.bet-summary .maiden-filter-button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bet-summary .maiden-filter-button.active {
+  border-color: var(--accent);
+  background: #2c2412;
+  color: var(--accent);
+}
