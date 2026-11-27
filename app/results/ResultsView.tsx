@@ -57,7 +57,7 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
   const { rows, stars } = betStats(rs, mode);
   const total = rows.reduce((a, r) => ({ points: a.points + r.points, ret: a.ret + r.ret }), { points: 0, ret: 0 });
   const line = (r: { label: string; racesN: number; points: number; hitRaces: number; ret: number }, unit: string) => <tr key={r.label}>
-    <th>{r.label}</th><td>{r.points}点</td><td>{r.hitRaces}/{r.racesN}{unit}</td><td>{r.racesN ? pct(r.hitRaces / r.racesN) : "–"}</td>
+    <th>{r.label}</th><td>{r.points}点</td><td>{r.hitRaces}/{r.racesN}{unit}</td><td>{r.racesN ? pct(r.hitRaces / r.racesN) : "–"}</td><td>{yen(r.ret)}</td>
     <td className={r.points && r.ret >= r.points * 100 ? "strong" : ""}>{r.points ? pct(r.ret / (r.points * 100)) : "–"}</td></tr>;
   return <div className="check-summary bet-summary">
     <p className="check-summary-label">{label} 買い方の成績<span>{rs.length}レース</span></p>
