@@ -190,6 +190,17 @@ function saveCachedRace(id: string, data: ResponseData, savedAt: number) {
 function display(value: string | number | null | undefined) {
   return value === null || value === undefined || value === "" ? "" : String(value);
 }
+function displayBodyWeight(horse: Horse, raceDate: string | null): number | null {
+  if (horse.raceEntry?.bodyWeight != null) return horse.raceEntry.bodyWeight;
+  let best: { date: string; weight: number } | null = null;
+  for (const run of horse.performances ?? []) {
+    const date = (run.values["日付"] ?? "").replace(/\\//g, "-");
+    const match = (run.values["馬体重"] ?? "").match(/^\\s*(\\d{3})/);
+    if (!match || !date || !raceDate || date >= raceDate) continue;
+    if (!best || date > best.date) best = { date, weight: Number(match[1]) };
+  }
+  return best?.weight ?? null;
+}
 function formatRaceDate(date: string | null) {
   const m = date?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return display(date);
@@ -474,6 +485,7 @@ function HorseDetailCard({ horse, mark, onMarkChange, odds }: {
         <b>{horse.name}</b>
         <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) : null].filter(Boolean).join("・")}</small>
       </span>
+      <span className="entry-body-weight">{displayBodyWeight(horse, conditions.date) != null ? `${displayBodyWeight(horse, conditions.date)}kg` : ""}</span>
       <span className="ai-odds">{odds?.win ? <><b className={odds.popularity != null && odds.popularity <= 3 ? "fav" : ""}>{odds.win.toFixed(1)}</b><small>{odds.popularity}番人気</small></> : <small>-</small>}</span>
       {/* 印の操作で開閉しないように、クリックの既定動作（summary の開閉）を止める */}
       <span className="horse-mark-slot" onClick={(event) => event.preventDefault()}>
@@ -710,13 +722,9 @@ function OddsBar({ odds, state, error, onLoad, compact = false, weightNote = "",
         : "押すと netkeiba から今のオッズを取る（押すたびに取り直す。取ったオッズはこの端末に保存する）"}
       {missing.length > 0 && <><br />まだ出ていない券種：{missing.join("・")}</>}
       {state === "error" && <><br /><b className="bet-warn">オッズを取得できなかった：{error}</b></>}
-      {weightNote && <><br /><b>{weightNote}</b></>}
-      {early && <><br /><b className="bet-warn">発走10分前以降に取り直すと、過去の検証（確定オッズ）と同じ条件に近くなります</b></>}
+      
     </p>}
-    {compact && (state === "error" || !!weightNote) && <p className="bet-note">
-      {state === "error" && <b className="bet-warn">オッズを取得できなかった：{error}</b>}
-      {weightNote && <b>{weightNote}</b>}
-    </p>}
+    {compact && state === "error" && <p className="bet-note"><b className="bet-warn">オッズを取得できなかった：{error}</b></p>}
   </div>;
 }
 
