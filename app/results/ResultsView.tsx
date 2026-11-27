@@ -164,7 +164,7 @@ function RaceCard({ race, bets }: { race: RaceDetail; bets?: BetRace }) {
     </header>
     <table className="check-table">
       <thead><tr><th>馬番・馬名</th><th>AI印</th><th>AI順位</th><th>実着順</th><th>判定</th></tr></thead>
-      <tbody>{rowsOf(race).map((r) => <tr key={r.umaban} className={"row-" + r.label}>
+      <tbody>{rowsOf(race, bets).map((r) => <tr key={r.umaban} className={"row-" + r.label}>
         <td><b className="check-num">{r.umaban}</b>{r.horse}{r.pop ? <small>{r.pop}人気</small> : null}</td>
         <td className={r.aiRank !== null && r.aiRank <= 3 ? "strong" : ""}>{r.aiRank !== null ? `${r.aiRank}位` : "–"}</td>
         <td className={r.finish !== null && r.finish <= 3 ? "strong" : ""}>{r.finish !== null ? `${r.finish}着` : "中止"}</td>
