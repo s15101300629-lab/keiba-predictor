@@ -795,15 +795,22 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   width: 100%;
   min-width: 100%;
 }
-/* ☆の買い目・AI印別の成績はインラインテーブルで内容幅に固定 */
-.bet-summary .star-bet-stats,
-.bet-summary .mark-bet-stats {
-  display: inline-table;
+/* ☆の買い目・AI印別の成績：親ラッパーから内容幅に縮める */
+.bet-summary .bet-table-wrap.compact-bet-table-wrap {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  vertical-align: top;
+  -webkit-overflow-scrolling: touch;
+}
+.bet-summary .compact-bet-table-wrap > .bet-stats {
+  display: table;
   width: max-content;
   min-width: max-content;
   max-width: none;
   table-layout: auto;
-  vertical-align: top;
 }
 .bet-summary .bet-result-section {
   display: block;
