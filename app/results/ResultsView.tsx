@@ -64,7 +64,7 @@ function BetSummary({ races, label }: { races: BetRace[]; label: string }) {
     <div className="bet-summary-toolbar">
       <div className="sort-toggle" role="group" aria-label="買い目の選び方">
         <button type="button" className={mode === "prob" ? "active" : ""} onClick={() => setMode("prob")}>確率順</button>
-        <button type="button" className={mode === "ev" ? "active" : ""} onClick={() => setMode("ev")} disabled={!races.some((r) => r.payouts_ok && r.odds_ok && r.bets.ev && Object.values(r.bets.ev).some((tickets) => tickets.length > 0))}>期待値順</button>
+        <button type="button" className={mode === "ev" ? "active" : ""} onClick={() => setMode("ev")}>期待値順</button>
       </div>
       <div className="sort-toggle" role="group" aria-label="対象レース">
         <button type="button" className={skip ? "active" : ""} aria-pressed={skip} onClick={() => setSkip(!skip)}>新馬を除く</button>
