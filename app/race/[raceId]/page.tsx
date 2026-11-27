@@ -450,8 +450,8 @@ const BAND_NAMES: Record<string, string> = { "-1400": "〜1400m", "-1800": "〜1
 const bandText = (rates: Record<string, number>) =>
   Object.entries(rates).map(([band, rate]) => `${BAND_NAMES[band] ?? band} ${Math.round(rate * 100)}%`).join("・");
 
-function HorseDetailCard({ horse, mark, onMarkChange, odds }: {
-  horse: Horse; mark: string; onMarkChange: (horseId: string, mark: string) => void; odds: HorseOdds | null;
+function HorseDetailCard({ horse, mark, onMarkChange, odds, raceDate }: {
+  horse: Horse; mark: string; onMarkChange: (horseId: string, mark: string) => void; odds: HorseOdds | null; raceDate: string | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -485,7 +485,7 @@ function HorseDetailCard({ horse, mark, onMarkChange, odds }: {
         <b>{horse.name}</b>
         <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) : null].filter(Boolean).join("・")}</small>
       </span>
-      <span className="entry-body-weight">{displayBodyWeight(horse, conditions.date) != null ? `${displayBodyWeight(horse, conditions.date)}kg` : ""}</span>
+      <span className="entry-body-weight">{displayBodyWeight(horse, raceDate) != null ? `${displayBodyWeight(horse, conditions.date)}kg` : ""}</span>
       <span className="ai-odds">{odds?.win ? <><b className={odds.popularity != null && odds.popularity <= 3 ? "fav" : ""}>{odds.win.toFixed(1)}</b><small>{odds.popularity}番人気</small></> : <small>-</small>}</span>
       {/* 印の操作で開閉しないように、クリックの既定動作（summary の開閉）を止める */}
       <span className="horse-mark-slot" onClick={(event) => event.preventDefault()}>
@@ -1082,7 +1082,7 @@ export default function RaceDetailPage() {
       {activeTab === "detail" && <div role="tabpanel">
         {oddsBar}
         <section className="detail-section">
-          {horses.map((horse) => <HorseDetailCard key={horse.horseId} horse={horse} odds={horseOdds.get(horse.horseId) ?? null}
+          {horses.map((horse) => <HorseDetailCard key={horse.horseId} horse={horse} odds={horseOdds.get(horse.horseId) ?? null} raceDate={conditions.date}
             mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />)}
         </section>
       </div>}
