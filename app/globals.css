@@ -814,3 +814,6 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .foreign-note { border: 1px solid var(--accent, #d4af37); border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 0.85rem; }
 .foreign-note p { margin: 0 0 4px; }
 .estimated-tag { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: #3a3220; color: #f0d27a; font-size: 0.7rem; font-weight: 400; }
+
+/* ☆買い目表の券種左側に生じる余白を縮小 */
+.bet-summary .star-bet-stats th:first-child { padding-left: 2px; }
