@@ -143,7 +143,8 @@ function Summary({ races, label }: { races: RaceDetail[]; label: string }) {
 type Row = { umaban: number; horse: string; mark: string | null; aiRank: number | null; finish: number | null; pop: number | null; label: "的中" | "外れ" | "見逃し" };
 
 /** AI 予想の上位3頭と、実際の1〜3着をまとめた行（着順の順。AI が3位以内に入れたが4着以下の馬は後ろ）. */
-function rowsOf(race: RaceDetail, betRace?: BetRace): Row[] {\n  const markByHorse = new Map((betRace?.marks ?? []).map((h) => [h.n, h.mark]));
+function rowsOf(race: RaceDetail, betRace?: BetRace): Row[] {
+  const markByHorse = new Map((betRace?.marks ?? []).map((h) => [h.n, h.mark]));
   const rows = new Map<number, Row>();
   race.ai_top3.forEach((h, i) => {
     const hit = h.finish !== null && h.finish <= 3;
@@ -166,12 +167,12 @@ function RaceCard({ race, bets }: { race: RaceDetail; bets?: BetRace }) {
       <thead><tr><th>馬番・馬名</th><th>AI印</th><th>AI順位</th><th>実着順</th><th>判定</th></tr></thead>
       <tbody>{rowsOf(race, bets).map((r) => <tr key={r.umaban} className={"row-" + r.label}>
         <td><b className="check-num">{r.umaban}</b>{r.horse}{r.pop ? <small>{r.pop}人気</small> : null}</td>
+        <td className="strong">{r.mark ?? "–"}</td>
         <td className={r.aiRank !== null && r.aiRank <= 3 ? "strong" : ""}>{r.aiRank !== null ? `${r.aiRank}位` : "–"}</td>
         <td className={r.finish !== null && r.finish <= 3 ? "strong" : ""}>{r.finish !== null ? `${r.finish}着` : "中止"}</td>
         <td><span className={"check-label " + r.label}>{r.label}</span></td>
       </tr>)}</tbody>
     </table>
-    <RaceBets race={bets} />
   </article>;
 }
 
@@ -191,9 +192,7 @@ export default function ResultsView({ days, betDays = [], view = "daily" }: { da
 
   return <main className="shell check-page">
     <h1 className="check-title">{view === "cumulative" ? "累計成績" : "日別成績"}</h1>
-    <p className="check-lead">各レースで、AI 予想の順位（AIスコアの順）と実際の着順を並べたもの。
-      AI が3位以内に予想して3着以内に来た馬は「的中」、来なかった馬は「外れ」、AI が4位以下に予想したのに3着以内に来た馬は「見逃し」。
-      予想はレース前の情報だけで、レースの後に出し直したもの。毎日 17:30 ごろに更新</p>
+    <p className="check-lead">AI上位3頭の着順と、実際の3着以内の馬を比較します。「的中」はAI上位予想が3着以内、「見逃し」はAI予想外で実際に3着以内に入った馬です。</p>
     {days.length === 0 ? <p className="notice">まだデータがない。</p> : view === "cumulative" ? <>
       <p className="check-lead">全開催日の成績を集計。</p>
       <Summary races={all} label="累計" />
