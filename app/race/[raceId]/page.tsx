@@ -816,12 +816,19 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
           {betMode === "prob" && betAvg(plan.type, "hit_rate") != null && <p className="bet-note">過去（{betYears.join("・")}年の平均、1レース平均 {betAvg(plan.type, "points_per_race")?.toFixed(1)}点）：
             的中したレース {pct(betAvg(plan.type, "hit_rate"))}・回収率 {pct(betAvg(plan.type, "roi"))}</p>}
         </details>)}
-        {stars.length > 0 && <div className="mark-bet-card star-bets">
-          <p className="bet-note"><b>☆の馬の買い目</b>（☆は人気の割に来やすい穴。払戻率の高い複勝とワイドで買う）</p>
-          <ul>{stars.map((st) => <li key={st.label}><span className="mark-bet-combo">{st.label}</span>
-            <span className="mark-bet-odds">{st.odds ?? "-"}</span>
-            {extraAvg(st.kind) && <small className="star-ev">過去 的中 {extraAvg(st.kind)}</small>}</li>)}</ul>
-        </div>}
+        {stars.length > 0 && <details className="mark-bet-card star-bets" open>
+          <summary><b>☆の馬の買い目</b><span>{stars.length}点</span><span className="mark-bet-hit">複勝・ワイド</span></summary>
+          <p className="bet-note">☆は人気の割に来やすい穴。払戻率の高い複勝とワイドで買う。</p>
+          <div className="mark-table-wrap">
+            <table className="mark-table">
+              <thead><tr><th>券種</th><th>買い目</th><th>オッズ</th><th>過去成績</th></tr></thead>
+              <tbody>{stars.map((st) => <tr key={st.label}>
+                <td>{st.type}</td><td><b>{st.label.replace(/^(複勝|ワイド)\\s*/, "")}</b></td>
+                <td>{st.odds ?? "-"}</td><td>{extraAvg(st.kind) ?? "-"}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        </details>}
         <p className="bet-note">{betMode === "prob" ? <>当たる確率を優先した買い目で、<b className="bet-warn">回収率は過去どの券種も 70〜80% 台（100% は超えていない）</b>。</>
           : <><b className="bet-warn">期待値順は過去の成績を確かめていない</b>（全部の組の過去のオッズを持っていないため）。期待値が1を超えていても、確率の見込みのずれでそう見えているだけのことが多い。</>}
           馬単のオッズは取得していない。確率は勝率から1着・2着・3着を順に決める見込み（2着・3着は勝率を少し平らにして計算する Benter の補正）。期待値＝確率×オッズ（1を超えると、見込みどおりなら買うほど得）。</p>
