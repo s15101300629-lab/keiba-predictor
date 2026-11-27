@@ -832,13 +832,7 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   font-weight: 700;
   line-height: 1.5;
 }
-.bet-summary .bet-result-section .bet-table-wrap {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-}
+/* compact-bet-table-wrap は独自の fit-content 指定を維持。section 共通で wrapper 幅を上書きしない */
 .bet-summary .bet-result-section .bet-stats {
   margin-top: 0;
 }
