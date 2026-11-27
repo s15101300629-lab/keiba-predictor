@@ -858,6 +858,7 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .bet-summary .mark-bet-stats td:first-child {
   padding-right: 10px;
 }
+.bet-summary-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
 .bet-summary .sort-toggle { margin: 6px 0 8px; }
 .bet-stats { margin-top: 8px; }
 .bet-stats th, .bet-stats td { font-size: 12px; }
