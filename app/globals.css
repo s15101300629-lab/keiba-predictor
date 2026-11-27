@@ -566,7 +566,7 @@ footer span { letter-spacing:0; }
 .ai-ranks-note { margin: 10px 2px 0; color: var(--muted); font-size: 10px; }
 
 /* ===== 出馬表（2026-11-21：1頭1行、開くと近5走と血統の要点） ===== */
-.horse-summary.entry-row { display: grid; grid-template-columns: 30px 1fr 56px 64px; align-items: center; gap: 8px; min-height: 52px; padding: 8px 10px; }
+.horse-summary.entry-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 44px 56px 64px; align-items: center; gap: 8px; min-height: 52px; padding: 8px 10px; }
 .entry-row .horse-main b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .entry-row .horse-main small { margin-top: 2px; font-size: 11px; }
 .entry-row .horse-mark-slot { justify-self: end; }
@@ -875,3 +875,5 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 /* 外国馬の表示 */
 .foreign-tag { color: var(--accent, #d4af37); font-weight: 700; }
 
+
+.entry-row .entry-body-weight { font-size: 12px; white-space: nowrap; text-align: right; }
