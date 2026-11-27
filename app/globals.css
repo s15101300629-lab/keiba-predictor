@@ -791,14 +791,27 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 }
 /* 「印から作る買い目」だけは従来どおりカード幅いっぱい */
 .bet-summary .primary-bet-stats {
+  display: table;
   width: 100%;
   min-width: 100%;
 }
-/* ☆の買い目・AI印別の成績は内容幅で表示し、必要な場合だけスクロール */
+/* ☆の買い目・AI印別の成績はインラインテーブルで内容幅に固定 */
 .bet-summary .star-bet-stats,
 .bet-summary .mark-bet-stats {
+  display: inline-table;
   width: max-content;
-  min-width: 0;
+  min-width: max-content;
+  max-width: none;
+  table-layout: auto;
+  vertical-align: top;
+}
+.bet-summary .bet-result-section {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+}
+.bet-summary .bet-result-section + .bet-result-section {
+  margin-top: 18px;
 }
 .bet-summary .check-table th,
 .bet-summary .check-table td {
