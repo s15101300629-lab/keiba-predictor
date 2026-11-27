@@ -771,20 +771,18 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
 /* AI成績：買い方の成績（2026-11-24） */
 /* ☆の買い目・AI印別の成績は指標を独立列で表示 */
-/* 買い目成績表：全表で余白を整理。文字サイズは維持し、必要な場合のみ横スクロール */
-.bet-summary .star-bet-stats,
-.bet-summary .mark-bet-stats,
-.bet-summary .bet-stats {
-  width: max-content;
-  min-width: 100%;
-  table-layout: auto;
-  margin-top: 0;
-}
+/* 買い目成績表：列幅は各表の内容に合わせ、文字サイズは維持 */
 .bet-summary .bet-table-wrap {
   width: 100%;
   min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+.bet-summary .bet-stats {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+  margin-top: 0;
 }
 .bet-summary .bet-stats th,
 .bet-summary .bet-stats td {
@@ -810,11 +808,16 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   border-top: 1px solid var(--line);
   font-weight: 700;
 }
-/* ☆買い目表：先頭列の左余白だけを詰め、フォントサイズは他表と統一 */
+/* ☆買い目表は券種列だけ左余白を詰める */
 .bet-summary .star-bet-stats th:first-child,
 .bet-summary .star-bet-stats td:first-child {
   padding-left: 0;
   text-align: left;
+}
+/* AI印別成績は印列を読みやすく保ち、数値列は内容幅に任せる */
+.bet-summary .mark-bet-stats th:first-child,
+.bet-summary .mark-bet-stats td:first-child {
+  padding-right: 10px;
 }
 .bet-summary .sort-toggle { margin: 6px 0 8px; }
 .bet-stats { margin-top: 8px; }
