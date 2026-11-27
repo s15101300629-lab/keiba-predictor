@@ -877,7 +877,7 @@ export default function RaceDetailPage() {
       setOdds(json); saveCachedOdds(raceId, json); setOddsState("idle");
       // 馬体重がまだ入っていない（前走の馬体重で計算中の）ときは、出馬表を取り直して予想を計算し直す
       if (dataRef.current?.ml?.bodyWeightAssumed) {
-        const fresh = await loadRef.current?.(false, true, assumedGoingRef.current, true);
+        await loadRef.current?.(false, true, assumedGoingRef.current, true);
 
       }
     } catch (err) {
