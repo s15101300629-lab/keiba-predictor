@@ -799,7 +799,7 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
         <p className="bet-note">印の付いた馬（消を除く）の組み合わせから、{betMode === "prob" ? "当たる確率の高い順" : "期待値（当たる確率×オッズ。ワイドは下限のオッズ）の高い順。確率がとても低い組は除く（確率順の最後の買い目の 1/3 未満）"}。1点100円。
           {betPlans.usedCombined ? "確率は AI と市場を合わせた3着以内確率から計算。" : <b className="bet-warn">オッズがないので、AI の3着以内確率だけで計算。</b>}
           {betPlans.pooled.length > 0 && <b className="bet-warn">{betPlans.pooled.join("・")}は、その券種のオッズとも合わせた確率（未検証）。</b>}</p>
-        {betListsNow.map((plan) => <details key={plan.type} className="mark-bet-card" open={plan.type === "ワイド" || plan.type === "3連複"}>
+        {betListsNow.map((plan) => <details key={plan.type} className="mark-bet-card">
           <summary><b>{plan.type}</b><span>{plan.tickets.length}点</span><span className="mark-bet-hit">どれか当たる確率 <b>{plan.tickets.length ? pct(plan.hitProb) : "-"}</b></span></summary>
           {plan.tickets.length === 0 ? <p className="bet-note">{plan.type === "馬単" ? "馬単はオッズを取っていないので、期待値の順は出せない。" : "オッズのある買い目がない。"}</p> :
           <ul>{plan.tickets.map((tk) => <li key={tk.key + tk.nums.join(">")}>
@@ -812,7 +812,7 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
           {betMode === "prob" && betAvg(plan.type, "hit_rate") != null && <p className="bet-note">過去（{betYears.join("・")}年の平均、1レース平均 {betAvg(plan.type, "points_per_race")?.toFixed(1)}点）：
             的中したレース {pct(betAvg(plan.type, "hit_rate"))}・回収率 {pct(betAvg(plan.type, "roi"))}</p>}
         </details>)}
-        {stars.length > 0 && <details className="mark-bet-card star-bets" open>
+        {stars.length > 0 && <details className="mark-bet-card star-bets">
           <summary><b>☆の馬の買い目</b><span>{stars.length}点</span><span className="mark-bet-hit">複勝・ワイド</span></summary>
           <p className="bet-note">☆は人気の割に来やすい穴。払戻率の高い複勝とワイドで買う。</p>
           <ul className="star-bet-list">
@@ -1042,21 +1042,25 @@ export default function RaceDetailPage() {
       <header className="detail-hero">
         <p className="detail-kicker">{formatRaceDate(conditions.date)} {display(conditions.venue)}{display(conditions.raceNumber)}R{conditions.startTime ? ` ・ ${conditions.startTime}発走` : ""}</p>
         <h1>{conditions.raceName || "レース詳細"}</h1>
-        <div className="condition-chips">
-          {[
-            [conditions.surface, conditions.distanceMeters ? conditions.distanceMeters + "m" : null].filter(Boolean).join(""),
-            [conditions.direction, conditions.courseLayout, conditions.courseLetter ? conditions.courseLetter + "コース" : null].filter(Boolean).join(" "),
-            data.horseCount ? data.horseCount + "頭" : "",
-            "天候 " + (conditions.weather ? conditions.weather + (conditions.weatherForecast ? "（予報）" : "") : "未発表"),
-            "馬場 " + (data.ml?.goingSource === "user" ? "未発表" : conditions.going ?? "未発表"),
-          ].filter((value) => value !== "").map((value) => <span className="condition-chip" key={value}>{value}</span>)}
-        </div>
-        {conditions.conditionSource && <p className="detail-meta">天候・馬場：{conditions.conditionSource}</p>}
-        <div className="refresh-row">
-          <span>{formatOddsFetchedAt(odds?.fetchedAt ?? null)}{refreshing && " ・ 最新情報を確認中"}</span>
-          <button type="button" className="refresh-button" onClick={() => void loadOdds()} disabled={oddsState === "loading"}>
-            {oddsState === "loading" ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} オッズ取得
-          </button>
+        <div className="race-info-panel">
+          <div className="condition-chips">
+            {[
+              [conditions.surface, conditions.distanceMeters ? conditions.distanceMeters + "m" : null].filter(Boolean).join(""),
+              [conditions.direction, conditions.courseLayout, conditions.courseLetter ? conditions.courseLetter + "コース" : null].filter(Boolean).join(" "),
+              data.horseCount ? data.horseCount + "頭" : "",
+              "天候 " + (conditions.weather ? conditions.weather + (conditions.weatherForecast ? "（予報）" : "") : "未発表"),
+              "馬場 " + (data.ml?.goingSource === "user" ? "未発表" : conditions.going ?? "未発表"),
+            ].filter((value) => value !== "").map((value) => <span className="condition-chip" key={value}>{value}</span>)}
+          </div>
+          <div className="race-info-footer">
+            <div className="race-info-meta">
+              {conditions.conditionSource && <span>天候・馬場：{conditions.conditionSource}</span>}
+              <span>{formatOddsFetchedAt(odds?.fetchedAt ?? null)}{refreshing && " ・ 最新情報を確認中"}</span>
+            </div>
+            <button type="button" className="refresh-button" onClick={() => void loadOdds()} disabled={oddsState === "loading"}>
+              {oddsState === "loading" ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} オッズ取得
+            </button>
+          </div>
         </div>
         {error && <p className="detail-meta" role="status">{error}</p>}
       </header>
@@ -1064,12 +1068,11 @@ export default function RaceDetailPage() {
         <button type="button" role="tab" aria-selected={activeTab === "detail"} className={"race-tab" + (activeTab === "detail" ? " active" : "")}
           onClick={() => setActiveTab("detail")}>出馬表</button>
         <button type="button" role="tab" aria-selected={activeTab === "prediction"} className={"race-tab" + (activeTab === "prediction" ? " active" : "")}
-          onClick={() => setActiveTab("prediction")}>AI予想</button>
+          onClick={() => setActiveTab("prediction")}>予想結果</button>
         <button type="button" role="tab" aria-selected={activeTab === "marks"} className={"race-tab" + (activeTab === "marks" ? " active" : "")}
-          onClick={() => setActiveTab("marks")}>AI印</button>
+          onClick={() => setActiveTab("marks")}>買い目</button>
       </div>
       {activeTab === "detail" && <div role="tabpanel">
-        {oddsBar}
         <section className="detail-section">
           {horses.map((horse) => <HorseDetailCard key={horse.horseId} horse={horse} odds={horseOdds.get(horse.horseId) ?? null} raceDate={conditions.date}
             mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />)}
