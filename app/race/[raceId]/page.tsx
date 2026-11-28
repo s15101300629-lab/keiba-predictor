@@ -207,10 +207,10 @@ function formatRaceDate(date: string | null) {
   const weekday = ["日", "月", "火", "水", "木", "金", "土"][new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()];
   return `${+m[2]}/${+m[3]}（${weekday}）`;
 }
-function formatSavedAt(timestamp: number | null) {
-  if (!timestamp) return "保存データなし";
-  return "保存データ：" + new Date(timestamp).toLocaleString("ja-JP", {
-    month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+function formatOddsFetchedAt(timestamp: string | null) {
+  if (!timestamp) return "オッズ未取得";
+  return "オッズ取得：" + new Date(timestamp).toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
   });
 }
 
@@ -705,22 +705,18 @@ function FactorView({ horses, categoryRanks, factor, onFactor, shapState, onRetr
 const ODDS_FIELD: Record<BetType, keyof OddsData> = { 単勝: "win", 複勝: "place", ワイド: "wide", 馬連: "umaren", "3連複": "trio" };
 const BET_TYPES: BetType[] = ["単勝", "複勝", "ワイド", "馬連", "3連複"];
 
-function OddsBar({ odds, state, error, onLoad, compact = false }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; onLoad: () => void; compact?: boolean }) {
+function OddsBar({ odds, state, error, compact = false }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; compact?: boolean }) {
   const missing = odds ? BET_TYPES.filter((t) => !Object.keys((odds[ODDS_FIELD[t]] as OddsMap) ?? {}).length) : [];
   return <div className="odds-bar">
     <div className="bet-controls">
       <span className="odds-bar-title">{odds ? (odds.status === "yoso" ? "予想オッズ" : odds.status === "result" ? "確定オッズ" : "オッズ") : "オッズ未取得"}</span>
-      <button type="button" className="refresh-button" onClick={onLoad} disabled={state === "loading"}>
-        {state === "loading" ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} オッズを取得
-      </button>
     </div>
     {!compact && <p className="bet-note">
       {odds ? <>netkeiba {odds.officialTime ? odds.officialTime.replace(/^\d{4}-/, "").replace("-", "/") + " 時点" : ""}（取得 {new Date(odds.fetchedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}）
         {odds.status === "yoso" && <><br /><b className="bet-warn">発売前。netkeiba の予想で、実際のオッズではない</b></>}</>
-        : "押すと netkeiba から今のオッズを取る（押すたびに取り直す。取ったオッズはこの端末に保存する）"}
+        : "画面上部の「オッズ取得」から netkeiba のオッズを取得できる。取得したオッズはこの端末に保存する"}
       {missing.length > 0 && <><br />まだ出ていない券種：{missing.join("・")}</>}
       {state === "error" && <><br /><b className="bet-warn">オッズを取得できなかった：{error}</b></>}
-      
     </p>}
     {compact && state === "error" && <p className="bet-note"><b className="bet-warn">オッズを取得できなかった：{error}</b></p>}
   </div>;
@@ -859,7 +855,6 @@ export default function RaceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [cacheChecked, setCacheChecked] = useState(false);
   const [marks, setMarks] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"detail" | "prediction" | "marks">("detail");
@@ -873,7 +868,7 @@ export default function RaceDetailPage() {
   const odds = storedOdds && (storedOdds.drawn ?? true) === drawnNow ? storedOdds : null;
   const [oddsState, setOddsState] = useState<"idle" | "loading" | "error">("idle");
   const [oddsError, setOddsError] = useState("");
-  // 「オッズを取得」は押すたびに netkeiba から取り直す（ブラウザ・サーバーのキャッシュを使わない）
+  // 画面を開いたときの自動取得と、画面上部のボタンからの再取得で共用する
   const loadOdds = useCallback(async () => {
     setOddsState("loading"); setOddsError("");
     try {
@@ -882,24 +877,17 @@ export default function RaceDetailPage() {
       if (!res.ok || !json.ok) throw new Error(json.errors?.join(" / ") || json.error || "HTTP " + res.status);
       json.drawn = (dataRef.current?.results ?? []).some((h) => h.raceEntry?.horseNumber != null);
       setOdds(json); saveCachedOdds(raceId, json); setOddsState("idle");
-      // 馬体重がまだ入っていない（前走の馬体重で計算中の）ときは、出馬表を取り直して予想を計算し直す
-      if (dataRef.current?.ml?.bodyWeightAssumed) {
-        await loadRef.current?.(false, true, assumedGoingRef.current, true);
-
-      }
     } catch (err) {
       setOddsState("error"); setOddsError(err instanceof Error ? err.message : "取得に失敗した");
     }
   }, [raceId]);
 
-  const load = useCallback(async (forceRefresh: boolean, background: boolean, going = "", weights = false): Promise<ResponseData | null> => {
+  const load = useCallback(async (background: boolean, going = ""): Promise<ResponseData | null> => {
     try {
-      if (forceRefresh || background) setRefreshing(true);
+      if (background) setRefreshing(true);
       else setLoading(true);
       setError("");
       const params = new URLSearchParams();
-      if (forceRefresh) params.set("refresh", "1");
-      if (weights) params.set("weights", "1");
       if (going) params.set("going", going);
       const query = params.toString();
       const response = await fetch("/api/races/" + raceId + (query ? "?" + query : ""), { cache: "no-store" });
@@ -908,22 +896,20 @@ export default function RaceDetailPage() {
         throw new Error(result.error || "レース情報の取得に失敗しました（HTTP " + response.status + "）");
       }
       const savedAt = Date.now();
-      setData(result); setCachedAt(savedAt);
+      setData(result);
       if (!going) saveCachedRace(raceId, result, savedAt); // 想定馬場での結果は保存しない
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : "レース情報の取得に失敗しました。";
-      if (background || forceRefresh) setError("最新情報への更新に失敗しました。表示中の保存データを利用しています。 " + message);
+      if (background) setError("最新情報の確認に失敗しました。表示中の保存データを利用しています。 " + message);
       else setError(message);
       return null;
     } finally { setLoading(false); setRefreshing(false); }
   }, [raceId]);
 
-  // loadOdds から最新の値を使うための参照
+  // オッズ取得時に、枠順確定前後のどちらの番号で取得したかを判定する
   const dataRef = useRef<ResponseData | null>(null);
-  const loadRef = useRef<typeof load | null>(null);
-  const assumedGoingRef = useRef("");
-  useEffect(() => { dataRef.current = data; loadRef.current = load; assumedGoingRef.current = assumedGoing; }, [data, load, assumedGoing]);
+  useEffect(() => { dataRef.current = data; }, [data]);
 
   useEffect(() => {
     if (!/^\d{12}$/.test(raceId)) {
@@ -934,12 +920,12 @@ export default function RaceDetailPage() {
     const cached = readCachedRace(raceId);
     setCacheChecked(true);
     if (cached) {
-      setData(cached.data); setCachedAt(cached.savedAt); setLoading(false);
-      if (Date.now() - cached.savedAt >= CLIENT_CACHE_TTL_MS) void load(false, true);
-    } else void load(false, false);
+      setData(cached.data); setLoading(false);
+      if (Date.now() - cached.savedAt >= CLIENT_CACHE_TTL_MS) void load(true);
+    } else void load(false);
   }, [raceId, load]);
 
-  // レースを開いたら、出馬表が出たあとにオッズを1回自動で取る（取り直しはボタン）
+  // レースを開いたら、出馬表が出たあとにオッズを1回自動で取る（再取得は画面上部のボタン）
   const autoOddsRef = useRef(false);
   useEffect(() => {
     if (!data || autoOddsRef.current) return;
@@ -1009,7 +995,7 @@ export default function RaceDetailPage() {
   const horseOdds = useMemo(() => horseOddsOf(horses.map((h) => ({ id: h.horseId, num: oddsNum(h.raceEntry) })), odds), [odds, horses]);
   // 発走時刻（日本時間）。オッズの取り直しのすすめ（案9）に使う
   const startAt = conditions?.date && conditions.startTime ? new Date(`${conditions.date}T${conditions.startTime.padStart(5, "0")}:00+09:00`) : null;
-  const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} />;
+  const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} />;
   // AI予想タブの目安（妙味あり・妥当・割高）。AI の確率（合計をそろえる前）と単勝オッズから（app/lib/market.ts の valueLabels）
   const values = useMemo(() => {
     const model = data?.ml?.valueModel;
@@ -1067,9 +1053,9 @@ export default function RaceDetailPage() {
         </div>
         {conditions.conditionSource && <p className="detail-meta">天候・馬場：{conditions.conditionSource}</p>}
         <div className="refresh-row">
-          <span>{formatSavedAt(cachedAt)}{refreshing && " ・ 更新を確認中"}</span>
-          <button type="button" className="refresh-button" onClick={() => void load(true, false, assumedGoing)} disabled={refreshing || loading}>
-            {refreshing ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} 更新
+          <span>{formatOddsFetchedAt(odds?.fetchedAt ?? null)}{refreshing && " ・ 最新情報を確認中"}</span>
+          <button type="button" className="refresh-button" onClick={() => void loadOdds()} disabled={oddsState === "loading"}>
+            {oddsState === "loading" ? <span className="loading-spinner" aria-hidden="true" /> : "↻"} オッズ取得
           </button>
         </div>
         {error && <p className="detail-meta" role="status">{error}</p>}
@@ -1098,7 +1084,7 @@ export default function RaceDetailPage() {
             <span>馬場{data.ml.goingSource === "announced" ? " " : "（想定）"}
               {data.ml.goingSource !== "announced"
                 ? <select aria-label="想定する馬場" value={assumedGoing} disabled={refreshing || loading} onChange={(event) => {
-                  setAssumedGoing(event.target.value); void load(false, true, event.target.value);
+                  setAssumedGoing(event.target.value); void load(true, event.target.value);
                 }}>
                   <option value="">良</option>
                   {["良", "稍重", "重", "不良"].map((going) => <option key={going} value={going}>{going}</option>)}
@@ -1110,7 +1096,7 @@ export default function RaceDetailPage() {
           {data.ml.raceInTraining && <p className="heavy-note" role="note">
             ⚠ このレースの結果は、すでにAIの学習データに入っている（〜{data.ml.dataUntil}）。答えを見て学習した状態なので、参考として見ること。
           </p>}
-          <OddsBar odds={odds} state={oddsState} error={oddsError} onLoad={() => void loadOdds()} compact />
+          <OddsBar odds={odds} state={oddsState} error={oddsError} compact />
           <section className="horse-results-section">
             <div className="results-toolbar">
               <div className="sort-toggle" role="group" aria-label="見方">
