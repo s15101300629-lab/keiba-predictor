@@ -349,9 +349,13 @@ footer span { letter-spacing:0; }
 .detail-hero h1 { font-size: clamp(24px, 6.5vw, 34px); line-height: 1.25; }
 .condition-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
 .condition-chip { padding: 4px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--text-sub); font-size: 11px; font-weight: 600; }
-.refresh-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; color: var(--muted); font-size: 11px; }
-.refresh-row .refresh-button { margin: 0; padding: 6px 11px; gap: 4px; font-size: 11px; }
-.refresh-row .refresh-button .loading-spinner { margin: 0; width: 12px; height: 12px; flex-basis: 12px; }
+.race-info-panel { margin-top: 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+.race-info-panel .condition-chips { margin: 0; gap: 4px; }
+.race-info-panel .condition-chip { padding: 3px 7px; font-size: 10px; }
+.race-info-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; padding-top: 7px; border-top: 1px solid var(--line); }
+.race-info-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.race-info-footer .refresh-button { flex: 0 0 auto; margin: 0; padding: 6px 10px; gap: 4px; font-size: 11px; }
+.race-info-footer .refresh-button .loading-spinner { margin: 0; width: 12px; height: 12px; flex-basis: 12px; }
 .race-tabs { position: sticky; top: 0; z-index: 5; display: grid; gap: 0; margin: 14px -16px 0; padding: 8px 16px; border: 0; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .race-tab { padding: 9px 8px; border: 1px solid var(--line); border-radius: 0; background: var(--panel); font-size: 13px; }
 .race-tab:first-child { border-radius: 10px 0 0 10px; }
@@ -513,7 +517,7 @@ footer span { letter-spacing:0; }
 .ai-odds { display: flex; flex-direction: column; align-items: center; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .ai-odds b { font-size: 14px; }
 .ai-odds b.fav { color: #ff6b5e; }
-.ai-odds small { color: var(--muted); font-size: 9px; white-space: nowrap; }
+.ai-odds small { margin-top: 3px; color: var(--muted); font-size: 9px; white-space: nowrap; }
 .ai-score { display: flex; align-items: center; gap: 5px; }
 .ai-score strong { flex: 0 0 22px; text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; }
 .ai-score-track { position: relative; flex: 1; height: 12px; border-radius: 999px; background: #e9e4d6; overflow: visible; }
@@ -571,7 +575,7 @@ footer span { letter-spacing:0; }
 .entry-row .horse-main b { display: block; min-width: 0; font-size: clamp(10px, 3.3vw, 13px); line-height: 1.25; white-space: nowrap; overflow: visible; text-overflow: clip; }
 .entry-row .entry-body-weight { display: flex; flex-direction: column; align-items: center; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .entry-row .entry-body-weight b { font-size: 12px; }
-.entry-row .entry-body-weight small { color: var(--muted); font-size: 9px; white-space: nowrap; }
+.entry-row .entry-body-weight small { margin-top: 3px; color: var(--muted); font-size: 9px; white-space: nowrap; }
 .entry-row .horse-main small { margin-top: 2px; font-size: 11px; }
 .entry-row .horse-mark-slot { justify-self: end; }
 .entry-row .horse-mark-select { width: 60px; padding: 6px 4px; font-size: 13px; }
