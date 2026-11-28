@@ -572,6 +572,10 @@ footer span { letter-spacing:0; }
 .entry-row .horse-main small { margin-top: 2px; font-size: 11px; }
 .entry-row .horse-mark-slot { justify-self: end; }
 .entry-row .horse-mark-select { width: 60px; padding: 6px 4px; font-size: 13px; }
+@media (max-width: 380px) {
+  .horse-summary.entry-row { grid-template-columns: 26px minmax(0, 1fr) 38px 48px 48px; gap: 5px; padding: 8px; }
+  .entry-row .horse-mark-select { width: 46px; padding: 6px 2px; }
+}
 .entry-body { padding: 4px 12px 12px; }
 .entry-runs h4 { margin: 6px 0 4px; font-size: 13px; color: var(--text-sub); }
 .entry-run { display: grid; grid-template-columns: 62px 1fr 58px; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 12px; }
