@@ -568,7 +568,10 @@ footer span { letter-spacing:0; }
 /* ===== 出馬表（2026-11-21：1頭1行、開くと近5走と血統の要点） ===== */
 .horse-summary.entry-row { display: grid; grid-template-columns: 30px minmax(0, 1fr) 44px 56px 64px; align-items: center; gap: 8px; min-height: 52px; padding: 8px 10px; }
 .entry-row .horse-main { min-width: 0; }
-.entry-row .horse-main b { display: block; min-width: 0; font-size: 15px; line-height: 1.25; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.entry-row .horse-main b { display: block; min-width: 0; font-size: clamp(10px, 3.3vw, 13px); line-height: 1.25; white-space: nowrap; overflow: visible; text-overflow: clip; }
+.entry-row .entry-body-weight { display: flex; flex-direction: column; align-items: center; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.entry-row .entry-body-weight b { font-size: 12px; }
+.entry-row .entry-body-weight small { color: var(--muted); font-size: 9px; white-space: nowrap; }
 .entry-row .horse-main small { margin-top: 2px; font-size: 11px; }
 .entry-row .horse-mark-slot { justify-self: end; }
 .entry-row .horse-mark-select { width: 60px; padding: 6px 4px; font-size: 13px; }
