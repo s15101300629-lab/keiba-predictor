@@ -1,0 +1,939 @@
+{
+ "date": "2026-11-28",
+ "storeLastDate": "2026-11-23",
+ "races": 23,
+ "rows": 330,
+ "failures": 8770,
+ "worstFeature": 8.881784197001252e-16,
+ "worstPred": 0.020035527803630777,
+ "byFeature": [
+  [
+   "ab_wmean_top3_gap",
+   287
+  ],
+  [
+   "cond_ab_top3_gap",
+   287
+  ],
+  [
+   "ab_wmean_fstd",
+   271
+  ],
+  [
+   "ab_wmean_dmean",
+   253
+  ],
+  [
+   "ab_best_dmean",
+   253
+  ],
+  [
+   "ab_wmean_dtop3",
+   253
+  ],
+  [
+   "cond_ab_dtop3",
+   253
+  ],
+  [
+   "ab_wmean_z",
+   252
+  ],
+  [
+   "ab_best_z",
+   252
+  ],
+  [
+   "ab_wmean_dmax",
+   231
+  ],
+  [
+   "cond_ab_dmax",
+   231
+  ],
+  [
+   "abd_w_dmax",
+   231
+  ],
+  [
+   "cond_ab_d3",
+   225
+  ],
+  [
+   "abn_w_dmax",
+   224
+  ],
+  [
+   "abd_w_d3",
+   223
+  ],
+  [
+   "ab_wmean_d3",
+   220
+  ],
+  [
+   "ab_wmean",
+   218
+  ],
+  [
+   "cond_ab",
+   218
+  ],
+  [
+   "abd_w",
+   218
+  ],
+  [
+   "abn_w_d3",
+   218
+  ],
+  [
+   "abn_w",
+   212
+  ],
+  [
+   "ab_best_dmax",
+   177
+  ],
+  [
+   "ab_last",
+   176
+  ],
+  [
+   "ab_best",
+   170
+  ],
+  [
+   "ab_std",
+   170
+  ],
+  [
+   "fit_shape",
+   167
+  ],
+  [
+   "pace_sl",
+   164
+  ],
+  [
+   "sc_ab_mean",
+   162
+  ],
+  [
+   "ab_trend",
+   161
+  ],
+  [
+   "fit_going",
+   160
+  ],
+  [
+   "fit_turn",
+   160
+  ],
+  [
+   "pace_hi",
+   157
+  ],
+  [
+   "fit_venue",
+   154
+  ],
+  [
+   "fit_change",
+   154
+  ],
+  [
+   "sc_strong_ab",
+   154
+  ],
+  [
+   "g_m3_m10",
+   154
+  ],
+  [
+   "g_last2",
+   149
+  ],
+  [
+   "sc_ab_best",
+   139
+  ],
+  [
+   "rel_tidx_mean5",
+   132
+  ],
+  [
+   "g_layoff",
+   122
+  ],
+  [
+   "g_last_best",
+   112
+  ],
+  [
+   "fit_dist",
+   104
+  ],
+  [
+   "fit_surface",
+   88
+  ],
+  [
+   "lv_field_tidx",
+   85
+  ],
+  [
+   "scp_ab_best",
+   81
+  ],
+  [
+   "rel_tidx_best5",
+   66
+  ],
+  [
+   "field_form_mean",
+   16
+  ],
+  [
+   "ab_wmean_close",
+   16
+  ],
+  [
+   "cond_ab_close",
+   16
+  ],
+  [
+   "elom_z",
+   16
+  ],
+  [
+   "elos_z",
+   16
+  ],
+  [
+   "tidx_mean5",
+   13
+  ],
+  [
+   "cond_ab_rank",
+   6
+  ],
+  [
+   "ab_wmean_rank",
+   5
+  ],
+  [
+   "abn_w_rank",
+   5
+  ],
+  [
+   "tidx_best5",
+   5
+  ],
+  [
+   "ab_best_rank",
+   5
+  ],
+  [
+   "abd_w_rank",
+   3
+  ],
+  [
+   "n_prior",
+   2
+  ],
+  [
+   "surface_n",
+   2
+  ],
+  [
+   "surface_top3",
+   2
+  ],
+  [
+   "dist_n",
+   2
+  ],
+  [
+   "dist_top3",
+   2
+  ],
+  [
+   "sp_n",
+   2
+  ],
+  [
+   "sp_top3",
+   2
+  ],
+  [
+   "sim_straight_n",
+   2
+  ],
+  [
+   "sim_straight_top3",
+   2
+  ],
+  [
+   "band_straight_n",
+   2
+  ],
+  [
+   "band_straight_top3",
+   2
+  ],
+  [
+   "band_elev_n",
+   2
+  ],
+  [
+   "band_elev_top3",
+   2
+  ],
+  [
+   "tidx_last1",
+   2
+  ],
+  [
+   "venue_n",
+   1
+  ],
+  [
+   "venue_top3",
+   1
+  ],
+  [
+   "fit_change_n",
+   1
+  ],
+  [
+   "band_both_n",
+   1
+  ],
+  [
+   "band_both_top3",
+   1
+  ],
+  [
+   "sc_n",
+   1
+  ],
+  [
+   "sc_top3",
+   1
+  ],
+  [
+   "days_since_last",
+   1
+  ],
+  [
+   "form_raw",
+   1
+  ],
+  [
+   "form_dev",
+   1
+  ],
+  [
+   "last1_finish_c",
+   1
+  ],
+  [
+   "last1_time_c",
+   1
+  ],
+  [
+   "form_finish_mean",
+   1
+  ],
+  [
+   "form_time_mean",
+   1
+  ],
+  [
+   "pos_first_mean",
+   1
+  ],
+  [
+   "pos_last_mean",
+   1
+  ],
+  [
+   "nige_rate",
+   1
+  ],
+  [
+   "senko_rate",
+   1
+  ],
+  [
+   "hp_n",
+   1
+  ],
+  [
+   "hp_top3",
+   1
+  ],
+  [
+   "rel_pos_rank",
+   1
+  ],
+  [
+   "prize_ratio_last",
+   1
+  ],
+  [
+   "prize_ratio_mean5",
+   1
+  ],
+  [
+   "dist_change",
+   1
+  ],
+  [
+   "surface_change",
+   1
+  ],
+  [
+   "weight_change",
+   1
+  ],
+  [
+   "jockey_change",
+   1
+  ],
+  [
+   "last1_victim",
+   1
+  ],
+  [
+   "victim_n5",
+   1
+  ],
+  [
+   "rank_tidx_mean5",
+   1
+  ],
+  [
+   "rank_tidx_best5",
+   1
+  ],
+  [
+   "rel_prize_ratio_mean5",
+   1
+  ],
+  [
+   "rank_prize_ratio_mean5",
+   1
+  ],
+  [
+   "ab_n",
+   1
+  ],
+  [
+   "ag_dev_wmean",
+   1
+  ],
+  [
+   "ag_dev_best",
+   1
+  ],
+  [
+   "ag_rank_wmean",
+   1
+  ],
+  [
+   "ag_rank_best",
+   1
+  ],
+  [
+   "early_gap_wmean",
+   1
+  ],
+  [
+   "early_gap_best",
+   1
+  ],
+  [
+   "fade_wmean",
+   1
+  ],
+  [
+   "fade_best",
+   1
+  ],
+  [
+   "ag_dev_wmean_rank",
+   1
+  ],
+  [
+   "ag_dev_wmean_dmean",
+   1
+  ],
+  [
+   "ag_dev_wmean_dmax",
+   1
+  ],
+  [
+   "g_up_streak",
+   1
+  ],
+  [
+   "fit_dist_n",
+   1
+  ],
+  [
+   "fit_shape_n",
+   1
+  ],
+  [
+   "fit_turn_n",
+   1
+  ],
+  [
+   "pace_hi_n",
+   1
+  ],
+  [
+   "pace_sl_n",
+   1
+  ],
+  [
+   "pos_std",
+   1
+  ],
+  [
+   "lv_field_form",
+   1
+  ],
+  [
+   "lv_after_n",
+   1
+  ],
+  [
+   "lv_after_top3",
+   1
+  ],
+  [
+   "lv_beaten_form",
+   1
+  ],
+  [
+   "lv_lost_form",
+   1
+  ],
+  [
+   "c4_rate",
+   1
+  ],
+  [
+   "c4_adv",
+   1
+  ],
+  [
+   "c4_bias",
+   1
+  ],
+  [
+   "c4_n",
+   1
+  ],
+  [
+   "elom",
+   1
+  ],
+  [
+   "elom_n",
+   1
+  ],
+  [
+   "elom_rank",
+   1
+  ],
+  [
+   "elom_dmax",
+   1
+  ],
+  [
+   "elos",
+   1
+  ],
+  [
+   "elos_n",
+   1
+  ],
+  [
+   "elos_rank",
+   1
+  ],
+  [
+   "elos_dmax",
+   1
+  ],
+  [
+   "jc_prev_top3_py",
+   1
+  ],
+  [
+   "jc_delta_py",
+   1
+  ],
+  [
+   "jc_delta_ty",
+   1
+  ]
+ ],
+ "examples": [
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_wmean",
+   "python": -1.0362901639344262,
+   "ts": -1.036216393442623
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_best",
+   "python": -0.5781,
+   "ts": -0.578
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_last",
+   "python": -0.5781,
+   "ts": -0.578
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_trend",
+   "python": 0.5805500000000001,
+   "ts": 0.5806
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_std",
+   "python": 0.5841368874958449,
+   "ts": 0.5841897751016646
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_wmean_z",
+   "python": 1.0074602851722563,
+   "ts": 1.0066914331681704
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_wmean_dmean",
+   "python": 0.7576136814410039,
+   "ts": 0.7572619712608784
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_wmean_dmax",
+   "python": -0.030290163934426184,
+   "ts": -0.031216393442623058
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_best_z",
+   "python": 1.446548008636303,
+   "ts": 1.4458018745120285
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_best_dmean",
+   "python": 1.1485333333333334,
+   "ts": 1.1481999999999997
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_wmean_fstd",
+   "python": 0.7520035207258483,
+   "ts": 0.7522284846287907
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "fit_venue",
+   "python": 0.18107777777777778,
+   "ts": 0.18108888888888897
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "fit_shape",
+   "python": 0.18107777777777778,
+   "ts": 0.18108888888888897
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "fit_going",
+   "python": -0.2059555555555556,
+   "ts": -0.20597777777777773
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "fit_turn",
+   "python": 0.15446666666666667,
+   "ts": 0.15448333333333344
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "fit_change",
+   "python": 0.024877777777777776,
+   "ts": 0.02488888888888896
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "cond_ab",
+   "python": -1.146211111111111,
+   "ts": -1.1461555555555556
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "pace_hi",
+   "python": 0.15446666666666667,
+   "ts": 0.15448333333333344
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "pace_sl",
+   "python": -0.2059555555555556,
+   "ts": -0.20597777777777773
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_wmean_d3",
+   "python": 0.22930983606557387,
+   "ts": 0.22928360655737712
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_wmean_dtop3",
+   "python": 0.06633989071038271,
+   "ts": 0.06602240437158469
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "ab_wmean_top3_gap",
+   "python": 0.6912737907306212,
+   "ts": 0.6912395668892937
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "cond_ab_d3",
+   "python": 0.11938888888888899,
+   "ts": 0.11934444444444448
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "cond_ab_dtop3",
+   "python": -0.006940740740740692,
+   "ts": -0.0072703703703702605
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "cond_ab_top3_gap",
+   "python": 0.6811623456790123,
+   "ts": 0.6811283950617284
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "cond_ab_dmax",
+   "python": -0.14021111111111106,
+   "ts": -0.1411555555555557
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "abd_w",
+   "python": -0.9400569077356675,
+   "ts": -0.9399776282845261
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "abd_w_d3",
+   "python": 0.32554309226433253,
+   "ts": 0.32552237171547393
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "abn_w",
+   "python": -1.0362901639344262,
+   "ts": -1.036216393442623
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "abn_w_dmax",
+   "python": -0.030290163934426184,
+   "ts": -0.031216393442623058
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ブルーサンタ",
+   "name": "abn_w_d3",
+   "python": 0.22930983606557387,
+   "ts": 0.22928360655737712
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "レジームチェンジ",
+   "name": "ab_wmean_fstd",
+   "python": 0.7520035207258483,
+   "ts": 0.7522284846287907
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "レジームチェンジ",
+   "name": "ab_wmean_top3_gap",
+   "python": 0.6912737907306212,
+   "ts": 0.6912395668892937
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "レジームチェンジ",
+   "name": "cond_ab_top3_gap",
+   "python": 0.6811623456790123,
+   "ts": 0.6811283950617284
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_wmean",
+   "python": -1.006,
+   "ts": -1.005
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_best",
+   "python": -1.006,
+   "ts": -1.005
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_last",
+   "python": -1.006,
+   "ts": -1.005
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_wmean_z",
+   "python": 1.0477395699091012,
+   "ts": 1.0481899859091341
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_wmean_dmean",
+   "python": 0.7879038453754301,
+   "ts": 0.7884783647035014
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_best_z",
+   "python": 0.9076190329320939,
+   "ts": 0.9081277755600723
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_best_dmean",
+   "python": 0.7206333333333332,
+   "ts": 0.7211999999999998
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_best_dmax",
+   "python": -0.42790000000000006,
+   "ts": -0.42699999999999994
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_wmean_fstd",
+   "python": 0.7520035207258483,
+   "ts": 0.7522284846287907
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "cond_ab",
+   "python": -1.006,
+   "ts": -1.005
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_wmean_d3",
+   "python": 0.25960000000000005,
+   "ts": 0.2605000000000002
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_wmean_dtop3",
+   "python": 0.0966300546448089,
+   "ts": 0.09723879781420774
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "ab_wmean_top3_gap",
+   "python": 0.6912737907306212,
+   "ts": 0.6912395668892937
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "cond_ab_d3",
+   "python": 0.25960000000000005,
+   "ts": 0.2605000000000002
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "cond_ab_dtop3",
+   "python": 0.13327037037037037,
+   "ts": 0.13388518518518544
+  },
+  {
+   "race_id": "202605050701",
+   "horse": "ギルデッドグロス",
+   "name": "cond_ab_top3_gap",
+   "python": 0.6811623456790123,
+   "ts": 0.6811283950617284
+  }
+ ]
+}
