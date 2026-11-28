@@ -1106,9 +1106,7 @@ async function getRace(
   const { raceId } = await context.params;
   const searchParams = new URL(_request.url).searchParams;
   const summaryOnly = searchParams.get("summary") === "1";
-  const forceRefresh = searchParams.get("refresh") === "1";
-  // weights=1：出馬表だけ取り直す（オッズの取得のあとに、発表された馬体重を予想に入れるため。ほかのページはためた分を使う）
-  const refreshEntries = forceRefresh || searchParams.get("weights") === "1";
+  // レース情報は画面を開いたときに取得し、外部ページのキャッシュを利用する。
 
   if (!/^\d{12}$/.test(raceId)) {
     return NextResponse.json(
@@ -1122,8 +1120,8 @@ async function getRace(
       `https://race.netkeiba.com/race/shutuba.html?race_id=${raceId}`;
     const tRace = performance.now();
     const [race, trainingPage] = await Promise.all([
-      fetchHtml(raceUrl, 3600, refreshEntries),
-      fetchHtml(`https://race.netkeiba.com/race/oikiri.html?race_id=${raceId}`, 3600, forceRefresh).catch(() => null),
+      fetchHtml(raceUrl, 3600, false),
+      fetchHtml(`https://race.netkeiba.com/race/oikiri.html?race_id=${raceId}`, 3600, false).catch(() => null),
     ]);
     const training = trainingPage?.ok ? parseTrainingPage(trainingPage.html) : new Map<number, { rank: string | null; critic: string | null }>();
 
@@ -1143,7 +1141,7 @@ async function getRace(
     const raceConditions = extractRaceConditions(race.html, raceId);
     // 天候・馬場は JRA の馬場情報（同じ競馬場・同じ開催日のもの）から取る（app/lib/jraBaba.ts。10分ためる）
     const tJra = performance.now();
-    const jraPages = await fetchJraBaba(forceRefresh).catch(() => []);
+    const jraPages = await fetchJraBaba(false).catch(() => []);
     phase.jra = performance.now() - tJra;
     const jra = jraPages.find((b) => b && raceConditions.venue && b.venue === raceConditions.venue && b.date === raceConditions.date) ?? null;
     const jraGoing = jra ? (raceConditions.surface === "ダート" ? jra.dirt : jra.turf) : null;
@@ -1196,9 +1194,9 @@ async function getRace(
           const stored = (await loadStoredStallions())[stallionId];
           if (stored && usable(stored)) { count("種牡馬（手元のファイル）"); return stored; }
           const cached = liveStallions.get(stallionId);
-          if (!forceRefresh && cached && Date.now() - cached.at < LIVE_STALLION_MS && usable(cached.raw)) { count("種牡馬（サーバーにためた分）"); return cached.raw; }
+          if (cached && Date.now() - cached.at < LIVE_STALLION_MS && usable(cached.raw)) { count("種牡馬（サーバーにためた分）"); return cached.raw; }
           const url = (type: number) => `https://db.netkeiba.com/horse/sire/${stallionId}/?syusai=10&mode=1&type=${type}`;
-          const [going, distance] = await Promise.all([1, 2].map((type) => fetchHtml(url(type), 604800, forceRefresh).catch(() => null)));
+          const [going, distance] = await Promise.all([1, 2].map((type) => fetchHtml(url(type), 604800, false).catch(() => null)));
           const parsed = parseStallionPages(stallionId, name, {
             going: going?.ok ? going.html : null, distance: distance?.ok ? distance.html : null,
           }, new Date().toISOString().slice(0, 10));
@@ -1230,9 +1228,9 @@ async function getRace(
           const profileUrl = `https://db.sp.netkeiba.com/horse/${horse.horseId}/`;
           const pedigreeUrl = `https://db.netkeiba.com/horse/ped/${horse.horseId}/`;
           const [profilePage, historyResult, pedigreePage] = await Promise.all([
-            fetchHtml(profileUrl, 604800, forceRefresh),
-            fetchAllPerformances(horse.horseId, forceRefresh),
-            fetchHtml(pedigreeUrl, 2592000, forceRefresh).catch(() => null),
+            fetchHtml(profileUrl, 604800, false),
+            fetchAllPerformances(horse.horseId, false),
+            fetchHtml(pedigreeUrl, 2592000, false).catch(() => null),
           ]);
           const pedigree = pedigreePage?.ok ? extractPedigree(pedigreePage.html) : null;
           pedigreeRecords[index] = await Promise.all(PEDIGREE_SOURCES.map((source) => {
@@ -1314,7 +1312,7 @@ async function getRace(
       // クッション値・含水率・使用コース（JRA の馬場情報。features.py の BABA_FEATURES）
       const tBaba = performance.now();
       const babaDetail = raceConditions.venue && raceConditions.date
-        ? await fetchJraBabaDetail(raceConditions.venue, raceConditions.date, forceRefresh).catch(() => null) : null;
+        ? await fetchJraBabaDetail(raceConditions.venue, raceConditions.date, false).catch(() => null) : null;
       timing.fetch += performance.now() - tBaba;
       const raceInput = {
         baba: babaDetail ? { cushion: babaDetail.cushion, moist: surfaceCode === 0 ? babaDetail.moistTurf : babaDetail.moistDirt, course: babaDetail.course } : null,
