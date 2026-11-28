@@ -485,7 +485,7 @@ function HorseDetailCard({ horse, mark, onMarkChange, odds, raceDate }: {
         <b>{horse.name}</b>
         <small>{[entry?.sexAge, entry?.jockey, entry?.carriedWeight != null ? String(entry.carriedWeight) : null].filter(Boolean).join("・")}</small>
       </span>
-      <span className="entry-body-weight">{displayBodyWeight(horse, raceDate) != null ? `${displayBodyWeight(horse, raceDate)}kg` : ""}</span>
+      <span className="entry-body-weight">{displayBodyWeight(horse, raceDate) != null ? <><b>{displayBodyWeight(horse, raceDate)}kg</b><small>馬体重</small></> : ""}</span>
       <span className="ai-odds">{odds?.win ? <><b className={odds.popularity != null && odds.popularity <= 3 ? "fav" : ""}>{odds.win.toFixed(1)}</b><small>{odds.popularity}番人気</small></> : <small>-</small>}</span>
       {/* 印の操作で開閉しないように、クリックの既定動作（summary の開閉）を止める */}
       <span className="horse-mark-slot" onClick={(event) => event.preventDefault()}>
