@@ -756,11 +756,14 @@ body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 .bet-skip, .bet-shobu { margin: 6px 0; padding: 8px 10px; border-radius: 10px; font-size: 13px; font-weight: 700; }
 .bet-skip { background: #3a1c1a; color: #f0a49c; border: 1px solid #6b2a24; }
 .bet-shobu { background: #3a2e10; color: var(--accent-strong); border: 1px solid var(--accent); }
-.star-bets { padding: 8px 12px; }
-.star-bets ul { padding: 0; }
-.star-bets li { flex-wrap: wrap; }
-.star-bets li .mark-bet-combo { flex: 0 0 auto; white-space: nowrap; }
-.star-bets li .mark-bet-odds { flex: 0 0 84px; }
+.star-bets > .bet-note { padding: 0 12px 10px; margin: 0; }
+.star-bets ul.star-bet-list { margin: 0; padding: 0 12px 4px; list-style: none; }
+.star-bets .star-bet-row { display: grid; grid-template-columns: 44px minmax(48px, 1fr) 58px minmax(100px, auto); align-items: center; gap: 6px; padding: 9px 0; font-size: 12px; }
+.star-bets .star-bet-heading { color: var(--muted); font-size: 11px; font-weight: 700; }
+.star-bets .star-bet-type { white-space: nowrap; }
+.star-bets .star-bet-row .mark-bet-combo { min-width: 0; white-space: nowrap; }
+.star-bets .star-bet-row .mark-bet-odds { width: auto; text-align: right; white-space: nowrap; }
+.star-bets .star-bet-history { text-align: right; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .star-ev { flex: 1 1 100%; display: block; width: auto; color: var(--muted); font-size: 11px; }
 
 /* AIスコアの横に3着以内確率（案11） */
