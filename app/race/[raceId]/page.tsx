@@ -705,29 +705,13 @@ function FactorView({ horses, categoryRanks, factor, onFactor, shapState, onRetr
 const ODDS_FIELD: Record<BetType, keyof OddsData> = { 単勝: "win", 複勝: "place", ワイド: "wide", 馬連: "umaren", "3連複": "trio" };
 const BET_TYPES: BetType[] = ["単勝", "複勝", "ワイド", "馬連", "3連複"];
 
-function OddsBar({ odds, state, error, compact = false }: { odds: OddsData | null; state: "idle" | "loading" | "error"; error: string; compact?: boolean }) {
-  const missing = odds ? BET_TYPES.filter((t) => !Object.keys((odds[ODDS_FIELD[t]] as OddsMap) ?? {}).length) : [];
-  return <div className="odds-bar">
-    <div className="bet-controls">
-      <span className="odds-bar-title">{odds ? (odds.status === "yoso" ? "予想オッズ" : odds.status === "result" ? "確定オッズ" : "オッズ") : "オッズ未取得"}</span>
-    </div>
-    {!compact && <p className="bet-note">
-      {odds ? <>netkeiba {odds.officialTime ? odds.officialTime.replace(/^\d{4}-/, "").replace("-", "/") + " 時点" : ""}（取得 {new Date(odds.fetchedAt).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}）
-        {odds.status === "yoso" && <><br /><b className="bet-warn">発売前。netkeiba の予想で、実際のオッズではない</b></>}</>
-        : "画面上部の「オッズ取得」から netkeiba のオッズを取得できる。取得したオッズはこの端末に保存する"}
-      {missing.length > 0 && <><br />まだ出ていない券種：{missing.join("・")}</>}
-      {state === "error" && <><br /><b className="bet-warn">オッズを取得できなかった：{error}</b></>}
-    </p>}
-    {compact && state === "error" && <p className="bet-note"><b className="bet-warn">オッズを取得できなかった：{error}</b></p>}
-  </div>;
-}
 
 const MARK_MEANING: Record<AiMark, string> = {
   "◎": "本命", "○": "対抗", "▲": "単穴", "☆": "穴", "△": "連下", "消": "消し",
 };
 
-function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horseOdds, winCoef, evidence, betsEvidence, valueCoef, raceClass, skipClasses, extras }: {
-  horses: Horse[]; inTraining: boolean; odds: OddsData | null; oddsBar: ReactNode; values: Map<number, ValueResult> | null;
+function MarksPanel({ horses, inTraining, odds, values, longshot, horseOdds, winCoef, evidence, betsEvidence, valueCoef, raceClass, skipClasses, extras }: {
+  horses: Horse[]; inTraining: boolean; odds: OddsData | null; values: Map<number, ValueResult> | null;
   longshot: Map<number, number> | null;
   horseOdds: Map<string, HorseOdds>; winCoef: { ai: number; market: number } | null;
   evidence: Record<string, { marks: Record<string, MarkStats>; popLe3: MarkStats }> | null;
@@ -772,7 +756,6 @@ function MarksPanel({ horses, inTraining, odds, oddsBar, values, longshot, horse
 
   return <section className="bets-panel">
     {inTraining && <p className="heavy-note" role="note">⚠ このレースの結果はAIの学習データに入っている。印は参考として見ること。</p>}
-    {oddsBar}
     {!marks.size ? <p className="state-panel">AIの勝率が出ていないため、印を付けられない。</p> : <>
       {!odds && <p className="bet-note">オッズを取得すると、☆（穴）・消と、▲の妙味の判定が加わる。</p>}
       <ul className="ai-mark-list">
@@ -995,7 +978,6 @@ export default function RaceDetailPage() {
   const horseOdds = useMemo(() => horseOddsOf(horses.map((h) => ({ id: h.horseId, num: oddsNum(h.raceEntry) })), odds), [odds, horses]);
   // 発走時刻（日本時間）。オッズの取り直しのすすめ（案9）に使う
   const startAt = conditions?.date && conditions.startTime ? new Date(`${conditions.date}T${conditions.startTime.padStart(5, "0")}:00+09:00`) : null;
-  const oddsBar = <OddsBar odds={odds} state={oddsState} error={oddsError} />;
   // AI予想タブの目安（妙味あり・妥当・割高）。AI の確率（合計をそろえる前）と単勝オッズから（app/lib/market.ts の valueLabels）
   const values = useMemo(() => {
     const model = data?.ml?.valueModel;
@@ -1078,7 +1060,7 @@ export default function RaceDetailPage() {
             mark={marks[horse.horseId] ?? ""} onMarkChange={handleMarkChange} />)}
         </section>
       </div>}
-      {activeTab === "marks" && <div role="tabpanel"><MarksPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds} oddsBar={oddsBar}
+      {activeTab === "marks" && <div role="tabpanel"><MarksPanel horses={horses} inTraining={!!data.ml?.raceInTraining} odds={odds}
         values={values} longshot={longshot} horseOdds={horseOdds} winCoef={data.ml?.valueModel?.win ?? null} evidence={data.ml?.marksEvidence ?? null} betsEvidence={data.ml?.betsEvidence ?? null}
         valueCoef={data.ml?.valueModel?.combined ?? null} raceClass={data.raceConditions?.raceClass ?? null} skipClasses={data.ml?.betsSkipClasses ?? ["新馬"]} extras={data.ml?.betsExtras ?? null} /></div>}
       {activeTab === "prediction" && <section className="prediction-panel" role="tabpanel">
@@ -1099,7 +1081,6 @@ export default function RaceDetailPage() {
           {data.ml.raceInTraining && <p className="heavy-note" role="note">
             ⚠ このレースの結果は、すでにAIの学習データに入っている（〜{data.ml.dataUntil}）。答えを見て学習した状態なので、参考として見ること。
           </p>}
-          <OddsBar odds={odds} state={oddsState} error={oddsError} compact />
           <section className="horse-results-section">
             <div className="results-toolbar">
               <div className="sort-toggle" role="group" aria-label="見方">
