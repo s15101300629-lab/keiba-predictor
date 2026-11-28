@@ -50,12 +50,37 @@
     1500.0,
     0
    ]
+  },
+  {
+   "kana": "マスカレードボール",
+   "rating": 122,
+   "elo": [
+    1585.7147942642152,
+    9,
+    1585.651754801748,
+    9,
+    1500.0,
+    0
+   ]
   }
  ],
  "foreign": {
   "2021190002": {
    "name": "Ombudsman",
    "rating": 131,
+   "anchors": [
+    "ダノンデサイル",
+    "テーオーエルビス"
+   ],
+   "elom": 1619.5766,
+   "elos": [
+    1570.8432,
+    1549.4435
+   ]
+  },
+  "2018190002": {
+   "name": "Romantic Warrior",
+   "rating": 126,
    "anchors": [
     "ダノンデサイル",
     "テーオーエルビス"
@@ -139,8 +164,8 @@
    "yof": "2018",
    "trained": "HK",
    "rating": 126,
-   "horse_id": null,
-   "kana": null
+   "horse_id": "2018190002",
+   "kana": "ロマンチックウォリアー"
   },
   {
    "name": "Almaqam",
@@ -355,8 +380,8 @@
    "yof": "2022",
    "trained": "JPN",
    "rating": 122,
-   "horse_id": null,
-   "kana": null
+   "horse_id": "2022105519",
+   "kana": "マスカレードボール"
   },
   {
    "name": "Royal Champion",
